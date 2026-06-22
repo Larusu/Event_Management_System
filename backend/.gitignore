@@ -14,3 +14,7 @@ build/
 
 # Test related files
 coverage/
+
+# environment variables
+.env 
+service-account.json
