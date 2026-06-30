@@ -9,4 +9,3 @@ Response onRequest(RequestContext context) {
     body: '/auth/ is healthy.\n\nEndpoints: "/auth/register", "/auth/signin"',
   );
 }
-

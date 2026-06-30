@@ -22,6 +22,7 @@ part 'user.g.dart';
 ///   Null on sign-in responses — only present right after registration.
 @JsonSerializable(fieldRename: FieldRename.snake)
 class User {
+  /// Creates a [User]. [createdAt] is only set on registration responses.
   User({
     required this.uid,
     required this.email,
@@ -31,20 +32,32 @@ class User {
     this.createdAt,
   });
 
+  /// Creates a [User] from a JSON map.
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
 
+  /// Firebase UID.
   final String uid;
+
+  /// User's email address.
   final String email;
+
+  /// Full name, "firstName lastName" combined into one string.
   final String name;
+
+  /// 11-digit, 09-format contact number.
   final String contact;
+
+  /// Role: student | guest | organizer | faculty | super_admin.
   final String role;
 
   /// ISO 8601 timestamp — only included in registration responses.
   /// Serialized as "created_at" to match the snake_case API contract.
   final String? createdAt;
 
+  /// Converts this [User] to a JSON map with snake_case keys.
   Map<String, dynamic> toJson() => _$UserToJson(this);
 
   @override
-  String toString() => 'User(uid: $uid, email: $email, name: $name, role: $role)';
+  String toString() =>
+      'User(uid: $uid, email: $email, name: $name, role: $role)';
 }

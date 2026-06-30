@@ -97,6 +97,7 @@ class FirebaseAuthService {
     } catch (e) {
       // Firestore write failed - don't leave an orphaned Auth user behind.
       await _deleteAuthUserSafely(uid);
+      // ignore: avoid_print
       print('AUTH009 Step 2 (Firestore write) failed: $e');
       throw AuthException(
         AuthErrorCode.internalError,
@@ -162,7 +163,6 @@ class FirebaseAuthService {
       name: userDoc['name'] as String? ?? '',
       contact: userDoc['contact'] as String? ?? '',
       role: userDoc['role'] as String? ?? 'guest',
-      createdAt: null,
     );
 
     return {'user': user, 'token': customToken};
@@ -182,6 +182,8 @@ class FirebaseAuthService {
     }
   }
 
+  /// Verifies a Firebase ID token and returns the uid from its `sub` claim.
+  /// Throws [AuthException] with AUTH001 if the token is invalid or expired.
   static Future<String> verifyIdToken(String idToken) async {
     try {
       final decoded = await _firebaseAuth.verifyIdToken(idToken);
@@ -193,6 +195,8 @@ class FirebaseAuthService {
     }
   }
 
+  /// Reads the `users/{uid}` document and returns it merged with `uid`.
+  /// Throws [AuthException] with AUTH004 if no document exists.
   static Future<Map<String, dynamic>>getUserByUid(String uid) async {
     final doc = await _getUserDocument(uid);
     if (doc == null) {
@@ -256,6 +260,8 @@ class FirebaseAuthService {
     });
   }
 
+  /// Soft-deletes the user by setting `is_deleted` to true and bumping
+  /// `updated_at`. Throws [AuthException] with AUTH004 if the user is missing.
   static Future<void> deactivateUser(String uid) async {
     final existing = await _getUserDocument(uid);
     
@@ -454,7 +460,8 @@ class FirebaseAuthService {
     final client = await _firestoreClient();
     final projectId = _firestoreProjectId();
 
-    final fieldPaths = fields.keys.map((k) => 'updateMask.fieldPaths=$k').join('&');
+    final fieldPaths =
+        fields.keys.map((k) => 'updateMask.fieldPaths=$k').join('&');
     final uri = Uri.parse(
       'https://firestore.googleapis.com/v1/projects/$projectId'
       '/databases/(default)/documents/users/$uid'
@@ -518,12 +525,17 @@ class FirebaseAuthService {
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final fields = decoded['fields'] as Map<String, dynamic>? ?? {};
 
+    String? stringField(String key) =>
+        (fields[key] as Map<String, dynamic>?)?['stringValue'] as String?;
+    bool? boolField(String key) =>
+        (fields[key] as Map<String, dynamic>?)?['booleanValue'] as bool?;
+
     return {
-      'email': fields['email']?['stringValue'] as String?,
-      'name': fields['name']?['stringValue'] as String?,
-      'contact': fields['contact']?['stringValue'] as String?,
-      'role': fields['role']?['stringValue'] as String?,
-      'is_deleted': fields['is_deleted']?['booleanValue'] as bool?,
+      'email': stringField('email'),
+      'name': stringField('name'),
+      'contact': stringField('contact'),
+      'role': stringField('role'),
+      'is_deleted': boolField('is_deleted'),
     };
   }
 }

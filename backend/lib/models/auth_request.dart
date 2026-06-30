@@ -25,6 +25,7 @@ part 'auth_request.g.dart';
 /// ```
 @JsonSerializable(fieldRename: FieldRename.snake)
 class RegisterRequest {
+  /// Creates a [RegisterRequest] with the given signup fields.
   RegisterRequest({
     required this.email,
     required this.password,
@@ -33,6 +34,7 @@ class RegisterRequest {
     required this.contact,
   });
 
+  /// Creates a [RegisterRequest] from a JSON map.
   factory RegisterRequest.fromJson(Map<String, dynamic> json) =>
       _$RegisterRequestFromJson(json);
 
@@ -51,6 +53,7 @@ class RegisterRequest {
   /// User's contact phone number — JSON key: "contact"
   final String contact;
 
+  /// Converts this request to a JSON map with snake_case keys.
   Map<String, dynamic> toJson() => _$RegisterRequestToJson(this);
 
   @override
@@ -76,11 +79,13 @@ class RegisterRequest {
 /// ```
 @JsonSerializable(fieldRename: FieldRename.snake)
 class SignInRequest {
+  /// Creates a [SignInRequest] with login credentials.
   SignInRequest({
     required this.email,
     required this.password,
   });
 
+  /// Creates a [SignInRequest] from a JSON map.
   factory SignInRequest.fromJson(Map<String, dynamic> json) =>
       _$SignInRequestFromJson(json);
 
@@ -90,6 +95,7 @@ class SignInRequest {
   /// User's password
   final String password;
 
+  /// Converts this request to a JSON map with snake_case keys.
   Map<String, dynamic> toJson() => _$SignInRequestToJson(this);
 
   @override
@@ -109,16 +115,19 @@ class SignInRequest {
 /// ```
 @JsonSerializable(fieldRename: FieldRename.snake)
 class RefreshTokenRequest {
+  /// Creates a [RefreshTokenRequest] with the token to refresh.
   RefreshTokenRequest({
     required this.token,
   });
 
+  /// Creates a [RefreshTokenRequest] from a JSON map.
   factory RefreshTokenRequest.fromJson(Map<String, dynamic> json) =>
       _$RefreshTokenRequestFromJson(json);
 
   /// Current or expired token to refresh
   final String token;
 
+  /// Converts this request to a JSON map with snake_case keys.
   Map<String, dynamic> toJson() => _$RefreshTokenRequestToJson(this);
 
   @override

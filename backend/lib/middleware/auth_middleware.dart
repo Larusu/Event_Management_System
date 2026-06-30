@@ -4,6 +4,11 @@ import 'package:backend/services/firebase_auth_service.dart';
 import 'package:backend/utils/response_helper.dart';
 import 'package:dart_frog/dart_frog.dart';
 
+/// Runs the universal checks before any route handler: verifies the Firebase
+/// ID token (AUTH001), resolves the `users/{uid}` document (AUTH004), and
+/// rejects deactivated accounts (AUTH006). On success it provides the verified
+/// `uid` and resolved user document to downstream handlers so they never
+/// re-verify or re-fetch.
 Handler authMiddleware(Handler handler) {
   return (RequestContext context) async {
     try {
