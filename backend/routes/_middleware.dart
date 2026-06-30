@@ -4,9 +4,22 @@ import 'package:dart_frog/dart_frog.dart';
 // Global Firebase initialization flag
 bool _firebaseInitialized = false;
 
-/// Middleware to initialize Firebase Admin SDK on first request
+// CORS headers so browser-based clients (Flutter web) can call the API.
+// Use '*' for local dev only; lock this to the real frontend origin in prod.
+const _corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Origin, Content-Type, Authorization',
+};
+
+/// Middleware to initialize Firebase Admin SDK on first request and apply CORS.
 Handler middleware(Handler handler) {
   return (RequestContext context) async {
+    // Answer the CORS preflight before any route logic runs.
+    if (context.request.method == HttpMethod.options) {
+      return Response(statusCode: 204, headers: _corsHeaders);
+    }
+
     // Initialize Firebase once on first request
     if (!_firebaseInitialized && !FirebaseConfig.isInitialized) {
       try {
@@ -19,7 +32,10 @@ Handler middleware(Handler handler) {
       }
     }
 
-    // Continue to route handler
-    return handler(context);
+    // Continue to route handler, then attach CORS headers to the response.
+    final response = await handler(context);
+    return response.copyWith(
+      headers: {...response.headers, ..._corsHeaders},
+    );
   };
 }

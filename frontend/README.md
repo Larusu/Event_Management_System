@@ -1,4 +1,4 @@
-# Frontend 
+# Frontend
 
 Campus app Flutter project.
 
@@ -40,6 +40,7 @@ lib/
 │   ├── constants/                 # role strings, error codes, API base URL
 │   ├── network/                   # http client wrapper, interceptors
 │   ├── models/                    # shared models (User, ApiResponse)
+│   ├── fonts/                     # font families
 │   └── utils/
 ├── features/
 │   ├── auth/
@@ -124,4 +125,3 @@ flutter run
 - **Error handling:** backend returns a standardized `{ success, message, ... }` shape — surface `message` to the user via shared error widgets in `shared/widgets/`, don't write one-off error UI per screen.
 - **Pull-to-refresh:** used for event feeds (not real-time listeners). Notifications are fetched on demand, not pushed.
 - **Soft deletes:** the backend never hard-deletes records. UI should treat "deactivated" users/events as hidden, not gone — don't assume a 404 means permanently deleted.
-
