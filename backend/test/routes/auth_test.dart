@@ -34,7 +34,7 @@ void main() {
 
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
-      when(() => request.json()).thenAnswer(
+      when(request.json).thenAnswer(
         (_) => Future<Map<String, dynamic>>.value(<String, dynamic>{
           'email': 'invalid-email',
           'password': 'password123',
@@ -51,13 +51,14 @@ void main() {
       expect(body['code'], equals('AUTH005'));
     });
 
-    test('returns 400 with AUTH005 for password less than 8 characters', () async {
+    test('returns 400 with AUTH005 for password less than 8 characters',
+        () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
 
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
-      when(() => request.json()).thenAnswer(
+      when(request.json).thenAnswer(
         (_) => Future<Map<String, dynamic>>.value(<String, dynamic>{
           'email': 'test@example.com',
           'password': 'short',
@@ -80,7 +81,7 @@ void main() {
 
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
-      when(() => request.json()).thenAnswer(
+      when(request.json).thenAnswer(
         (_) => Future<Map<String, dynamic>>.value(<String, dynamic>{
           'email': 'test@example.com',
           'password': 'password123',

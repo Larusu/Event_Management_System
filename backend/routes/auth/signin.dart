@@ -12,30 +12,6 @@ import 'package:dart_frog/dart_frog.dart';
 /// the Identity Toolkit REST API; role/name/contact are read fresh from
 /// Firestore (never from a token or claim) on every sign-in.
 ///
-/// Request Body:
-/// ```json
-/// {
-///   "email": "user@example.com",
-///   "password": "SecurePassword123"
-/// }
-/// ```
-///
-/// Response (200 OK):
-/// ```json
-/// {
-///   "success": true,
-///   "message": "Sign in successful.",
-///   "custom_token": "eyJhbGciOiJIUzI1NiIs...",
-///   "user": {
-///     "uid": "firebase_uid",
-///     "email": "jeff.marquez@ciit.edu.ph",
-///     "name": "Jeff Marquez",
-///     "contact": "09123456789",
-///     "role": "student"
-///   }
-/// }
-/// ```
-///
 /// Error Responses (see constants/error_codes.dart):
 /// - 401 AUTH008: invalid email or password
 /// - 403 AUTH006: account deactivated
@@ -86,6 +62,7 @@ Future<Response> onRequest(RequestContext context) async {
   } on AuthException catch (e) {
     return ResponseHelper.error(e);
   } catch (e) {
+    // ignore: avoid_print
     print('AUTH009 catch-all error (signin): $e');
     return ResponseHelper.error(
       AuthException(AuthErrorCode.internalError, 'Internal server error'),

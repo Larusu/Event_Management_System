@@ -1,6 +1,9 @@
 import 'dart:io';
 
 import 'package:firebase_admin/firebase_admin.dart';
+// ServiceAccountCredential is not re-exported from the package's public API,
+// so importing it from src/ is the only way to construct it.
+// ignore: implementation_imports
 import 'package:firebase_admin/src/auth/credential.dart';
 
 /// Firebase Admin SDK Configuration
@@ -67,7 +70,7 @@ class FirebaseConfig {
     final envFile = File('.env');
 
     if (!envFile.existsSync()) {
-      throw FileSystemException('.env file not found');
+      throw const FileSystemException('.env file not found');
     }
 
     final lines = envFile.readAsLinesSync();

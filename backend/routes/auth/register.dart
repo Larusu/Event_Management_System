@@ -12,34 +12,6 @@ import 'package:dart_frog/dart_frog.dart';
 /// (@ciit.edu.ph -> student, else -> guest) - never accepted from the
 /// client.
 ///
-/// Request Body:
-/// ```json
-/// {
-///   "first_name": "Jeff",
-///   "last_name": "Marquez",
-///   "email": "jeff@gmail.com",
-///   "contact": "09123456789",
-///   "password": "Jeffoy123"
-/// }
-/// ```
-///
-/// Response (201 Created):
-/// ```json
-/// {
-///   "success": true,
-///   "message": "Account created successfully.",
-///   "custom_token": "eyJhbGciOiJIUzI1NiIs...",
-///   "user": {
-///     "uid": "firebase_uid",
-///     "email": "jeff.marquez@gmail.com",
-///     "name": "Jeff Marquez",
-///     "contact": "09123456789",
-///     "role": "guest",
-///     "createdAt": "2025-01-01T00:00:00.000Z"
-///   }
-/// }
-/// ```
-///
 /// Error Responses (see constants/error_codes.dart):
 /// - 400 AUTH005: validation failed
 /// - 409 AUTH002: email already exists
@@ -80,6 +52,7 @@ Future<Response> onRequest(RequestContext context) async {
   } on AuthException catch (e) {
     return ResponseHelper.error(e);
   } catch (e) {
+    // ignore: avoid_print
     print('AUTH009 catch-all error: $e');
     return ResponseHelper.error(
       AuthException(AuthErrorCode.internalError, 'Internal server error'),

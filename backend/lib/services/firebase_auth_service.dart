@@ -97,6 +97,7 @@ class FirebaseAuthService {
     } catch (e) {
       // Firestore write failed - don't leave an orphaned Auth user behind.
       await _deleteAuthUserSafely(uid);
+      // ignore: avoid_print
       print('AUTH009 Step 2 (Firestore write) failed: $e');
       throw AuthException(
         AuthErrorCode.internalError,
@@ -162,7 +163,6 @@ class FirebaseAuthService {
       name: userDoc['name'] as String? ?? '',
       contact: userDoc['contact'] as String? ?? '',
       role: userDoc['role'] as String? ?? 'guest',
-      createdAt: null,
     );
 
     return {'user': user, 'token': customToken};
@@ -180,6 +180,98 @@ class FirebaseAuthService {
       // ignore: avoid_print
       print('⚠ Failed to update last_login_at for $uid: $e');
     }
+  }
+
+  /// Verifies a Firebase ID token and returns the uid from its `sub` claim.
+  /// Throws [AuthException] with AUTH001 if the token is invalid or expired.
+  static Future<String> verifyIdToken(String idToken) async {
+    try {
+      final decoded = await _firebaseAuth.verifyIdToken(idToken);
+      return decoded.claims.subject; // the uid from the JWT sub claim
+    } catch (e) {
+      throw AuthException(
+        AuthErrorCode.invalidToken, 'Invalid or expired token.',
+      );
+    }
+  }
+
+  /// Reads the `users/{uid}` document and returns it merged with `uid`.
+  /// Throws [AuthException] with AUTH004 if no document exists.
+  static Future<Map<String, dynamic>>getUserByUid(String uid) async {
+    final doc = await _getUserDocument(uid);
+    if (doc == null) {
+      throw AuthException(AuthErrorCode.userNotFound, 'User not found');
+    }
+
+    return {
+      'uid': uid,
+      ...doc,
+    };
+  }
+
+  /// Promotes [targetUid] to [newRole].
+  ///
+  /// [requesterRole] is supplied by the caller from the middleware-resolved
+  /// user document (see §1.9) - we deliberately do NOT re-read the requester's
+  /// doc here, since the middleware already verified and resolved it.
+  static Future<void> promoteUserRole({
+    required String targetUid,
+    required String requesterUid,
+    required String requesterRole,
+    required String newRole,
+  }) async {
+    const validRoles = {'organizer', 'faculty'};
+
+    // Validate newRole is a known assignable role. AUTH007
+    if (!validRoles.contains(newRole)) {
+      throw AuthException(AuthErrorCode.invalidRole, 'Invalid role specified.');
+    }
+
+    // Check permission. AUTH003
+    if (requesterRole != 'faculty' && requesterRole != 'super_admin') {
+      throw AuthException(AuthErrorCode.insufficientPermission, 
+        'You do not have permission to assign this role.');
+    }
+
+    // Faculty may only assign `organizer`; assigning any other valid role is
+    // a permission failure, not an invalid-role error. AUTH003
+    if (requesterRole == 'faculty' && newRole != 'organizer') {
+      throw AuthException(AuthErrorCode.insufficientPermission, 
+        'You do not have permission to assign this role.');
+    }
+
+    // Self-promotion check. AUTH003
+    if (targetUid == requesterUid) {
+      throw AuthException(AuthErrorCode.insufficientPermission, 
+        'Cannot promote yourself.');
+    }
+
+    final existing = await _getUserDocument(targetUid);
+    
+    // Check target exists. AUTH004
+    if (existing == null) {
+      throw AuthException(AuthErrorCode.userNotFound, 'Target user not found');
+    }
+
+    final timeNow = DateTime.now().toUtc().toIso8601String();
+    await _patchUserDocument(targetUid, {
+      'role': newRole,
+      'updated_at': timeNow,
+    });
+  }
+
+  /// Soft-deletes the user by setting `is_deleted` to true and bumping
+  /// `updated_at`. Throws [AuthException] with AUTH004 if the user is missing.
+  static Future<void> deactivateUser(String uid) async {
+    final existing = await _getUserDocument(uid);
+    
+    // Check target exists. AUTH004
+    if (existing == null) {
+      throw AuthException(AuthErrorCode.userNotFound, 'Target user not found');
+    }
+
+    final timeNow = DateTime.now().toUtc().toIso8601String();
+    await _patchUserDocument(uid, {'is_deleted': true, 'updated_at': timeNow});
   }
 
   // ---------------------------------------------------------------------
@@ -368,7 +460,8 @@ class FirebaseAuthService {
     final client = await _firestoreClient();
     final projectId = _firestoreProjectId();
 
-    final fieldPaths = fields.keys.map((k) => 'updateMask.fieldPaths=$k').join('&');
+    final fieldPaths =
+        fields.keys.map((k) => 'updateMask.fieldPaths=$k').join('&');
     final uri = Uri.parse(
       'https://firestore.googleapis.com/v1/projects/$projectId'
       '/databases/(default)/documents/users/$uid'
@@ -432,12 +525,17 @@ class FirebaseAuthService {
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final fields = decoded['fields'] as Map<String, dynamic>? ?? {};
 
+    String? stringField(String key) =>
+        (fields[key] as Map<String, dynamic>?)?['stringValue'] as String?;
+    bool? boolField(String key) =>
+        (fields[key] as Map<String, dynamic>?)?['booleanValue'] as bool?;
+
     return {
-      'email': fields['email']?['stringValue'] as String?,
-      'name': fields['name']?['stringValue'] as String?,
-      'contact': fields['contact']?['stringValue'] as String?,
-      'role': fields['role']?['stringValue'] as String?,
-      'is_deleted': fields['is_deleted']?['booleanValue'] as bool?,
+      'email': stringField('email'),
+      'name': stringField('name'),
+      'contact': stringField('contact'),
+      'role': stringField('role'),
+      'is_deleted': boolField('is_deleted'),
     };
   }
 }

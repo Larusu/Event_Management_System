@@ -20,8 +20,8 @@ import 'package:dart_frog/dart_frog.dart';
 /// ```
 Response onRequest(RequestContext context) {
   return Response(
-    statusCode: 200,
-    body: '''{
+    body: '''
+{
   "status": "healthy",
   "timestamp": "${DateTime.now().toUtc().toIso8601String()}",
   "version": "1.0.0",

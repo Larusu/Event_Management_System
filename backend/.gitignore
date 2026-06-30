@@ -20,7 +20,8 @@ coverage/
 .env.local
 .env.*.local
 credentials/
-*.json
+*-firebase-adminsdk-*.json
+serviceAccountKey.json
 
 # IDE
 .vscode/

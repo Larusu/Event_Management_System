@@ -29,10 +29,12 @@ class AuthErrorCode {
   /// An unexpected server-side error occurred. (500)
   static const String internalError = 'AUTH009';
 
-  /// The provided `current_password` does not match the account's password. (401)
+  /// The provided `current_password` does not match the account's
+  /// password. (401)
   static const String currentPasswordIncorrect = 'AUTH010';
 
-  /// `new_password` is identical to `current_password`; no change was made. (400)
+  /// `new_password` is identical to `current_password`; no change was
+  /// made. (400)
   static const String passwordSameAsCurrent = 'AUTH011';
 
   /// Maps each error code to its HTTP status code.
