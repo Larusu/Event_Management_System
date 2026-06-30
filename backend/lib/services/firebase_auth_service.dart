@@ -205,33 +205,35 @@ class FirebaseAuthService {
     };
   }
 
-  static Future<void> promoteUserRole( 
-    String targetUid,
-    String requesterUid,
-    String newRole
-  ) async {
+  /// Promotes [targetUid] to [newRole].
+  ///
+  /// [requesterRole] is supplied by the caller from the middleware-resolved
+  /// user document (see §1.9) - we deliberately do NOT re-read the requester's
+  /// doc here, since the middleware already verified and resolved it.
+  static Future<void> promoteUserRole({
+    required String targetUid,
+    required String requesterUid,
+    required String requesterRole,
+    required String newRole,
+  }) async {
     const validRoles = {'organizer', 'faculty'};
 
-    // Validate newRole. AUTH007
+    // Validate newRole is a known assignable role. AUTH007
     if (!validRoles.contains(newRole)) {
       throw AuthException(AuthErrorCode.invalidRole, 'Invalid role specified.');
     }
 
-    // Get requester
-    final requester = await _getUserDocument(requesterUid);
-    if (requester == null) {
-        throw AuthException(AuthErrorCode.userNotFound, 'Requester not found');
-    }
-   
     // Check permission. AUTH003
-    if (requester['role'] != 'faculty' && requester['role'] != 'super_admin') {
+    if (requesterRole != 'faculty' && requesterRole != 'super_admin') {
       throw AuthException(AuthErrorCode.insufficientPermission, 
         'You do not have permission to assign this role.');
     }
 
-    // Faculty can only promote to organizer. AUTH007
-    if (requester['role'] == 'faculty' && newRole != 'organizer') {
-      throw AuthException(AuthErrorCode.invalidRole, 'Invalid role specified.');
+    // Faculty may only assign `organizer`; assigning any other valid role is
+    // a permission failure, not an invalid-role error. AUTH003
+    if (requesterRole == 'faculty' && newRole != 'organizer') {
+      throw AuthException(AuthErrorCode.insufficientPermission, 
+        'You do not have permission to assign this role.');
     }
 
     // Self-promotion check. AUTH003

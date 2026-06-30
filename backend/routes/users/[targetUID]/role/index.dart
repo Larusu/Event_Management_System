@@ -14,6 +14,9 @@ Future<Response> onRequest(RequestContext context, String targetUid) async {
 
   try {
     final requesterUid = context.read<String>();
+    final requesterDoc = context.read<Map<String, dynamic>>();
+    final requesterRole = requesterDoc['role'] as String? ?? '';
+
     final body = await context.request.json() as Map<String, dynamic>;
     final newRole = body['new_role'] as String?;
 
@@ -22,7 +25,12 @@ Future<Response> onRequest(RequestContext context, String targetUid) async {
         'new_role is required.');
     }
 
-    await FirebaseAuthService.promoteUserRole(targetUid, requesterUid, newRole);
+    await FirebaseAuthService.promoteUserRole(
+      targetUid: targetUid,
+      requesterUid: requesterUid,
+      requesterRole: requesterRole,
+      newRole: newRole,
+    );
 
     return ResponseHelper.success(
       message: 'User role updated to $newRole.',
