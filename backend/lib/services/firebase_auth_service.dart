@@ -182,6 +182,90 @@ class FirebaseAuthService {
     }
   }
 
+  static Future<String> verifyIdToken(String idToken) async {
+    try {
+      final decoded = await _firebaseAuth.verifyIdToken(idToken);
+      return decoded.claims.subject; // the uid from the JWT sub claim
+    } catch (e) {
+      throw AuthException(
+        AuthErrorCode.invalidToken, 'Invalid or expired token.',
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>>getUserByUid(String uid) async {
+    final doc = await _getUserDocument(uid);
+    if (doc == null) {
+      throw AuthException(AuthErrorCode.userNotFound, 'User not found');
+    }
+
+    return {
+      'uid': uid,
+      ...doc,
+    };
+  }
+
+  static Future<void> promoteUserRole( 
+    String targetUid,
+    String requesterUid,
+    String newRole
+  ) async {
+    const validRoles = {'organizer', 'faculty'};
+
+    // Validate newRole. AUTH007
+    if (!validRoles.contains(newRole)) {
+      throw AuthException(AuthErrorCode.invalidRole, 'Invalid role specified.');
+    }
+
+    // Get requester
+    final requester = await _getUserDocument(requesterUid);
+    if (requester == null) {
+        throw AuthException(AuthErrorCode.userNotFound, 'Requester not found');
+    }
+   
+    // Check permission. AUTH003
+    if (requester['role'] != 'faculty' && requester['role'] != 'super_admin') {
+      throw AuthException(AuthErrorCode.insufficientPermission, 
+        'You do not have permission to assign this role.');
+    }
+
+    // Faculty can only promote to organizer. AUTH007
+    if (requester['role'] == 'faculty' && newRole != 'organizer') {
+      throw AuthException(AuthErrorCode.invalidRole, 'Invalid role specified.');
+    }
+
+    // Self-promotion check. AUTH003
+    if (targetUid == requesterUid) {
+      throw AuthException(AuthErrorCode.insufficientPermission, 
+        'Cannot promote yourself.');
+    }
+
+    final existing = await _getUserDocument(targetUid);
+    
+    // Check target exists. AUTH004
+    if (existing == null) {
+      throw AuthException(AuthErrorCode.userNotFound, 'Target user not found');
+    }
+
+    final timeNow = DateTime.now().toUtc().toIso8601String();
+    await _patchUserDocument(targetUid, {
+      'role': newRole,
+      'updated_at': timeNow,
+    });
+  }
+
+  static Future<void> deactivateUser(String uid) async {
+    final existing = await _getUserDocument(uid);
+    
+    // Check target exists. AUTH004
+    if (existing == null) {
+      throw AuthException(AuthErrorCode.userNotFound, 'Target user not found');
+    }
+
+    final timeNow = DateTime.now().toUtc().toIso8601String();
+    await _patchUserDocument(uid, {'is_deleted': true, 'updated_at': timeNow});
+  }
+
   // ---------------------------------------------------------------------
   // Identity Toolkit REST API
   // ---------------------------------------------------------------------
