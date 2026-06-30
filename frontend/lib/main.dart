@@ -1,4 +1,5 @@
 import 'package:campus_event_app/features/auth/presentation/screens/sign_in_screen.dart';
+import 'package:campus_event_app/features/auth/presentation/screens/sign_up_screen.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
 import 'package:campus_event_app/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -32,7 +33,11 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         ),
-        home: const SignInScreen(),
+        initialRoute: '/sign-in',
+        routes: {
+          '/sign-in': (context) => const SignInScreen(),
+          '/sign-up': (context) => const SignUpScreen(),
+        },
       ),
     );
   }

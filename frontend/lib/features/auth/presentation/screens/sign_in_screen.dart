@@ -54,85 +54,77 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: SafeArea(
-          child: Center(
+      backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
             child: Form(
               key: _formKey,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                Text(
-                  "Log in account",
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 17,
-                  ),
-                ),
-
-                SizedBox(height: 3,),
-
-                Text(
-                  "Enter your email to sign in for this app",
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                  ),
-                ),
-
-                SizedBox(height: 25,),
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 50),
-                  child: SizedBox(
-                    height: 40,
-                    child: AppTextField(
-                      controller: _emailController, 
-                      hintText: "Email",
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Email is required';
-
-                        final emailRegex = RegExp(r'^[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}$');
-                        if (!emailRegex.hasMatch(value)) return 'Enter a valid email';
-
-                        return null;
-                      },
+                  const Text(
+                    "Log in account",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
                     ),
                   ),
-                  
-                ),
 
-                SizedBox(height: 15,),
+                  const SizedBox(height: 3,),
 
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 50,),
-                  child: SizedBox(
-                    height: 40,
-                    child: AppTextField(
-                      controller: _passwordController, 
-                      obscureText: _obscurePassword,
-                      hintText: "Password",
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        ),
-                        onPressed: () =>
-                            setState(() => _obscurePassword = !_obscurePassword),
+                  const Text(
+                    "Enter your email to sign in for this app",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                    ),
+                  ),
+
+                  const SizedBox(height: 25,),
+
+                  AppTextField(
+                    controller: _emailController, 
+                    hintText: "Email",
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Email is required';
+
+                      final emailRegex = RegExp(r'^[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}$');
+                      if (!emailRegex.hasMatch(value)) return 'Enter a valid email';
+
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 15,),
+
+                  AppTextField(
+                    controller: _passwordController, 
+                    obscureText: _obscurePassword,
+                    hintText: "Password",
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Password is required';
-                        return null;
-                      },
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Password is required';
+                      return null;
+                    },
                   ),
-                ),
 
-                SizedBox(height: 6,),
+                  const SizedBox(height: 6,),
 
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 50),
-                  child: Align(
+                  Align(
                     alignment: Alignment.centerRight, 
                     child: GestureDetector(
                       onTap: () {
@@ -142,83 +134,78 @@ class _SignInScreenState extends State<SignInScreen> {
                         "Forgot password?",
                         style: TextStyle(
                           fontFamily: 'Inter',
-                          fontSize: 13,
+                          fontSize: 12,
                         ),
                       ),
                     ),
                   ),
-                ),
+                  
+                  const SizedBox(height: 20,),
 
-                SizedBox(height: 20,),
-
-                if (_errorMessage != null) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 50),
-                    child: Text(
-                      _errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        color: Colors.red,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 50),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 40,
-                    child: AppButton(
-                      label: "Sign in",
-                      isLoading: _isLoading,
-                      onPressed: _isLoading ? null : _signIn,
-                    ),
-                  ),
-                ),
-
-                SizedBox(height: 20,),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Dont have an account?",
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        color: Color(0xFF828282),
-                      ),
-                    ),
-
-                    SizedBox(width: 3,),
-
-                    GestureDetector(
-                      onTap: () {
-                        // Go to sign up screen
-                      },
+                  if (_errorMessage != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 50),
                       child: Text(
-                        "Sign up",
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  SizedBox(
+                      width: double.infinity,
+                      height: 40,
+                      child: AppButton(
+                        label: "Sign in",
+                        isLoading: _isLoading,
+                        onPressed: _isLoading ? null : _signIn,
+                      ),
+                    ),
+
+                  const SizedBox(height: 20,),
+
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    children: [
+                      Text(
+                        "Dont have an account?",
                         style: TextStyle(
                           fontFamily: 'Inter',
-                          fontSize: 13,
-                          decoration: TextDecoration.underline,
+                          fontSize: 12,
+                          color: Colors.grey,
                         ),
                       ),
-                    ),
-                  ],
-                ),
 
-                SizedBox(height: 25,),
-              
+                      const SizedBox(width: 3,),
+
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pushNamed(context, '/sign-up');
+                        },
+                        child: Text(
+                          "Sign up",
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),              
                 ],
               ),
             ),
           ),
-        )
-      );
+        ),
+      )
+    );
   }
 }

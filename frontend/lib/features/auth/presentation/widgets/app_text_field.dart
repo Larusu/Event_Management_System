@@ -5,6 +5,7 @@ class AppTextField extends StatelessWidget {
   final String? label;
   final String hintText;
   final bool obscureText;
+  final bool isRequired;
   final TextInputType keyboardType;
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
@@ -15,6 +16,7 @@ class AppTextField extends StatelessWidget {
     required this.hintText,
     this.label,
     this.obscureText = false,
+    this.isRequired = false,
     this.keyboardType = TextInputType.text,
     this.suffixIcon,
     this.validator,
@@ -28,23 +30,36 @@ class AppTextField extends StatelessWidget {
       keyboardType: keyboardType,
       validator: validator,
       decoration: InputDecoration(
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         labelText: label,
-        hintText: hintText,
-
-        hintStyle: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 13,
-          color: Colors.grey,
+        label: RichText(
+          text: TextSpan(
+            text: hintText,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: Colors.grey,
+            ),
+            children: isRequired
+                ? [
+                    const TextSpan(
+                      text: ' *',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ]
+                : [],
+          ),
         ),
-
         suffixIcon: suffixIcon,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: Color.fromARGB(255, 0, 0, 0),
-          )
-          ),
-
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(
+              color: Color.fromARGB(255, 0, 0, 0),
+            )),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(
@@ -52,7 +67,6 @@ class AppTextField extends StatelessWidget {
             width: 1,
           ),
         ),
-
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(
@@ -60,7 +74,6 @@ class AppTextField extends StatelessWidget {
             width: 2,
           ),
         ),
-
       ),
     );
   }
