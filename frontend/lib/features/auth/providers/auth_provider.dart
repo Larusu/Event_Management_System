@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/models/user.dart';
@@ -11,6 +13,7 @@ enum AuthStatus { unknown, authenticated, unauthenticated }
 /// [AuthRepository].
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _repository;
+  StreamSubscription<dynamic>? _authSubscription;
 
   AuthProvider({AuthRepository? repository})
       : _repository = repository ?? AuthRepository();
@@ -24,6 +27,33 @@ class AuthProvider extends ChangeNotifier {
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  void initialize() {
+    if (_repository.hasSession) {
+      _status = AuthStatus.authenticated;
+    } else {
+      _status = AuthStatus.unauthenticated;
+    }
+    notifyListeners();
+
+    _authSubscription = _repository.firebaseAuthState.listen((fbUser) {
+      if (fbUser != null && _status != AuthStatus.authenticated) {
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+      } else if (fbUser == null) {
+        _currentUser = null;
+        _status = AuthStatus.unauthenticated;
+        _errorMessage = null;
+        notifyListeners();
+      }
+    });
+  }
 
   Future<bool> signIn({
     required String email,

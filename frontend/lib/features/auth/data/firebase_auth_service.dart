@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 import '../../../core/network/api_exception.dart';
 
@@ -9,16 +9,16 @@ import '../../../core/network/api_exception.dart';
 /// exchanges it via [signInWithCustomToken], and subsequent authenticated
 /// requests read a fresh ID token via [currentIdToken].
 class FirebaseAuthService {
-  final FirebaseAuth _auth;
+  final fb.FirebaseAuth _auth;
 
-  FirebaseAuthService([FirebaseAuth? auth])
-      : _auth = auth ?? FirebaseAuth.instance;
+  FirebaseAuthService([fb.FirebaseAuth? auth])
+      : _auth = auth ?? fb.FirebaseAuth.instance;
 
   /// Establishes a Firebase session from the backend's custom token.
   Future<void> signInWithCustomToken(String customToken) async {
     try {
       await _auth.signInWithCustomToken(customToken);
-    } on FirebaseAuthException catch (e) {
+    } on fb.FirebaseAuthException catch (e) {
       throw ApiException(
         e.message ?? 'Could not establish a session. Please try again.',
         code: e.code,
@@ -27,8 +27,11 @@ class FirebaseAuthService {
   }
 
   /// Returns a fresh ID token for the current session, or `null` if signed out.
-  Future<String?> currentIdToken() async =>
-      _auth.currentUser?.getIdToken();
+  Future<String?> currentIdToken() async => _auth.currentUser?.getIdToken();
+
+  fb.User? get currentUser => _auth.currentUser;
+
+  Stream<fb.User?> authStateChanges() => _auth.authStateChanges();
 
   Future<void> signOut() => _auth.signOut();
 }

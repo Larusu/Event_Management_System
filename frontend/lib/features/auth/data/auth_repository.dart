@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart' as fb;
+
 import '../../../core/constants/api_constants.dart';
 import '../../../core/models/api_response.dart';
 import '../../../core/models/user.dart';
@@ -48,6 +50,10 @@ class AuthRepository {
     });
     return _establishSession(response);
   }
+
+  bool get hasSession => _firebase.currentUser != null;
+
+  Stream<fb.User?> get firebaseAuthState => _firebase.authStateChanges();
 
   Future<void> signOut() => _firebase.signOut();
 

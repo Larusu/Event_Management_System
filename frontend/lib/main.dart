@@ -1,3 +1,4 @@
+import 'package:campus_event_app/features/auth/presentation/screens/auth_gate.dart';
 import 'package:campus_event_app/features/auth/presentation/screens/sign_in_screen.dart';
 import 'package:campus_event_app/features/auth/presentation/screens/sign_up_screen.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
@@ -25,7 +26,11 @@ class MyApp extends StatelessWidget {
     // to this MultiProvider rather than creating a second registration point.
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) {
+          final provider = AuthProvider();
+          provider.initialize();
+          return provider;
+        }),
       ],
       child: MaterialApp(
         title: 'Campus Event App',
@@ -33,7 +38,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         ),
-        initialRoute: '/sign-in',
+        home: AuthGate(),
         routes: {
           '/sign-in': (context) => const SignInScreen(),
           '/sign-up': (context) => const SignUpScreen(),
