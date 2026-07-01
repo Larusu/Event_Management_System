@@ -1,4 +1,6 @@
+import 'package:campus_event_app/core/theme/app_theme.dart';
 import 'package:campus_event_app/features/auth/presentation/screens/auth_gate.dart';
+import 'package:campus_event_app/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:campus_event_app/features/auth/presentation/screens/sign_in_screen.dart';
 import 'package:campus_event_app/features/auth/presentation/screens/sign_up_screen.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
@@ -35,13 +37,12 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Campus Event App',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        ),
+        theme: AppTheme.light,
         home: AuthGate(),
         routes: {
           '/sign-in': (context) => const SignInScreen(),
           '/sign-up': (context) => const SignUpScreen(),
+          '/forgot-password': (context) => const ForgotPasswordScreen(),
         },
       ),
     );
