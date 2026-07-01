@@ -6,6 +6,6 @@ import 'package:dart_frog/dart_frog.dart';
 /// and returns a list of available auth endpoints.
 Response onRequest(RequestContext context) {
   return Response(
-    body: '/auth/ is healthy.\n\nEndpoints: "/auth/register", "/auth/signin"',
+    body: '/auth/ is healthy.\n\nEndpoints: "/auth/register", "/auth/signin", "/auth/forgot-password"',
   );
 }

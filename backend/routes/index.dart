@@ -2,6 +2,6 @@ import 'package:dart_frog/dart_frog.dart';
 
 Response onRequest(RequestContext context) {
   return Response(
-    body: 'Campus Event is healthy.',
+    body: 'Campus Event API is healthy.',
   );
 }
