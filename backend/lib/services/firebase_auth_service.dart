@@ -274,6 +274,13 @@ class FirebaseAuthService {
     await _patchUserDocument(uid, {'is_deleted': true, 'updated_at': timeNow});
   }
 
+  /// Triggers a password reset email for [email].
+  ///
+  /// Looks up the users collection by email: no match -> AUTH004, a match
+  /// with is_deleted == true -> AUTH006 (no email sent either way). For an
+  /// active match, asks the Identity Toolkit to send the PASSWORD_RESET email
+  /// (sendOobCode); Firebase sends it and hosts the reset page - no in-app
+  /// reset screen. 
   static Future<void> forgotPassword({required String email}) async {
     final normalizedEmail = email.trim().toLowerCase();
     
@@ -557,6 +564,14 @@ class FirebaseAuthService {
     };
   }
 
+  /// Finds a users document by its `email` field via a Firestore
+  /// structured query (runQuery). Returns the first match merged with its
+  /// `uid`, or null if no document matches. Throws on any non-2xx response
+  /// or network error.
+  ///
+  /// Email is stored normalized (trimmed + lowercased) at registration, so
+  /// callers must pass an already-normalized email for the EQUAL filter to
+  /// match.
   static Future<Map<String, dynamic>?> _getUserDocumentByEmail( String email,
   ) async {  
     final client = await _firestoreClient();
@@ -625,6 +640,13 @@ class FirebaseAuthService {
     return null;
   }
 
+  /// Asks the Identity Toolkit to send a PASSWORD_RESET email to [email].
+  ///
+  /// Uses accounts:sendOobCode with the Web API key (same key as the
+  /// sign-in call above). Firebase generates the out-of-band code, sends
+  /// the email, and hosts the reset page - the app never sees the code.
+  /// Only called after an active, matching Firestore user has been found,
+  /// so a non-200 here is a genuine server-side failure (AUTH009).
   static Future<void> _sendPasswordResetEmail(String email) async{ 
     final apiKey = _requireApiKey();
     final uri = Uri.parse( 
