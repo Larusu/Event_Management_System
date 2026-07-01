@@ -133,3 +133,35 @@ class RefreshTokenRequest {
   @override
   String toString() => 'RefreshTokenRequest(hasToken: ${token.isNotEmpty})';
 }
+
+/// Request model for the forgot-password flow
+///
+/// Sent when an unauthenticated user requests a password reset email.
+///
+/// Fields (all snake_case in JSON):
+/// - `email`: Email address of the account to reset
+///
+/// Example:
+/// ```dart
+/// final request = ForgotPasswordRequest(email: 'john@example.com');
+/// ```
+@JsonSerializable(fieldRename: FieldRename.snake)
+class ForgotPasswordRequest {
+  /// Creates a [ForgotPasswordRequest] with the account email.
+  ForgotPasswordRequest({
+    required this.email,  
+  });
+
+  /// Creates a [ForgotPasswordRequest] from a JSON map.
+  factory ForgotPasswordRequest.fromJson(Map<String, dynamic> json) =>
+    _$ForgotPasswordRequestFromJson(json);
+
+    /// Email address of the account requesting a password reset
+    final String email;
+
+  /// Converts this request to a JSON map with snake_case keys.
+    Map<String, dynamic> toJson() => _$ForgotPasswordRequestToJson(this); 
+
+    @override 
+    String toString() => 'ForgotPasswordRequest(email: $email)';
+}

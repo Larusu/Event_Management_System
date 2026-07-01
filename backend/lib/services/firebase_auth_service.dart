@@ -274,6 +274,25 @@ class FirebaseAuthService {
     await _patchUserDocument(uid, {'is_deleted': true, 'updated_at': timeNow});
   }
 
+  static Future<void> forgotPassword({required String email}) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    
+    final userDoc = await _getUserDocumentByEmail(normalizedEmail);
+    if(userDoc == null){
+      throw AuthException(AuthErrorCode.userNotFound, 'User not found');
+    }
+
+    final isDeleted = userDoc['is_deleted'] as bool? ?? false;
+    if (isDeleted) {
+      throw AuthException(
+        AuthErrorCode.accountDeactivated,
+        'This account has been deactivated',
+      );
+    }
+
+    await _sendPasswordResetEmail(normalizedEmail);
+  }
+
   // ---------------------------------------------------------------------
   // Identity Toolkit REST API
   // ---------------------------------------------------------------------
@@ -452,7 +471,6 @@ class FirebaseAuthService {
 
   /// Patches specific fields on the users/{uid} Firestore document
   /// without overwriting the whole document. Used for last_login_at
-  /// (and will be reused by Feature 2's updated_at writes).
   static Future<void> _patchUserDocument(
     String uid,
     Map<String, dynamic> fields,
@@ -537,5 +555,104 @@ class FirebaseAuthService {
       'role': stringField('role'),
       'is_deleted': boolField('is_deleted'),
     };
+  }
+
+  static Future<Map<String, dynamic>?> _getUserDocumentByEmail( String email,
+  ) async {  
+    final client = await _firestoreClient();
+    final projectId = _firestoreProjectId();
+
+    final uri = Uri.parse(
+      'https://firestore.googleapis.com/v1/projects/$projectId'
+      '/databases/(default)/documents:runQuery',
+    );
+
+    final response = await client.post( 
+      uri, 
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'structuredQuery': {
+          'from': [
+            {'collectionId': 'users'},
+          ],
+          'where': {
+            'fieldFilter': {
+              'field': {'fieldPath': 'email'},
+              'op': 'EQUAL',
+              'value': {'stringValue': email},
+            },
+          },
+          'limit': 1,
+        },
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw StateError(
+        'Firestore query failed for email $email: '
+        '${response.statusCode} ${response.body}',
+      );    
+    }
+
+    final decoded = jsonDecode(response.body) as List<dynamic>;
+    for (final entry in decoded) {
+      final row = entry as Map<String, dynamic>;
+      final document = row['document'] as Map<String, dynamic>?;
+      if (document == null) {
+        // Rows without a `document` key (eg. bare readTime) mean no match
+        continue;
+      }
+
+      final fields = document['fields'] as Map<String, dynamic>? ?? {};
+      // Document `name` looks like ".../documents/users/{uid}".
+      final resourceName = document['name'] as String? ?? '';
+      final uid = resourceName.split('/').last;
+      String? stringField(String key) =>
+        (fields[key] as Map<String, dynamic>?)?['stringValue'] as String?;
+      bool? boolField(String key) =>
+        (fields[key] as Map<String, dynamic>?)?['booleanValue'] as bool?;
+      
+      return {
+        'uid': uid,
+        'email': stringField('email'),
+        'name': stringField('name'),
+        'contact': stringField('contact'),
+        'role': stringField('role'),
+        'is_deleted': boolField('is_deleted'),
+      };
+    }
+
+    return null;
+  }
+
+  static Future<void> _sendPasswordResetEmail(String email) async{ 
+    final apiKey = _requireApiKey();
+    final uri = Uri.parse( 
+      'https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode'
+      '?key=$apiKey',
+    );
+
+    http.Response response;
+    try { 
+      response = await http.post( 
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'requestType': 'PASSWORD_RESET',
+          'email': email,
+        }),
+      );
+    } catch (_) {
+      throw AuthException(AuthErrorCode.internalError, 
+        'Internal server error while sending reset email.'
+      );
+    }
+
+    if (response.statusCode != 200) {
+      throw AuthException( 
+        AuthErrorCode.internalError,
+        'Failed to send password reset email',
+      );
+    }
   }
 }

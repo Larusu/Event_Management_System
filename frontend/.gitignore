@@ -16,3 +16,4 @@ android/key.properties
 
 # Gradle/CXX intermediates specifically
 **/build/.cxx/
+google-services.json
