@@ -51,6 +51,10 @@ class AuthRepository {
     return _establishSession(response);
   }
 
+  Future<void> forgotPassword(String email) async {
+    await _api.post(ApiRoutes.forgotPassword, {'email': email}, auth: false);
+  }
+
   bool get hasSession => _firebase.currentUser != null;
 
   Stream<fb.User?> get firebaseAuthState => _firebase.authStateChanges();
