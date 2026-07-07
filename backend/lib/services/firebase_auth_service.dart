@@ -300,6 +300,79 @@ class FirebaseAuthService {
     await _sendPasswordResetEmail(normalizedEmail);
   }
 
+  /// Updates the user's profile and/or password.
+  ///
+  /// Enforces the all-or-nothing rule: [currentPassword] is verified via
+  /// the Identity Toolkit before any Firestore writes occur. If a [newPassword]
+  /// is provided, it updates the Firebase Auth record. Then, patches Firestore.
+  static Future<Map<String, dynamic>> updateOwnProfile({
+    required String uid,
+    required String email,
+    required String currentPassword,
+    String? name,
+    String? contact,
+    String? newPassword,
+  }) async {
+    // 1. ALL-OR-NOTHING: Verify current password first
+    try {
+      final verifiedUid = await _verifyPasswordAndGetUid(
+        email: email,
+        password: currentPassword,
+      );
+      if (verifiedUid != uid) {
+        throw AuthException(
+          AuthErrorCode.currentPasswordIncorrect,
+          'Current password is incorrect.',
+        );
+      }
+    } on AuthException catch (e) {
+      // If it's already an AuthException, check if it's the specific invalid credential one
+      if (e.code == AuthErrorCode.invalidCredentials) {
+        throw AuthException(
+          AuthErrorCode.currentPasswordIncorrect,
+          'Current password is incorrect.',
+        );
+      }
+      // Otherwise, let it bubble up (like AUTH009 internal errors)
+      rethrow;
+    }
+
+    // 2. PASSWORD CHANGE LOGIC
+    if (newPassword != null && newPassword.trim().isNotEmpty) {
+      if (newPassword == currentPassword) {
+        throw AuthException(
+          AuthErrorCode.passwordSameAsCurrent,
+          'New password must be different from your current password.',
+        );
+      }
+      // Update password via Admin SDK
+      await _firebaseAuth.updateUser(uid, password: newPassword);
+    }
+
+    // 3. FIRESTORE PROFILE UPDATE
+    final patchData = <String, dynamic>{
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    };
+
+    if (name != null && name.trim().isNotEmpty) patchData['name'] = name.trim();
+    if (contact != null && contact.trim().isNotEmpty) patchData['contact'] = contact.trim();
+
+    await _patchUserDocument(uid, patchData);
+
+    // 4. Return the updated user map
+    // Re-fetch to ensure we return the exact state, and strip any accidental internal fields
+    final freshDoc = await getUserByUid(uid);
+
+    return {
+      'uid': freshDoc['uid'],
+      'email': freshDoc['email'],
+      'name': freshDoc['name'],
+      'contact': freshDoc['contact'],
+      'role': freshDoc['role'],
+      'updated_at': freshDoc['updated_at'],
+    };
+  }
+
   // ---------------------------------------------------------------------
   // Identity Toolkit REST API
   // ---------------------------------------------------------------------
