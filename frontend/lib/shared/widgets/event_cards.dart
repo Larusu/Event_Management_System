@@ -26,14 +26,14 @@ class _FeaturedEventCardState extends State<FeaturedEventCard> {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 24.0),
+      // margin: const EdgeInsets.symmetric(horizontal: 24.0),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
         height: 250,
-        width: double.infinity,
+        width: 290,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -104,7 +104,7 @@ class _FeaturedEventCardState extends State<FeaturedEventCard> {
                       widget.description,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 12,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
