@@ -5,6 +5,9 @@
 class AuthErrorCodes {
   const AuthErrorCodes._();
 
+  /// Invalid or expired token (HTTP 401).
+  static const String invalidToken = 'AUTH001';
+
   /// Email already exists (HTTP 409).
   static const String emailExists = 'AUTH002';
 
@@ -23,6 +26,7 @@ class AuthErrorCodes {
   /// Default user-facing messages keyed by code, used as a fallback when the
   /// backend response does not carry a `message`.
   static const Map<String, String> defaultMessages = {
+    invalidToken: 'Your session has expired. Please sign in again.',
     emailExists: 'An account with this email already exists.',
     validationFailed: 'Invalid input. Please check your details.',
     accountDeactivated: 'This account has been deactivated.',

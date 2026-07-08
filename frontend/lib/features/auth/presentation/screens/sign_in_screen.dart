@@ -1,3 +1,4 @@
+import 'package:campus_event_app/core/utils/validators.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_button.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_text_field.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
@@ -55,7 +56,7 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        backgroundColor: Colors.white,
         resizeToAvoidBottomInset: true,
         body: SafeArea(
           child: Center(
@@ -67,40 +68,34 @@ class _SignInScreenState extends State<SignInScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
+                    const Text(
                       "Log in account",
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
                     ),
                     const SizedBox(
                       height: 3,
                     ),
-                    Text(
+                    const Text(
                       "Enter your email to sign in for this app",
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                      ),
                     ),
                     const SizedBox(
                       height: 25,
                     ),
                     AppTextField(
-                      controller: _emailController,
-                      hintText: "Email",
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Email is required';
-                        }
-
-                        final emailRegex =
-                            RegExp(r'^[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}$');
-                        if (!emailRegex.hasMatch(value)) {
-                          return 'Enter a valid email';
-                        }
-
-                        return null;
-                      },
-                    ),
+                        controller: _emailController,
+                        hintText: "Email",
+                        keyboardType: TextInputType.emailAddress,
+                        validator: Validators.email),
                     const SizedBox(
                       height: 15,
                     ),
@@ -117,12 +112,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         onPressed: () => setState(
                             () => _obscurePassword = !_obscurePassword),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Password is required';
-                        }
-                        return null;
-                      },
+                      validator: Validators.password),
                     ),
                     const SizedBox(
                       height: 6,

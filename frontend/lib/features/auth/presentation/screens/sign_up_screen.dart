@@ -1,3 +1,4 @@
+import 'package:campus_event_app/core/utils/validators.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_button.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_text_field.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
@@ -135,19 +136,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       controller: _emailController,
                       hintText: "Email",
                       isRequired: true,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Email is required';
-                        }
-
-                        final emailRegex =
-                            RegExp(r'^[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}$');
-                        if (!emailRegex.hasMatch(value)) {
-                          return 'Enter a valid email';
-                        }
-
-                        return null;
-                      },
+                      validator: Validators.email,
                     ),
                     const SizedBox(
                       height: 15,
@@ -157,25 +146,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       hintText: "Contact #",
                       keyboardType: TextInputType.phone,
                       isRequired: true,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Contact # is required';
-                        }
-
-                        if (!value.startsWith('09')) {
-                          return 'Contact # must start with 09';
-                        }
-
-                        if (value.length != 11) {
-                          return 'Contact number must be 11 digits';
-                        }
-
-                        if (!RegExp(r'^\d+$').hasMatch(value)) {
-                          return 'Contact must contain digits only';
-                        }
-
-                        return null;
-                      },
+                      validator: Validators.contact,
                     ),
                     const SizedBox(
                       height: 15,
@@ -194,13 +165,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         onPressed: () => setState(
                             () => _obscurePassword = !_obscurePassword),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Password is required';
-                        }
-
-                        return null;
-                      },
+                      validator: Validators.password,
                     ),
                     const SizedBox(
                       height: 15,
@@ -219,21 +184,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         onPressed: () => setState(
                             () => _obscurePassword = !_obscurePassword),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please confirm your password';
-                        }
-
-                        if (value != _passwordController.text) {
-                          return 'Passwords do not match';
-                        }
-
-                        return null;
-                      },
+                      validator: (value) => Validators.confirmPassword(
+                          value, _passwordController.text),
                     ),
                     const SizedBox(
                       height: 15,
                     ),
+                    if (_errorMessage != null) ...[
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 12, color: Colors.red),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     SizedBox(
                       width: double.infinity,
                       height: 40,

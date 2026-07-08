@@ -34,23 +34,21 @@ class AuthProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  void initialize() {
-    if (_repository.hasSession) {
-      _status = AuthStatus.authenticated;
-    } else {
-      _status = AuthStatus.unauthenticated;
-    }
-    notifyListeners();
-
+  Future<void> initialize() async {
+    // Drive all auth state off the stream. On cold start it fires once with the
+    // restored session (or null); on sign-in/out it fires again. No synchronous
+    // hasSession check, so persisted sessions restore reliably on a real device.
     _authSubscription = _repository.firebaseAuthState.listen((fbUser) {
-      if (fbUser != null && _status != AuthStatus.authenticated) {
-        _status = AuthStatus.authenticated;
-        notifyListeners();
-      } else if (fbUser == null) {
+      if (fbUser == null) {
         _currentUser = null;
         _status = AuthStatus.unauthenticated;
         _errorMessage = null;
         notifyListeners();
+      } else if (_currentUser == null) {
+        // Session exists but profile not loaded yet (restored on launch).
+        // Fresh sign-in/register already set _currentUser via _run(), so this
+        // guard avoids a redundant /users/me call in that path.
+        _loadCurrentUser();
       }
     });
   }
@@ -137,5 +135,19 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      _currentUser = await _repository.fetchCurrentUser();
+      _status = AuthStatus.authenticated;
+    } catch (_) {
+      // Expired/broken session or network failure: don't leave the user
+      // stuck on a spinner — drop to signed-out.
+      await _repository.signOut();
+      _currentUser = null;
+      _status = AuthStatus.unauthenticated;
+    }
+    notifyListeners();
   }
 }

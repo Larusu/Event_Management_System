@@ -1,12 +1,7 @@
-/// Client-side validation rules for the auth forms (sections 1.5.1 / 1.5.2).
-///
-/// Each method returns `null` when valid, or an error message string suitable
-/// for use as a `TextFormField` validator result.
 class Validators {
   const Validators._();
 
-  static final RegExp _emailRegex =
-      RegExp(r'^[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}$');
+  static final RegExp _emailRegex = RegExp(r'^[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}$');
 
   /// 11 digits, starting with `09`.
   static final RegExp _contactRegex = RegExp(r'^09\d{9}$');

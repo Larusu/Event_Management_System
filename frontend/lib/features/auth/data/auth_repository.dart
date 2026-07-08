@@ -53,6 +53,14 @@ class AuthRepository {
 
   Future<void> forgotPassword(String email) async {
     await _api.post(ApiRoutes.forgotPassword, {'email': email}, auth: false);
+    
+  Future<User> fetchCurrentUser() async {
+    final response = await _api.get(ApiRoutes.usersMe);
+    final userJson = response.data['user'];
+    if (userJson is! Map<String, dynamic>) {
+      throw const ApiException('Something went wrong. Please try again.');
+    }
+    return User.fromJson(userJson);
   }
 
   bool get hasSession => _firebase.currentUser != null;
