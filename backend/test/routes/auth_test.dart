@@ -1,15 +1,11 @@
 import 'dart:convert';
 
+import 'package:backend/models/auth_request.dart';
+import 'package:backend/utils/validators.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
-import '../../lib/constants/error_codes.dart';
-import '../../lib/services/firebase_auth_service.dart';
-import '../../lib/models/auth_request.dart';
-import '../../lib/models/user.dart';
-import '../../lib/utils/validators.dart';
-import '../../lib/utils/response_helper.dart';
 import '../../routes/auth/forgot-password.dart' as forgot_password_route;
 import '../../routes/auth/register.dart' as register_route;
 import '../../routes/auth/signin.dart' as signin_route;
