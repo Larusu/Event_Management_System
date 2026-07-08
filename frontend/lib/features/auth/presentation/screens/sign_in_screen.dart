@@ -112,7 +112,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         onPressed: () => setState(
                             () => _obscurePassword = !_obscurePassword),
                       ),
-                      validator: Validators.password),
+                      validator: Validators.password,
                     ),
                     const SizedBox(
                       height: 6,
