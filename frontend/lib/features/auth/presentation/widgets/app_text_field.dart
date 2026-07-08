@@ -31,7 +31,8 @@ class AppTextField extends StatelessWidget {
       validator: validator,
       decoration: InputDecoration(
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         labelText: label,
         label: RichText(
           text: TextSpan(

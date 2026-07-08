@@ -15,7 +15,7 @@ class AuthGate extends StatelessWidget {
 
     switch (status) {
       case AuthStatus.authenticated:
-        return const HomeScreen(); 
+        return const HomeScreen();
       case AuthStatus.unauthenticated:
         return const SignInScreen();
       case AuthStatus.unknown:

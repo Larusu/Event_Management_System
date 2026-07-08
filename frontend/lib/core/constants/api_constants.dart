@@ -11,4 +11,5 @@ class ApiRoutes {
 
   static const String signIn = '/auth/signin';
   static const String register = '/auth/register';
+  static const String usersMe = '/users/me';
 }
