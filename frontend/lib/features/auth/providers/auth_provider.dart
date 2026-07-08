@@ -34,7 +34,7 @@ class AuthProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<void> initialize() async{
+  Future<void> initialize() async {
     // Drive all auth state off the stream. On cold start it fires once with the
     // restored session (or null); on sign-in/out it fires again. No synchronous
     // hasSession check, so persisted sessions restore reliably on a real device.

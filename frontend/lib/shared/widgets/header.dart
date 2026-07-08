@@ -201,7 +201,8 @@ class _HeaderState extends State<Header> {
                       ),
                       borderRadius: BorderRadius.circular(50),
                     ),
-                    child: const Text("Account"), // TODO: Implement account role
+                    child:
+                        const Text("Account"), // TODO: Implement account role
                   )
           ]),
           if (!isSettingsPage) ...[

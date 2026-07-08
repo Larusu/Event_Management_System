@@ -191,15 +191,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         onPressed: () => setState(
                             () => _obscurePassword = !_obscurePassword),
                       ),
-                      validator: (value) =>
-                        Validators.confirmPassword(
-                          value, 
-                          _passwordController.text
-                        ),
+                      validator: (value) => Validators.confirmPassword(
+                          value, _passwordController.text),
                     ),
                     const SizedBox(
                       height: 15,
                     ),
+                    if (_errorMessage != null) ...[
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 12, color: Colors.red),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     SizedBox(
                       width: double.infinity,
                       height: 40,

@@ -13,10 +13,10 @@ class HomeScreen extends StatelessWidget {
         context.watch<AuthProvider>().currentUser?.role == Roles.guest;
 
     return Scaffold(
-      appBar: AppBar( 
+      appBar: AppBar(
         title: const Text('Home'),
         actions: [
-          IconButton( 
+          IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Log out',
             onPressed: () => context.read<AuthProvider>().signOut(),

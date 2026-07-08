@@ -55,101 +55,100 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    "Log in account",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 17,
-                    ),
-                  ),
-
-                  const SizedBox(height: 3,),
-
-                  const Text(
-                    "Enter your email to sign in for this app",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 12,
-                    ),
-                  ),
-
-                  const SizedBox(height: 25,),
-
-                  AppTextField(
-                    controller: _emailController, 
-                    hintText: "Email",
-                    keyboardType: TextInputType.emailAddress,
-                    validator: Validators.email
-                  ),
-
-                  const SizedBox(height: 15,),
-
-                  AppTextField(
-                    controller: _passwordController, 
-                    obscureText: _obscurePassword,
-                    hintText: "Password",
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+        backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: true,
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      "Log in account",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
                       ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
-                    validator: Validators.password
-                  ),
-
-                  const SizedBox(height: 6,),
-
-                  Align(
-                    alignment: Alignment.centerRight, 
-                    child: GestureDetector(
-                      onTap: () {
-                        // Go to forgot screen
-                      },
-                      child: Text(
-                        "Forgot password?",
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
+                    const SizedBox(
+                      height: 3,
+                    ),
+                    const Text(
+                      "Enter your email to sign in for this app",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 25,
+                    ),
+                    AppTextField(
+                        controller: _emailController,
+                        hintText: "Email",
+                        keyboardType: TextInputType.emailAddress,
+                        validator: Validators.email),
+                    const SizedBox(
+                      height: 15,
+                    ),
+                    AppTextField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        hintText: "Password",
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
+                        ),
+                        validator: Validators.password),
+                    const SizedBox(
+                      height: 6,
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        onTap: () {
+                          // Go to forgot screen
+                        },
+                        child: Text(
+                          "Forgot password?",
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  
-                  const SizedBox(height: 20,),
-
-                  if (_errorMessage != null) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 50),
-                      child: Text(
-                        _errorMessage!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          color: Colors.red,
+                    const SizedBox(
+                      height: 20,
+                    ),
+                    if (_errorMessage != null) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 50),
+                        child: Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: Colors.red,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  SizedBox(
+                      const SizedBox(height: 12),
+                    ],
+                    SizedBox(
                       width: double.infinity,
                       height: 40,
                       child: AppButton(
@@ -158,45 +157,44 @@ class _SignInScreenState extends State<SignInScreen> {
                         onPressed: _isLoading ? null : _signIn,
                       ),
                     ),
-
-                  const SizedBox(height: 20,),
-
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    children: [
-                      Text(
-                        "Dont have an account?",
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-
-                      const SizedBox(width: 3,),
-
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pushNamed(context, '/sign-up');
-                        },
-                        child: Text(
-                          "Sign up",
+                    const SizedBox(
+                      height: 20,
+                    ),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      children: [
+                        Text(
+                          "Dont have an account?",
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            decoration: TextDecoration.underline,
+                            color: Colors.grey,
                           ),
                         ),
-                      ),
-                    ],
-                  ),              
-                ],
+                        const SizedBox(
+                          width: 3,
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pushNamed(context, '/sign-up');
+                          },
+                          child: Text(
+                            "Sign up",
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      )
-    );
+        ));
   }
 }
