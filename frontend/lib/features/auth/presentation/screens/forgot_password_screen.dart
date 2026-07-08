@@ -1,6 +1,8 @@
 import 'package:campus_event_app/features/auth/presentation/widgets/app_button.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_text_field.dart';
+import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -20,6 +22,61 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   void dispose() {
     _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _forgotPassword() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final success = await context.read<AuthProvider>().forgotPassword(
+          _emailController.text.trim(),
+        );
+
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      if (success) {
+        showDialog(
+            context: context,
+            builder: (_) => Dialog(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30)),
+                  child: Padding(
+                    padding: EdgeInsetsGeometry.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.email_rounded),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        const Text(
+                          "A reset password link has been sent to your email. Please check your inbox to reset your password",
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        AppButton(
+                          label: "Ok",
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.pushNamed(context, '/sign-in');
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ));
+      } else {
+        _errorMessage = context.read<AuthProvider>().errorMessage;
+      }
+    });
   }
 
   @override
@@ -53,19 +110,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
-                  if (_errorMessage != null) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 50),
-                      child: Text(
-                        _errorMessage!,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
                   const SizedBox(
                     height: 25,
                   ),
@@ -87,6 +131,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 5),
+                  if (_errorMessage != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 50),
+                      child: Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(
                     height: 20,
                   ),
@@ -96,48 +153,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     child: AppButton(
                       label: "Send",
                       isLoading: _isLoading,
-                      onPressed: _isLoading
-                          ? null
-                          : () {
-                              if (!_formKey.currentState!.validate()) return;
-
-                              showDialog(
-                                  context: context,
-                                  builder: (_) => Dialog(
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(30)),
-                                        child: Padding(
-                                          padding: EdgeInsetsGeometry.all(24),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.center,
-                                            children: [
-                                              const Icon(Icons.email_rounded),
-                                              const SizedBox(
-                                                height: 10,
-                                              ),
-                                              const Text(
-                                                "A reset password link has been sent to your email. Please check your inbox to reset your password",
-                                                textAlign: TextAlign.center,
-                                              ),
-                                              const SizedBox(
-                                                height: 10,
-                                              ),
-                                              AppButton(
-                                                label: "Ok",
-                                                onPressed: () {
-                                                  Navigator.pop(context);
-                                                  Navigator.pushNamed(
-                                                      context, '/sign-in');
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ));
-                            },
+                      onPressed: _isLoading ? null : _forgotPassword,
                     ),
                   ),
                 ],
