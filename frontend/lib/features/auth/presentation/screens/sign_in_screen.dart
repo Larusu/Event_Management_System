@@ -1,3 +1,4 @@
+import 'package:campus_event_app/core/utils/validators.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_button.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_text_field.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
@@ -93,14 +94,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     controller: _emailController, 
                     hintText: "Email",
                     keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) return 'Email is required';
-
-                      final emailRegex = RegExp(r'^[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}$');
-                      if (!emailRegex.hasMatch(value)) return 'Enter a valid email';
-
-                      return null;
-                    },
+                    validator: Validators.email
                   ),
 
                   const SizedBox(height: 15,),
@@ -116,10 +110,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       onPressed: () =>
                           setState(() => _obscurePassword = !_obscurePassword),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) return 'Password is required';
-                      return null;
-                    },
+                    validator: Validators.password
                   ),
 
                   const SizedBox(height: 6,),
