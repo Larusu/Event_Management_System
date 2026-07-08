@@ -51,6 +51,10 @@ class AuthRepository {
     return _establishSession(response);
   }
 
+  Future<void> forgotPassword(String email) async {
+    await _api.post(ApiRoutes.forgotPassword, {'email': email}, auth: false);
+  }
+    
   Future<User> fetchCurrentUser() async {
     final response = await _api.get(ApiRoutes.usersMe);
     final userJson = response.data['user'];

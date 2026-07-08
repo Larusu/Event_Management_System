@@ -2,6 +2,7 @@ import 'package:campus_event_app/core/utils/validators.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_button.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_text_field.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -99,34 +100,33 @@ class _SignInScreenState extends State<SignInScreen> {
                       height: 15,
                     ),
                     AppTextField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        hintText: "Password",
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                          ),
-                          onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword),
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      hintText: "Password",
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                         ),
-                        validator: Validators.password),
+                        onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword),
+                      ),
+                      validator: Validators.password,
+                    ),
                     const SizedBox(
                       height: 6,
                     ),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: GestureDetector(
+                      child: InkWell(
+                        mouseCursor: SystemMouseCursors.click,
                         onTap: () {
-                          // Go to forgot screen
+                          Navigator.pushNamed(context, '/forgot-password');
                         },
                         child: Text(
                           "Forgot password?",
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
                     ),
@@ -139,11 +139,10 @@ class _SignInScreenState extends State<SignInScreen> {
                         child: Text(
                           _errorMessage!,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            color: Colors.red,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -160,35 +159,29 @@ class _SignInScreenState extends State<SignInScreen> {
                     const SizedBox(
                       height: 20,
                     ),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      children: [
-                        Text(
-                          "Dont have an account?",
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            color: Colors.grey,
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: Theme.of(context).textTheme.labelMedium,
+                        children: [
+                          TextSpan(
+                            text: "Dont have an account?",
                           ),
-                        ),
-                        const SizedBox(
-                          width: 3,
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.pushNamed(context, '/sign-up');
-                          },
-                          child: Text(
-                            "Sign up",
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              decoration: TextDecoration.underline,
-                            ),
+                          TextSpan(text: " "),
+                          TextSpan(
+                            text: "Sign up",
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                Navigator.pushNamed(context, '/sign-up');
+                              },
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),

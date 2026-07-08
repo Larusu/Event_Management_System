@@ -65,7 +65,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Center(
@@ -77,25 +77,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
+                    Text(
                       "Welcome!",
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 17,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(
                       height: 3,
                     ),
-                    const Text(
+                    Text(
                       "Fill up the blanks below to create your guest profile",
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(
                       height: 20,
@@ -220,20 +213,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     RichText(
                       textAlign: TextAlign.center,
                       text: TextSpan(
-                        style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            color: Colors.grey),
+                        style: Theme.of(context).textTheme.labelMedium,
                         children: [
-                          const TextSpan(
+                          TextSpan(
                               text: 'By clicking continue, you agree to our '),
                           TextSpan(
                             text: 'Terms of Service',
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              color: Colors.black,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                  fontWeight: FontWeight.w500,
+                                ),
                             recognizer: TapGestureRecognizer()
                               ..onTap = () {
                                 // navigate to terms
@@ -242,11 +235,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           const TextSpan(text: ' and '),
                           TextSpan(
                             text: 'Privacy Policy',
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              color: Colors.black,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                  fontWeight: FontWeight.w500,
+                                ),
                             recognizer: TapGestureRecognizer()
                               ..onTap = () {
                                 // navigate to privacy policy
@@ -256,32 +252,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      children: [
-                        Text(
-                          'Already have an account? ',
-                          style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 12,
-                              color: Colors.grey),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.pushNamed(context, '/sign-in');
-                          },
-                          child: const Text(
-                            'Log in',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 12,
-                              color: Colors.black,
-                              fontWeight: FontWeight.w500,
-                              decoration: TextDecoration.underline,
-                            ),
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Already have an account? ',
+                            style: Theme.of(context).textTheme.labelMedium,
                           ),
-                        ),
-                      ],
+                          TextSpan(
+                            text: 'Log in',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                  fontWeight: FontWeight.w500,
+                                  decoration: TextDecoration.underline,
+                                ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                Navigator.pushNamed(context, '/sign-in');
+                              },
+                          )
+                        ],
+                      ),
                     ),
                   ],
                 )),
