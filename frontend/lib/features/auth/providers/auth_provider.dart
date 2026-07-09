@@ -76,6 +76,20 @@ class AuthProvider extends ChangeNotifier {
         ));
   }
 
+  Future<bool> updateProfile({
+    required String currentPassword,
+    required String name,
+    required String contact,
+    String? newPassword,
+  }) {
+    return _run(() => _repository.updateProfile(
+          currentPassword: currentPassword,
+          name: name,
+          contact: contact,
+          newPassword: newPassword,
+        ));
+  }
+
   Future<void> signOut() async {
     await _repository.signOut();
     _currentUser = null;

@@ -1,3 +1,4 @@
+import 'package:campus_event_app/features/auth/presentation/widgets/app_button.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -39,6 +40,10 @@ class HomeScreen extends StatelessWidget {
             const Expanded(
               child: Center(child: Text('This is the home screen')),
             ),
+            AppButton(
+              label: 'Go to settings',
+              onPressed: () => {Navigator.pushNamed(context, '/settings')},
+            )
           ],
         ),
       ),

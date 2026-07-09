@@ -32,6 +32,14 @@ class User {
         lastLoginAt: _parseDate(json['lastLoginAt']),
       );
 
+  User copyWith({String? name, String? contact}) => User(
+        uid: uid,
+        email: email,
+        name: name ?? this.name,
+        contact: contact ?? this.contact,
+        role: role,
+      );
+
   static DateTime? _parseDate(dynamic value) {
     if (value is String && value.isNotEmpty) {
       return DateTime.tryParse(value);
