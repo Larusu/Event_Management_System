@@ -38,7 +38,6 @@ class AppTextField extends StatelessWidget {
           text: TextSpan(
             text: hintText,
             style: const TextStyle(
-              fontFamily: 'Inter',
               fontSize: 12,
               color: Colors.grey,
             ),

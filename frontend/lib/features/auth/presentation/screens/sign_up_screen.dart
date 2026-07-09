@@ -194,7 +194,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       Text(
                         _errorMessage!,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 12, color: Colors.red),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                       ),
                       const SizedBox(height: 12),
                     ],

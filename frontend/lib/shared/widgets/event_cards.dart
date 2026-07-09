@@ -54,7 +54,6 @@ class _FeaturedEventCardState extends State<FeaturedEventCard> {
               right: 0,
               bottom: 0,
               child: Container(
-                height: 100,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 10,
@@ -68,16 +67,21 @@ class _FeaturedEventCardState extends State<FeaturedEventCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: Text(
+                            widget.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 8),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
@@ -159,8 +163,7 @@ class _EventCardState extends State<EventCard> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -224,6 +227,68 @@ class _EventCardState extends State<EventCard> {
                     ),
                   ),
                 ],
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              widget.imageUrl,
+              width: 85,
+              height: 85,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.title,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${widget.participants} participants',
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${widget.day}, ${widget.date}',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${widget.startTime} - ${widget.endTime}',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${widget.openSlots} open slots',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 14,
+                ),
               ),
             ],
           ),

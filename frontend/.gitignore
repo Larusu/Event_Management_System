@@ -12,6 +12,7 @@ android/.gradle/
 android/captures/
 android/local.properties
 android/key.properties
+android/app/google-services.json
 **/android/app/release/
 
 # Gradle/CXX intermediates specifically
