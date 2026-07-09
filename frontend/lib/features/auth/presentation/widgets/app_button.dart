@@ -31,7 +31,6 @@ class AppButton extends StatelessWidget {
           : Text(
               label,
               style: TextStyle(
-                  fontFamily: 'Inter',
                   fontWeight: FontWeight.w300,
                   fontSize: 13,
                   color: Colors.white),
