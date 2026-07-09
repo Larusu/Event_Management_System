@@ -1,22 +1,31 @@
 import 'package:backend/constants/error_codes.dart';
+import 'package:backend/constants/event_error_codes.dart';
 
 import 'package:dart_frog/dart_frog.dart';
 
-/// Thrown by services when an auth operation fails for a known reason.
-///
-/// Routes catch this ONE exception type and hand it to [ResponseHelper.error]
-/// instead of each route re-deciding what status code or JSON shape a
-/// given failure should produce. The status code is always derived from
-/// [AuthErrorCode.statusFor] - it can never drift out of sync with the
-/// locked error code table.
+abstract class AppException implements Exception {
+  AppException(this.code, this.message);
+
+  final String code;
+  final String message;
+
+  int get statusCode {
+    final status = AuthErrorCode.statusFor[code] ??
+        EventErrorCode.statusFor[code];
+    return status ?? 500;
+  }
+
+  Map<String, dynamic> toResponseMap() => {
+        'success': false,
+        'code': code,
+        'message': message,
+      };
+}
+
 class AuthException implements Exception {
-  /// Creates an [AuthException] with the given error [code] and [message].
   AuthException(this.code, this.message);
 
-  /// One of the AuthErrorCode constants, e.g. AuthErrorCode.emailAlreadyExists
   final String code;
-
-  /// Human-readable message, safe to show to the frontend/end user.
   final String message;
 
   @override
@@ -69,6 +78,13 @@ class ResponseHelper {
         'code': exception.code,
         'message': exception.message,
       },
+    );
+  }
+
+  static Response errorFromException(AppException exception) {
+    return Response.json(
+      statusCode: exception.statusCode,
+      body: exception.toResponseMap(),
     );
   }
 }
