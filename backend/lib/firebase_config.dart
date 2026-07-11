@@ -67,8 +67,7 @@ class FirebaseConfig {
   /// Load Configuration from platform envionment (Cloud Run / CI),
   /// with .env file for local development
   static Map<String, String?> _loadConfig() {
-    // Cloud run / CI provide config via real environment variables.
-    final config  = <String, String?>{}..addAll(Platform.environment);
+    final config  = <String, String?>{};
 
     // Local dev convenience: overlay from a .env file if present
     final envFile = File('.env');
@@ -101,6 +100,10 @@ class FirebaseConfig {
         config[currentKey] = currentValue;
       }
     }
+
+    // Real environment variables are authoritative (Cloud Run / CI).
+    // This guarantees injected prod values always win over any stray .env.
+    config.addAll(Platform.environment);
 
     return config;
   }
