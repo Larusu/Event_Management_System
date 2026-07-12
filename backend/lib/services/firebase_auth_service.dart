@@ -323,6 +323,7 @@ class FirebaseAuthService {
         throw AuthException(
           AuthErrorCode.currentPasswordIncorrect,
           'Current password is incorrect.',
+          field: 'current_password', // ADDED: field parameter
         );
       }
     } on AuthException catch (e) {
@@ -331,6 +332,7 @@ class FirebaseAuthService {
         throw AuthException(
           AuthErrorCode.currentPasswordIncorrect,
           'Current password is incorrect.',
+          field: 'current_password', // ADDED: field parameter
         );
       }
       // Otherwise, let it bubble up (like AUTH009 internal errors)
@@ -343,6 +345,7 @@ class FirebaseAuthService {
         throw AuthException(
           AuthErrorCode.passwordSameAsCurrent,
           'New password must be different from your current password.',
+          field: 'new_password', // ADDED: field parameter
         );
       }
       // Update password via Admin SDK

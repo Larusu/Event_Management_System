@@ -11,7 +11,7 @@ import 'package:dart_frog/dart_frog.dart';
 /// locked error code table.
 class AuthException implements Exception {
   /// Creates an [AuthException] with the given error [code] and [message].
-  AuthException(this.code, this.message);
+  AuthException(this.code, this.message, {this.field}); // ADDED: optional field
 
   /// One of the AuthErrorCode constants, e.g. AuthErrorCode.emailAlreadyExists
   final String code;
@@ -19,8 +19,11 @@ class AuthException implements Exception {
   /// Human-readable message, safe to show to the frontend/end user.
   final String message;
 
+  /// The specific field that caused the error, if applicable.
+  final String? field; // ADDED: field property
+
   @override
-  String toString() => 'AuthException(code: $code, message: $message)';
+  String toString() => 'AuthException(code: $code, message: $message, field: $field)';
 }
 
 /// Builds consistent JSON Responses for every auth route.
@@ -68,6 +71,7 @@ class ResponseHelper {
         'success': false,
         'code': exception.code,
         'message': exception.message,
+        if (exception.field != null) 'field': exception.field, // ADDED: Output field if present
       },
     );
   }
