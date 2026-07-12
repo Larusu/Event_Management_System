@@ -40,10 +40,28 @@ Map<String, dynamic> _$RefreshTokenRequestToJson(
   RefreshTokenRequest instance,
 ) => <String, dynamic>{'token': instance.token};
 
-ForgotPasswordRequest _$ForgotPasswordRequestFromJson( 
+ForgotPasswordRequest _$ForgotPasswordRequestFromJson(
   Map<String, dynamic> json,
 ) => ForgotPasswordRequest(email: json['email'] as String);
 
-Map<String, dynamic> _$ForgotPasswordRequestToJson( 
+Map<String, dynamic> _$ForgotPasswordRequestToJson(
   ForgotPasswordRequest instance,
-) => <String, dynamic>{ 'email': instance.email };
+) => <String, dynamic>{'email': instance.email};
+
+UpdateProfileRequest _$UpdateProfileRequestFromJson(
+  Map<String, dynamic> json,
+) => UpdateProfileRequest(
+  currentPassword: json['current_password'] as String,
+  name: json['name'] as String?,
+  contact: json['contact'] as String?,
+  newPassword: json['new_password'] as String?,
+);
+
+Map<String, dynamic> _$UpdateProfileRequestToJson(
+  UpdateProfileRequest instance,
+) => <String, dynamic>{
+  'current_password': instance.currentPassword,
+  'name': instance.name,
+  'contact': instance.contact,
+  'new_password': instance.newPassword,
+};
