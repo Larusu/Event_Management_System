@@ -23,7 +23,8 @@ class AuthException implements Exception {
   final String? field; // ADDED: field property
 
   @override
-  String toString() => 'AuthException(code: $code, message: $message, field: $field)';
+  String toString() =>
+      'AuthException(code: $code, message: $message, field: $field)';
 }
 
 /// Builds consistent JSON Responses for every auth route.
@@ -71,7 +72,8 @@ class ResponseHelper {
         'success': false,
         'code': exception.code,
         'message': exception.message,
-        if (exception.field != null) 'field': exception.field, // ADDED: Output field if present
+        if (exception.field != null)
+          'field': exception.field, // ADDED: Output field if present
       },
     );
   }

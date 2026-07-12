@@ -55,7 +55,10 @@ Future<Response> _patchProfile(RequestContext context) async {
   // DOC RULE: Never accept or process an email field
   if (jsonBody.containsKey('email')) {
     return ResponseHelper.error(
-      AuthException(AuthErrorCode.validationFailed, 'Invalid input. Email cannot be changed.'),
+      AuthException(
+        AuthErrorCode.validationFailed,
+        'Invalid input. Email cannot be changed.',
+      ),
     );
   }
 
@@ -64,20 +67,29 @@ Future<Response> _patchProfile(RequestContext context) async {
       jsonBody['current_password'] == null ||
       jsonBody['current_password'].toString().trim().isEmpty) {
     return ResponseHelper.error(
-      AuthException(AuthErrorCode.validationFailed, 'Current password is required.'),
+      AuthException(
+        AuthErrorCode.validationFailed,
+        'Current password is required.',
+      ),
     );
   }
 
   final request = UpdateProfileRequest.fromJson(jsonBody);
 
   final hasName = request.name != null && request.name!.trim().isNotEmpty;
-  final hasContact = request.contact != null && request.contact!.trim().isNotEmpty;
-  final hasNewPassword = request.newPassword != null && request.newPassword!.trim().isNotEmpty;
+  final hasContact =
+      request.contact != null && request.contact!.trim().isNotEmpty;
+  final hasNewPassword =
+      request.newPassword != null && request.newPassword!.trim().isNotEmpty;
 
-  // DOC RULE: Reject with AUTH005 if name, contact, and new_password are all absent
+  // DOC RULE: Reject with AUTH005 if name, contact, and new_password are all
+  // absent
   if (!hasName && !hasContact && !hasNewPassword) {
     return ResponseHelper.error(
-      AuthException(AuthErrorCode.validationFailed, 'Invalid input. Please check your details.'),
+      AuthException(
+        AuthErrorCode.validationFailed,
+        'Invalid input. Please check your details.',
+      ),
     );
   }
 
@@ -113,11 +125,15 @@ Future<Response> _patchProfile(RequestContext context) async {
       data: {'user': updatedUser},
     );
   } on AuthException catch (e) {
-    // ResponseHelper automatically handles mapping AUTH010 to 401 and AUTH011 to 400!
+    // ResponseHelper automatically handles mapping AUTH010 to 401 and AUTH011
+    // to 400!
     return ResponseHelper.error(e);
   } catch (e) {
     return ResponseHelper.error(
-      AuthException(AuthErrorCode.internalError, 'Something went wrong. Please try again.'),
+      AuthException(
+        AuthErrorCode.internalError,
+        'Something went wrong. Please try again.',
+      ),
     );
   }
 }
