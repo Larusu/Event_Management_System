@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/roles.dart';
+import '../../../events/presentation/widgets/event_modal.dart';
 import '../../providers/auth_provider.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -13,6 +14,12 @@ class HomeScreen extends StatelessWidget {
         context.watch<AuthProvider>().currentUser?.role == Roles.guest;
 
     return Scaffold(
+      // TEMP: preview trigger for the Event Modal design. Remove later.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showPlaceholderNote(context),
+        label: const Text('View Event'),
+        icon: const Icon(Icons.event),
+      ),
       appBar: AppBar(
         title: const Text('Home'),
         actions: [
@@ -41,6 +48,36 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // TEMP: placeholder note shown before the Event Modal preview. Remove later.
+  void _showPlaceholderNote(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Heads up'),
+        content: const Text(
+          'THIS IS JUST A PLACEHOLDER FOR NOW.\n\n'
+          'This is only to show that the `Event Modal` works! '
+          'Real data and design will be wired up later.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              // Any id works with the mock repo; use 'missing' to preview the
+              // not-found (EVT002) state.
+              EventModal.show(context, eventId: 'evt_abc123');
+            },
+            child: const Text('Show Event Modal (Placeholder)'),
+          ),
+        ],
       ),
     );
   }
