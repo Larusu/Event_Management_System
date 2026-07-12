@@ -14,7 +14,10 @@ class HomeScreen extends StatelessWidget {
         context.watch<AuthProvider>().currentUser?.role == Roles.guest;
 
     return Scaffold(
-      // TEMP: preview trigger for the Event Modal design. Remove later.
+      // TEMP: preview trigger for the Event Modal design.
+      // TODO(cleanup): if the design is already implemented (Dev A/B wire real
+      // event-card taps to EventModal.show), please remove this button and the
+      // _showPlaceholderNote dialog below.
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showPlaceholderNote(context),
         label: const Text('View Event'),
@@ -52,7 +55,9 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // TEMP: placeholder note shown before the Event Modal preview. Remove later.
+  // TEMP: placeholder note shown before the Event Modal preview.
+  // TODO(cleanup): remove together with the "View Event" button once the
+  // design is wired into the real screens.
   void _showPlaceholderNote(BuildContext context) {
     showDialog(
       context: context,

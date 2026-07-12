@@ -6,6 +6,10 @@ const String apiBaseUrl = String.fromEnvironment(
 
 /// When true, event features use mock repositories instead of hitting the
 /// backend. Flip to false once the Feature 3 backend endpoints are deployed.
+///
+// TODO(backend): set to `false` once Backend Dev B deploys
+// GET /events/{eventId}. This single flag switches the whole events feature
+// from mock data to the real API — no other UI changes required.
 const bool useMockEvents = true;
 
 /// Auth route paths currently implemented by the backend.

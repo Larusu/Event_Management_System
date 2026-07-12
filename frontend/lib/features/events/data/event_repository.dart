@@ -21,6 +21,9 @@ class EventApiRepository implements EventRepository {
   Future<Event> getEvent(String eventId) async {
     final response = await _api.get(ApiRoutes.eventById(eventId));
     // The doc uses the key `events` for a single object; accept `event` too.
+    // TODO(backend): once live, confirm the real response envelope key against
+    // doc 3.5.2, and verify AUTH001 (expired token) and EVT002 (not found /
+    // deleted / unapproved) surface correctly through ApiException.
     final json = response.data['event'] ?? response.data['events'];
     if (json is! Map<String, dynamic>) {
       throw const ApiException('Something went wrong. Please try again.');
@@ -31,6 +34,10 @@ class EventApiRepository implements EventRepository {
 
 /// Returns sample data so the modal can be built and demoed before the backend
 /// ships. Pass the id `missing` to exercise the EVT002 not-found state.
+///
+// TODO(backend): once the real endpoint is verified, remove this mock and the
+// artificial 600ms delay (or keep it solely for widget tests). The `missing`
+// id shortcut is mock-only and has no backend equivalent.
 class MockEventRepository implements EventRepository {
   @override
   Future<Event> getEvent(String eventId) async {
