@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 
 class ModalContainer {
   // Side modal; call to view
-  static void show({
-    required BuildContext context,
-    required Widget child,
-    double initialSize = 0.5,
-    double minSize = 0.15,
-    double maxSize = 0.9,
-    List<double>? snapSizes,
-  }) {
+  static void show(
+      {required BuildContext context,
+      required Widget child,
+      double initialSize = 0.5,
+      double minSize = 0.15,
+      double maxSize = 0.9,
+      List<double>? snapSizes}) {
     final DraggableScrollableController sheetController =
         DraggableScrollableController();
 
@@ -25,7 +24,7 @@ class ModalContainer {
           minSize: minSize,
           maxSize: maxSize,
           snapSizes: snapSizes,
-          child: child,
+          child: child
         );
       },
     );
@@ -70,7 +69,7 @@ class ModalContainer {
     double initialSize = 0.15,
     double minSize = 0.1,
     double maxSize = 0.8,
-    List<double>? snapSizes,
+    List<double>? snapSizes
   }) {
     return _DraggableContent(
       controller: controller,
@@ -78,7 +77,7 @@ class ModalContainer {
       minSize: minSize,
       maxSize: maxSize,
       snapSizes: snapSizes,
-      child: child,
+      child: child
     );
   }
 }
@@ -102,61 +101,66 @@ class _DraggableContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      controller: controller,
-      initialChildSize: initialSize,
-      minChildSize: minSize,
-      maxChildSize: maxSize,
-      snap: true,
-      snapSizes: snapSizes ?? [minSize, initialSize, maxSize],
-      expand: false,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-            boxShadow: [BoxShadow(blurRadius: 10, color: Colors.black12)],
-          ),
-          child: Column(
-            children: [
-              GestureDetector(
-                onVerticalDragUpdate: (details) {
-                  if (controller != null && controller!.isAttached) {
-                    final currentSize = controller!.size;
-                    // Get screen height to convert pixels to size ratio
-                    final screenHeight = MediaQuery.of(context).size.height;
-                    final delta = -details.primaryDelta! / screenHeight;
-                    controller!
-                        .jumpTo((currentSize + delta).clamp(minSize, maxSize));
-                  }
-                },
-                child: Container(
-                  width: double.infinity, // Make it wide to catch drags
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  color: Colors.transparent, // Ensure it's hit-testable
-                  child: Center(
+    return AnimatedPadding(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: DraggableScrollableSheet(
+          controller: controller,
+          initialChildSize: initialSize,
+          minChildSize: minSize,
+          maxChildSize: maxSize,
+          snap: true,
+          snapSizes: snapSizes ?? [minSize, initialSize, maxSize],
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                boxShadow: [BoxShadow(blurRadius: 10, color: Colors.black12)],
+              ),
+              child: Column(
+                children: [
+                  GestureDetector(
+                    onVerticalDragUpdate: (details) {
+                      if (controller != null && controller!.isAttached) {
+                        final currentSize = controller!.size;
+                        // Get screen height to convert pixels to size ratio
+                        final screenHeight = MediaQuery.of(context).size.height;
+                        final delta = -details.primaryDelta! / screenHeight;
+                        controller!.jumpTo(
+                            (currentSize + delta).clamp(minSize, maxSize));
+                      }
+                    },
                     child: Container(
-                      width: 40,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Colors.grey,
-                        borderRadius: BorderRadius.circular(10),
+                      width: double.infinity, // Make it wide to catch drags
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      color: Colors.transparent, // Ensure it's hit-testable
+                      child: Center(
+                        child: Container(
+                          width: 40,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(16),
+                      child: child,
+                    ),
+                  )
+                ],
               ),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.all(16),
-                  child: child,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+            );
+          },
+        ));
   }
 }
