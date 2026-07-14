@@ -66,8 +66,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         AppButton(
                           label: "Ok",
                           onPressed: () {
-                            Navigator.pop(context);
-                            Navigator.pushNamed(context, '/sign-in');
+                            Navigator.of(context)
+                                .popUntil((route) => route.isFirst);
                           },
                         ),
                       ],
@@ -115,11 +115,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     height: 25,
                   ),
                   AppTextField(
-                    controller: _emailController,
-                    hintText: "Email",
-                    keyboardType: TextInputType.emailAddress,
-                    validator: Validators.email
-                  ),
+                      controller: _emailController,
+                      hintText: "Email",
+                      keyboardType: TextInputType.emailAddress,
+                      validator: Validators.email),
                   const SizedBox(height: 5),
                   if (_errorMessage != null) ...[
                     Padding(

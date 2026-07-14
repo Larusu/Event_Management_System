@@ -67,7 +67,7 @@ class AuthProvider extends ChangeNotifier {
     required String contact,
     required String password,
   }) {
-    return _run(() => _repository.register(
+    return _runRegister(() => _repository.register(
           firstName: firstName,
           lastName: lastName,
           email: email,
@@ -111,7 +111,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Shared runner for sign-in/register: toggles loading, stores the resulting
+  /// Shared runner for sign-in: toggles loading, stores the resulting
   /// user, and maps [ApiException] into [errorMessage]. Returns `true` on
   /// success so screens can react (e.g. navigate).
   Future<bool> _run(Future<User> Function() action) async {
@@ -122,6 +122,33 @@ class AuthProvider extends ChangeNotifier {
     try {
       _currentUser = await action();
       _status = AuthStatus.authenticated;
+      return true;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _status = AuthStatus.unauthenticated;
+      return false;
+    } catch (_) {
+      _errorMessage = 'Something went wrong. Please try again.';
+      _status = AuthStatus.unauthenticated;
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Runner for registration: on success, signs out the Firebase session so the
+  /// user must sign in manually (status stays [AuthStatus.unauthenticated]).
+  Future<bool> _runRegister(Future<User> Function() action) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _currentUser = await action();
+      await _repository.signOut();
+      _currentUser = null;
+      _status = AuthStatus.unauthenticated;
       return true;
     } on ApiException catch (e) {
       _errorMessage = e.message;

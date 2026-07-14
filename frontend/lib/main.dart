@@ -39,7 +39,7 @@ class MyApp extends StatelessWidget {
         title: 'Campus Event App',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
-        home: EventsScreen(),
+        home: AuthGate(),
         routes: {
           '/sign-in': (context) => const SignInScreen(),
           '/sign-up': (context) => const SignUpScreen(),
