@@ -10,7 +10,7 @@ const String apiBaseUrl = String.fromEnvironment(
 // TODO(backend): set to `false` once Backend Dev B deploys
 // GET /events/{eventId}. This single flag switches the whole events feature
 // from mock data to the real API — no other UI changes required.
-const bool useMockEvents = true;
+const bool useMockEvents = false;
 
 /// Auth route paths currently implemented by the backend.
 class ApiRoutes {

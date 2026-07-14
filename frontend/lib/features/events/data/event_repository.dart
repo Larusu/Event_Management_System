@@ -41,8 +41,6 @@ class EventApiRepository implements EventRepository {
 class MockEventRepository implements EventRepository {
   @override
   Future<Event> getEvent(String eventId) async {
-    await Future.delayed(const Duration(milliseconds: 600));
-
     if (eventId == 'missing') {
       throw const ApiException(
         'Event not found.',
