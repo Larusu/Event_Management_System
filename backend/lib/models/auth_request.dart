@@ -58,8 +58,8 @@ class RegisterRequest {
 
   @override
   String toString() =>
-    'RegisterRequest(email: $email, firstName: $firstName,  '
-    'lastName: $lastName, contact: $contact)';
+      'RegisterRequest(email: $email, firstName: $firstName,  '
+      'lastName: $lastName, contact: $contact)';
 }
 
 /// Request model for user sign-in/login
@@ -149,19 +149,64 @@ class RefreshTokenRequest {
 class ForgotPasswordRequest {
   /// Creates a [ForgotPasswordRequest] with the account email.
   ForgotPasswordRequest({
-    required this.email,  
+    required this.email,
   });
 
   /// Creates a [ForgotPasswordRequest] from a JSON map.
   factory ForgotPasswordRequest.fromJson(Map<String, dynamic> json) =>
-    _$ForgotPasswordRequestFromJson(json);
+      _$ForgotPasswordRequestFromJson(json);
 
-    /// Email address of the account requesting a password reset
-    final String email;
+  /// Email address of the account requesting a password reset
+  final String email;
 
   /// Converts this request to a JSON map with snake_case keys.
-    Map<String, dynamic> toJson() => _$ForgotPasswordRequestToJson(this); 
+  Map<String, dynamic> toJson() => _$ForgotPasswordRequestToJson(this);
 
-    @override 
-    String toString() => 'ForgotPasswordRequest(email: $email)';
+  @override
+  String toString() => 'ForgotPasswordRequest(email: $email)';
+}
+
+/// Request model for updating user profile
+///
+/// Sent when an authenticated user updates their name, contact, or password.
+///
+/// Fields (all snake_case in JSON):
+/// - `current_password`: Required to authorize any changes.
+/// - `name`: Optional new name.
+/// - `contact`: Optional new contact number.
+/// - `new_password`: Optional new password.
+@JsonSerializable(fieldRename: FieldRename.snake)
+class UpdateProfileRequest {
+  /// Creates an [UpdateProfileRequest].
+  UpdateProfileRequest({
+    required this.currentPassword,
+    this.name,
+    this.contact,
+    this.newPassword,
+  });
+
+  /// Creates an [UpdateProfileRequest] from a JSON map.
+  factory UpdateProfileRequest.fromJson(Map<String, dynamic> json) =>
+      _$UpdateProfileRequestFromJson(json);
+
+  /// Current password to authorize the change
+  final String currentPassword;
+
+  /// Optional updated name
+  final String? name;
+
+  /// Optional updated contact
+  final String? contact;
+
+  /// Optional new password
+  final String? newPassword;
+
+  /// Converts this request to a JSON map with snake_case keys.
+  Map<String, dynamic> toJson() => _$UpdateProfileRequestToJson(this);
+
+  @override
+  String toString() =>
+      'UpdateProfileRequest(hasName: ${name != null}, '
+      'hasContact: ${contact != null}, '
+      'hasNewPassword: ${newPassword != null})';
 }

@@ -23,9 +23,9 @@ class FirebaseConfig {
   /// Get the Firebase App instance
   static App? get app => _app;
 
-  /// Get cached environment variables (parsed once on first call)
+  /// Lazily loaded config map (platform env vard with .env overlay)
   static Map<String, String?> get envMap {
-    _envMap ??= _loadEnvFile();
+    _envMap ??= _loadConfig();
     return _envMap!;
   }
 
@@ -36,7 +36,7 @@ class FirebaseConfig {
     }
 
     try {
-      final envMap = _loadEnvFile();
+      final envMap = _loadConfig();
       _envMap = envMap;
 
       final projectId = envMap['FIREBASE_PROJECT_ID'];
@@ -64,44 +64,48 @@ class FirebaseConfig {
     }
   }
 
-  /// Parse .env file and return a map of key-value pairs
-  static Map<String, String?> _loadEnvFile() {
-    final envMap = <String, String?>{};
+  /// Load Configuration from platform envionment (Cloud Run / CI),
+  /// with .env file for local development
+  static Map<String, String?> _loadConfig() {
+    final config  = <String, String?>{};
+
+    // Local dev convenience: overlay from a .env file if present
     final envFile = File('.env');
+    if (envFile.existsSync()) {
+      final lines = envFile.readAsLinesSync();
+      String? currentKey;
+      String? currentValue = '';
 
-    if (!envFile.existsSync()) {
-      throw const FileSystemException('.env file not found');
-    }
-
-    final lines = envFile.readAsLinesSync();
-    String? currentKey;
-    String? currentValue = '';
-
-    for (final line in lines) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty || trimmed.startsWith('#')) {
-        continue;
-      }
-
-      if (trimmed.contains('=')) {
-        if (currentKey != null) {
-          envMap[currentKey] = currentValue;
+      for (final line in lines) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty || trimmed.startsWith('#')) {
+          continue;
         }
-        final parts = trimmed.split('=');
-        currentKey = parts[0].trim();
-        currentValue = parts.sublist(1).join('=').trim();
-      } else {
-        if (currentValue != null) {
-          currentValue += '\n$trimmed';
+
+        if (trimmed.contains('=')) {
+          if (currentKey != null) {
+            config[currentKey] = currentValue;
+          }
+          final parts = trimmed.split('=');
+          currentKey = parts[0].trim();
+          currentValue = parts.sublist(1).join('=').trim();
+        } else {
+          if (currentValue != null) {
+            currentValue += '\n$trimmed';
+          }
         }
       }
+
+      if (currentKey != null) {
+        config[currentKey] = currentValue;
+      }
     }
 
-    if (currentKey != null) {
-      envMap[currentKey] = currentValue;
-    }
+    // Real environment variables are authoritative (Cloud Run / CI).
+    // This guarantees injected prod values always win over any stray .env.
+    config.addAll(Platform.environment);
 
-    return envMap;
+    return config;
   }
 
   /// Cleanup: Called on app shutdown to release resources

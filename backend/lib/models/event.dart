@@ -8,6 +8,8 @@ part 'event.g.dart';
 /// NOT a 1:1 mirror of the Firestore document.
 @JsonSerializable(fieldRename: FieldRename.snake)
 class Event {
+  /// Creates an [Event] with the API response fields and internal
+  /// filtering fields ([status], [isDeleted]).
   Event({
     required this.eventId,
     required this.title,
@@ -22,6 +24,7 @@ class Event {
     this.isDeleted = false,
   });
 
+  /// Creates an [Event] from a decoded JSON map.
   factory Event.fromJson(Map<String, dynamic> json) => _$EventFromJson(json);
 
   /// Unique identifier for the event.
@@ -62,5 +65,6 @@ class Event {
   /// Computed field: remaining slots = total - registered.
   int get slotsRemaining => slotsTotal - registeredCount;
 
+  /// Serializes this event to the API response JSON map.
   Map<String, dynamic> toJson() => _$EventToJson(this);
 }

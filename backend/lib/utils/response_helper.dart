@@ -3,18 +3,26 @@ import 'package:backend/constants/event_error_codes.dart';
 
 import 'package:dart_frog/dart_frog.dart';
 
+/// Base class for exceptions that carry an error [code] and [message] and can
+/// be rendered into a standard JSON error response.
 abstract class AppException implements Exception {
+  /// Creates an [AppException] with the given error [code] and [message].
   AppException(this.code, this.message);
 
+  /// The machine-readable error code (e.g. `EVT001`).
   final String code;
+
+  /// The human-readable error message.
   final String message;
 
+  /// HTTP status looked up from the error code table (500 if unknown).
   int get statusCode {
     final status = AuthErrorCode.statusFor[code] ??
         EventErrorCode.statusFor[code];
     return status ?? 500;
   }
 
+  /// Builds the standard error body for this exception.
   Map<String, dynamic> toResponseMap() => {
         'success': false,
         'code': code,
@@ -22,14 +30,23 @@ abstract class AppException implements Exception {
       };
 }
 
+/// Exception raised by auth routes, optionally tied to a specific [field].
 class AuthException implements Exception {
-  AuthException(this.code, this.message);
+  /// Creates an [AuthException] with the given error [code] and [message].
+  AuthException(this.code, this.message, {this.field});
 
+  /// The machine-readable error code (e.g. `AUTH001`).
   final String code;
+
+  /// The human-readable error message.
   final String message;
 
+  /// The specific field that caused the error, if applicable.
+  final String? field; // ADDED: field property
+
   @override
-  String toString() => 'AuthException(code: $code, message: $message)';
+  String toString() =>
+      'AuthException(code: $code, message: $message, field: $field)';
 }
 
 /// Builds consistent JSON Responses for every auth route.
@@ -77,10 +94,13 @@ class ResponseHelper {
         'success': false,
         'code': exception.code,
         'message': exception.message,
+        if (exception.field != null)
+          'field': exception.field, // ADDED: Output field if present
       },
     );
   }
 
+  /// Build an error response from any [AppException] (status from its code).
   static Response errorFromException(AppException exception) {
     return Response.json(
       statusCode: exception.statusCode,

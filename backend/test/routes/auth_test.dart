@@ -123,7 +123,10 @@ void main() {
 
     test('contact number whitespace only fails', () {
       final result = AuthValidationService.validateContactNumber('   ');
-      expect(result, equals('Contact number cannot be empty or whitespace only'));
+      expect(
+        result,
+        equals('Contact number cannot be empty or whitespace only'),
+      );
     });
   });
 
@@ -352,7 +355,8 @@ void main() {
       expect(body['code'], equals('AUTH005'));
     });
 
-    test('returns 400 with AUTH005 for whitespace-only contact number', () async {
+    test('returns 400 with AUTH005 for whitespace-only contact number',
+        () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
 
@@ -399,7 +403,8 @@ void main() {
       expect(body['message'], contains('11 digits'));
     });
 
-    test('returns 400 with AUTH005 for contact number starting with +09', () async {
+    test('returns 400 with AUTH005 for contact number starting with +09',
+        () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
 
