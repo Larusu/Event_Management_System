@@ -52,12 +52,12 @@ class EventService {
 
   /// Fetches events with optional filtering and pagination.
   ///
-  /// - Unconditionally filters `status == "approved"` AND `is_deleted == false`
-  /// - `tags`: comma-separated, URL-decoded, matched via array-contains-any
-  /// - `search`: case-insensitive substring match against title_search field
-  /// - `cursor`: base64-encoded JSON `{date, eventId}` for pagination
-  /// - `limit`: max number of results (default 20)
-  /// - Results sorted by `date` ascending, then `event_id` ascending
+  /// - Fetches events ordered by event_id (uses single-field index)
+  /// - Applies `status == "approved"` and `is_deleted == false` filters client-side
+  /// - `tags`: comma-separated, URL-decoded, matched case-sensitively
+  /// - `search`: case-insensitive substring match on title
+  /// - `cursor`: base64-encoded JSON `{eventId}` for pagination
+  /// - `limit`: max number of results after client-side filtering (default 20)
   static Future<List<Event>> fetchEvents({
     String? tags,
     String? search,
@@ -68,7 +68,6 @@ class EventService {
       try {
         final decoded = jsonDecode(utf8.decode(base64.decode(cursor)));
         if (decoded is! Map<String, dynamic> ||
-            !decoded.containsKey('date') ||
             !decoded.containsKey('eventId')) {
           throw EventException(EventErrorCode.invalidCursor, 'Invalid cursor');
         }
@@ -81,11 +80,11 @@ class EventService {
     final client = await _firestoreClient();
     final projectId = _firestoreProjectId();
 
+    // Fetch with pagination limit (may return more before client-side filtering)
+    final fetchLimit = limit * 3; // Fetch extra to account for client-side filtering
     final structuredQuery = _buildQuery(
-      tags: tags,
-      search: search,
       cursor: cursor,
-      limit: limit,
+      limit: fetchLimit,
     );
 
     final uri = Uri.parse(
@@ -100,6 +99,12 @@ class EventService {
     );
 
     if (response.statusCode != 200) {
+      // ignore: avoid_print
+      print('Firestore query failed: ${response.statusCode}');
+      // ignore: avoid_print
+      print('Query: ${jsonEncode(structuredQuery)}');
+      // ignore: avoid_print
+      print('Response: ${response.body}');
       throw StateError(
         'Firestore query failed: ${response.statusCode} ${response.body}',
       );
@@ -109,87 +114,47 @@ class EventService {
     final events = <Event>[];
 
     for (final entry in decoded) {
-      final row = entry as Map<String, dynamic>;
-      final document = row['document'] as Map<String, dynamic>?;
-      if (document == null) {
+      try {
+        final row = entry as Map<String, dynamic>;
+        final document = row['document'] as Map<String, dynamic>?;
+        if (document == null) {
+          continue;
+        }
+
+        final fields = document['fields'] as Map<String, dynamic>? ?? {};
+        final resourceName = document['name'] as String? ?? '';
+        final eventId = resourceName.split('/').last;
+
+        final event = _parseEventFromFields(fields, eventId);
+        if (event != null) {
+          events.add(event);
+        }
+      } catch (_) {
+        // Skip malformed entries - don't let one bad document crash the whole query
         continue;
-      }
-
-      final fields = document['fields'] as Map<String, dynamic>? ?? {};
-      final resourceName = document['name'] as String? ?? '';
-      final eventId = resourceName.split('/').last;
-
-      final event = _parseEventFromFields(fields, eventId);
-      if (event != null) {
-        events.add(event);
       }
     }
 
-    return events;
+    // Apply client-side filters for fields that require composite indexes
+    return _applyClientFilters(events, tags: tags, search: search, limit: limit);
   }
 
   static Map<String, dynamic> _buildQuery({
-    String? tags,
-    String? search,
     String? cursor,
     int limit = 20,
   }) {
-    final filters = [
-      {
-        'fieldFilter': {
-          'field': {'fieldPath': 'status'},
-          'op': 'EQUAL',
-          'value': {'stringValue': 'approved'},
-        },
-      },
-      {
-        'fieldFilter': {
-          'field': {'fieldPath': 'is_deleted'},
-          'op': 'EQUAL',
-          'value': {'booleanValue': false},
-        },
-      },
-    ];
-
-    if (tags != null && tags.isNotEmpty) {
-      final tagList = tags
-          .split(',')
-          .map((t) => t.trim())
-          .where((t) => t.isNotEmpty)
-          .toList();
-      if (tagList.isNotEmpty) {
-        filters.add({
-          'arrayContainsAny': {
-            'field': {'fieldPath': 'tags'},
-            'values': tagList.map((t) => {'stringValue': t}).toList(),
-          },
-        });
-      }
-    }
-
-    if (search != null && search.isNotEmpty) {
-      final searchLower = search.toLowerCase();
-      filters.add({
-        'fieldFilter': {
-          'field': {'fieldPath': 'title_search'},
-          'op': 'EQUAL',
-          'value': {'stringValue': searchLower},
-        },
-      });
-    }
-
+    // Use only single-field indexes by:
+    // 1. Not filtering by status (filter client-side)
+    // 2. Ordering by document ID (__name__) for pagination
+    // Firestore orders by __name__ which is the document path
     final query = {
       'from': [
         {'collectionId': 'events'},
       ],
-      'where': {'compositeFilter': {'op': 'AND', 'filters': filters}},
+      // No filters - we'll filter client-side
       'orderBy': [
         {
-          'field': {'fieldPath': 'date'},
-          'direction': 'ASCENDING',
-        },
-        {
-          'field': {'fieldPath': 'event_id'},
+          'field': {'fieldPath': '__name__'},
           'direction': 'ASCENDING',
         },
       ],
@@ -197,16 +162,60 @@ class EventService {
     };
 
     if (cursor != null) {
+      // Cursor is now based on eventId (document ID)
       final cursorData = jsonDecode(
         utf8.decode(base64.decode(cursor)),
       ) as Map<String, dynamic>;
-      query['startAt'] = [
-        cursorData['date'],
-        cursorData['eventId'],
-      ];
+      // Use the full document path for startAt
+      query['startAt'] = ['projects/${FirebaseConfig.envMap['FIREBASE_PROJECT_ID']}/databases/(default)/documents/events/${cursorData['eventId']}'];
     }
 
     return query;
+  }
+
+  /// Filters events client-side for fields that require composite indexes.
+  /// This is necessary because Firestore single-field indexes can only filter
+  /// on one field efficiently.
+  static List<Event> _applyClientFilters(
+    List<Event> events, {
+    String? tags,
+    String? search,
+    int limit = 20,
+  }) {
+    final filtered = events.where((event) {
+      // Filter by status == "approved"
+      if (event.status != 'approved') {
+        return false;
+      }
+
+      // Filter by is_deleted == false
+      if (event.isDeleted) {
+        return false;
+      }
+
+      // Filter by tags (case-sensitive)
+      if (tags != null && tags.isNotEmpty) {
+        final tagSet = event.tags.toSet();
+        final filterTags = tags.split(',').map((t) => t.trim()).toSet();
+        // Match if ANY filter tag is in event's tags
+        if (!tagSet.any((tag) => filterTags.contains(tag))) {
+          return false;
+        }
+      }
+
+      // Filter by search (case-insensitive on title)
+      if (search != null && search.isNotEmpty) {
+        final searchLower = search.toLowerCase();
+        if (!event.title.toLowerCase().contains(searchLower)) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+
+    // Apply limit after filtering
+    return filtered.take(limit).toList();
   }
 
   static Event? _parseEventFromFields(
@@ -215,8 +224,12 @@ class EventService {
   ) {
     String? stringField(String key) =>
         (fields[key] as Map<String, dynamic>?)?['stringValue'] as String?;
-    int? intField(String key) =>
-        (fields[key] as Map<String, dynamic>?)?['integerValue'] as int?;
+    int? intField(String key) {
+      final value =
+          (fields[key] as Map<String, dynamic>?)?['integerValue'] as String?;
+      if (value == null) return null;
+      return int.tryParse(value);
+    }
     List<String>? arrayField(String key) {
       final arr = fields[key] as Map<String, dynamic>?;
       if (arr == null) {
@@ -230,8 +243,7 @@ class EventService {
       if (fieldValues == null) {
         return null;
       }
-      return fieldValues.map((v) {
-        final map = v as Map<String, dynamic>;
+      return fieldValues.whereType<Map<String, dynamic>>().map((map) {
         return (map['stringValue'] as String?) ?? '';
       }).toList();
     }
@@ -241,8 +253,25 @@ class EventService {
       return null;
     }
 
+    // eventId is derived from document ID (resourceName)
+    // This is the unique identifier for the event
+    final eventIdFromDoc = eventId;
+
+    // Extract status field
+    final status = stringField('status') ?? 'draft';
+
+    // Extract is_deleted field safely
+    final isDeleted = () {
+      final field = fields['is_deleted'];
+      if (field is Map<String, dynamic>) {
+        final boolValue = field['booleanValue'];
+        if (boolValue is bool) return boolValue;
+      }
+      return false;
+    }();
+
     return Event(
-      eventId: eventId,
+      eventId: eventIdFromDoc,
       title: title,
       coverImageUrl: stringField('cover_image_url') ?? '',
       date: stringField('date') ?? '',
@@ -251,6 +280,8 @@ class EventService {
       tags: arrayField('tags') ?? [],
       slotsTotal: intField('slots_total') ?? 0,
       registeredCount: intField('registered_count') ?? 0,
+      status: status,
+      isDeleted: isDeleted,
     );
   }
 }

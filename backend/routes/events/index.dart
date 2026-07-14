@@ -52,7 +52,6 @@ Future<Response> onRequest(RequestContext context) async {
     if (events.length == limit && events.isNotEmpty) {
       final lastEvent = events.last;
       final cursorData = {
-        'date': lastEvent.date,
         'eventId': lastEvent.eventId,
       };
       nextCursor = base64.encode(
@@ -84,7 +83,9 @@ Future<Response> onRequest(RequestContext context) async {
     );
   } on EventException catch (e) {
     return ResponseHelper.errorFromException(e);
-  } catch (e) {
+  } catch (e, stack) {
+    // ignore: avoid_print
+    print('EVT002 Internal error: $e\n$stack');
     return Response.json(
       statusCode: 500,
       body: {

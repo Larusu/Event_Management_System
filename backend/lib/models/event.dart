@@ -18,6 +18,8 @@ class Event {
     required this.tags,
     required this.slotsTotal,
     required this.registeredCount,
+    this.status = 'draft',
+    this.isDeleted = false,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) => _$EventFromJson(json);
@@ -48,6 +50,14 @@ class Event {
 
   /// Number of registered attendees.
   final int registeredCount;
+
+  /// Event status (draft, approved, rejected). Internal use for filtering.
+  @JsonKey(includeToJson: false, includeFromJson: false)
+  final String status;
+
+  /// Whether the event is deleted (internal use only, not exposed in API).
+  @JsonKey(includeToJson: false, includeFromJson: false)
+  final bool isDeleted;
 
   /// Computed field: remaining slots = total - registered.
   int get slotsRemaining => slotsTotal - registeredCount;
