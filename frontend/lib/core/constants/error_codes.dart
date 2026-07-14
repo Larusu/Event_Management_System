@@ -34,3 +34,21 @@ class AuthErrorCodes {
     internalError: 'Something went wrong. Please try again.',
   };
 }
+
+/// Standardized backend error codes for the events feature (Feature 3).
+class EventErrorCodes {
+  const EventErrorCodes._();
+
+  /// Invalid query parameters — cursor, limit, or tags malformed (HTTP 400).
+  static const String invalidQuery = 'EVT001';
+
+  /// Event not found, deleted, or not approved (HTTP 404).
+  static const String notFound = 'EVT002';
+
+  /// Default user-facing messages keyed by code, used as a fallback when the
+  /// backend response does not carry a `message`.
+  static const Map<String, String> defaultMessages = {
+    invalidQuery: 'Invalid request. Please try again.',
+    notFound: 'Event not found.',
+  };
+}

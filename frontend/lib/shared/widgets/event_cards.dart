@@ -5,8 +5,8 @@ class FeaturedEventCard extends StatefulWidget {
   final String imageUrl;
   final String description;
   final String date;
-  final String startTime;
-  final String endTime;
+  final String start_time;
+  final String end_time;
 
   const FeaturedEventCard({
     super.key,
@@ -14,8 +14,8 @@ class FeaturedEventCard extends StatefulWidget {
     required this.imageUrl,
     required this.description,
     required this.date,
-    required this.startTime,
-    required this.endTime,
+    required this.start_time,
+    required this.end_time,
   });
 
   @override
@@ -89,7 +89,7 @@ class _FeaturedEventCardState extends State<FeaturedEventCard> {
                               ),
                             ),
                             Text(
-                              '${widget.startTime} - ${widget.endTime}',
+                              '${widget.start_time} - ${widget.end_time}',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 14,
@@ -125,8 +125,8 @@ class EventCard extends StatefulWidget {
   final int participants;
   final String day;
   final String date;
-  final String startTime;
-  final String endTime;
+  final String start_time;
+  final String end_time;
   final int openSlots;
   final String imageUrl;
 
@@ -136,8 +136,8 @@ class EventCard extends StatefulWidget {
     required this.participants,
     required this.day,
     required this.date,
-    required this.startTime,
-    required this.endTime,
+    required this.start_time,
+    required this.end_time,
     required this.openSlots,
     required this.imageUrl,
   });
@@ -209,7 +209,7 @@ class _EventCardState extends State<EventCard> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${widget.startTime} - ${widget.endTime}',
+                    '${widget.start_time} - ${widget.end_time}',
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 14,
