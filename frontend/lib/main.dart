@@ -4,6 +4,8 @@ import 'package:campus_event_app/features/auth/presentation/screens/forgot_passw
 import 'package:campus_event_app/features/auth/presentation/screens/sign_in_screen.dart';
 import 'package:campus_event_app/features/auth/presentation/screens/sign_up_screen.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
+import 'package:campus_event_app/features/events/presentation/screens/events_screen.dart';
+import 'package:campus_event_app/features/profile/presentation/screens/settings_screen.dart';
 import 'package:campus_event_app/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +45,8 @@ class MyApp extends StatelessWidget {
           '/sign-in': (context) => const SignInScreen(),
           '/sign-up': (context) => const SignUpScreen(),
           '/forgot-password': (context) => const ForgotPasswordScreen(),
+          '/events': (context) => const EventsScreen(),
+          '/settings': (context) => const SettingsScreen(),
         },
       ),
     );
