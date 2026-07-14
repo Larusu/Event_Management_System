@@ -1,3 +1,4 @@
+import 'package:campus_event_app/core/constants/error_codes.dart';
 import 'package:campus_event_app/core/utils/validators.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_button.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_text_field.dart';
@@ -18,10 +19,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _contactController = TextEditingController();
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   bool _isLoading = false;
   String? _errorMessage;
+  String? _currentPasswordError;
+  String? _newPasswordError;
 
   @override
   void initState() {
@@ -39,6 +43,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _contactController.dispose();
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -48,6 +53,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _currentPasswordError = null;
+      _newPasswordError = null;
     });
 
     final newPassword = _newPasswordController.text.trim();
@@ -67,7 +74,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         );
         Navigator.pop(context);
       } else {
-        _errorMessage = context.read<AuthProvider>().errorMessage;
+        final provider = context.read<AuthProvider>();
+        final code = provider.errorCode;
+        final message = provider.errorMessage;
+        if (code == AuthErrorCodes.currentPasswordIncorrect) {
+          _currentPasswordError = message;
+        } else if (code == AuthErrorCodes.passwordSameAsCurrent) {
+          _newPasswordError = message;
+        } else {
+          _errorMessage = message;
+        }
       }
     });
   }
@@ -116,6 +132,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   isRequired: true,
                   validator: Validators.password,
                 ),
+                if (_currentPasswordError != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      _currentPasswordError!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 15),
                 AppTextField(
                   controller: _newPasswordController,
@@ -124,6 +150,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   validator: (value) {
                     if (value == null || value.isEmpty) return null;
                     return Validators.password(value);
+                  },
+                ),
+                if (_newPasswordError != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      _newPasswordError!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 15),
+                AppTextField(
+                  controller: _confirmPasswordController,
+                  hintText: "Confirm New Password",
+                  obscureText: true,
+                  validator: (value) {
+                    if (_newPasswordController.text.isEmpty) return null;
+                    return Validators.confirmPassword(
+                        value, _newPasswordController.text);
                   },
                 ),
                 const SizedBox(height: 15),

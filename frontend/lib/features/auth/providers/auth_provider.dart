@@ -22,11 +22,13 @@ class AuthProvider extends ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _errorCode;
 
   AuthStatus get status => _status;
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get errorCode => _errorCode;
 
   @override
   void dispose() {
@@ -120,8 +122,9 @@ class AuthProvider extends ChangeNotifier {
 
   /// Clears any surfaced error (e.g. when the user edits the form again).
   void clearError() {
-    if (_errorMessage == null) return;
+    if (_errorMessage == null && _errorCode == null) return;
     _errorMessage = null;
+    _errorCode = null;
     notifyListeners();
   }
 
@@ -139,10 +142,12 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on ApiException catch (e) {
       _errorMessage = e.message;
+      _errorCode = e.code;
       _status = AuthStatus.unauthenticated;
       return false;
     } catch (_) {
       _errorMessage = 'Something went wrong. Please try again.';
+      _errorCode = null;
       _status = AuthStatus.unauthenticated;
       return false;
     } finally {
