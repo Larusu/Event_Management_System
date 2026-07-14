@@ -1,4 +1,5 @@
 import 'package:backend/constants/error_codes.dart';
+import 'package:backend/constants/event_error_codes.dart';
 
 import 'package:dart_frog/dart_frog.dart';
 
@@ -65,7 +66,9 @@ class ResponseHelper {
   /// callers never pass a status code for errors, so it's impossible
   /// for the status and code to disagree.
   static Response error(AuthException exception) {
-    final statusCode = AuthErrorCode.statusFor[exception.code] ?? 500;
+    final statusCode = AuthErrorCode.statusFor[exception.code] ??
+        EventErrorCode.statusFor[exception.code] ??
+        500;
     return Response.json(
       statusCode: statusCode,
       body: {
