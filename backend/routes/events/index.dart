@@ -89,7 +89,7 @@ Future<Response> onRequest(RequestContext context) async {
     return ResponseHelper.errorFromException(e);
   } catch (e, stack) {
     // ignore: avoid_print
-    print('EVT002 Internal error: $e\n$stack');
+    print('${EventErrorCode.internalError} Internal error: $e\n$stack');
     return Response.json(
       statusCode: 500,
       body: {

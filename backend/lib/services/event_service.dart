@@ -338,6 +338,15 @@ class EventService {
       return int.tryParse(value);
     }
 
+    bool boolField(String key) {
+      final field = fields[key];
+      if (field is Map<String, dynamic>) {
+        final boolValue = field['booleanValue'];
+        if (boolValue is bool) return boolValue;
+      }
+      return false;
+    }
+
     List<String>? arrayField(String key) {
       final arr = fields[key] as Map<String, dynamic>?;
       if (arr == null) {
@@ -363,27 +372,26 @@ class EventService {
 
     final status = stringField('status') ?? 'draft';
 
-    final isDeleted = () {
-      final field = fields['is_deleted'];
-      if (field is Map<String, dynamic>) {
-        final boolValue = field['booleanValue'];
-        if (boolValue is bool) return boolValue;
-      }
-      return false;
-    }();
-
     return Event(
       eventId: eventId,
       title: title,
+      description: stringField('description') ?? '',
       coverImageUrl: stringField('cover_image_url') ?? '',
       date: stringField('date') ?? '',
       startTime: stringField('start_time') ?? '',
       endTime: stringField('end_time') ?? '',
+      eventMode: stringField('event_mode') ?? '',
+      location: stringField('location'),
+      streamLink: stringField('stream_link'),
+      hostName: stringField('host_name') ?? '',
+      guestSpeaker: stringField('guest_speaker'),
+      contactEmails: arrayField('contact_emails') ?? [],
       tags: arrayField('tags') ?? [],
+      isOpenToGuests: boolField('is_open_to_guests'),
       slotsTotal: intField('slots_total') ?? 0,
       registeredCount: intField('registered_count') ?? 0,
       status: status,
-      isDeleted: isDeleted,
+      isDeleted: boolField('is_deleted'),
     );
   }
 }
