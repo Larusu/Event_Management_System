@@ -2,11 +2,12 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'event.g.dart';
 
-/// API-facing event detail representation.
+/// API-facing event representation (shared by the feed and detail endpoints).
 ///
-/// Matches the locked API doc response shape for GET /events/{eventId}.
-/// Firestore additionally tracks `status`, `organizer_uid`, and `is_deleted`,
-/// none of which are ever returned in an API response.
+/// Matches the locked API doc response shape. Firestore also tracks `status`,
+/// `organizer_uid`, and `is_deleted`; `status` and `is_deleted` are read into
+/// the model for server-side feed filtering but are NEVER serialized into an
+/// API response. `organizer_uid` is not modeled.
 @JsonSerializable(fieldRename: FieldRename.snake)
 class Event {
   /// Creates an [Event].
@@ -28,6 +29,8 @@ class Event {
     this.location,
     this.streamLink,
     this.guestSpeaker,
+    this.status = 'draft',
+    this.isDeleted = false,
   });
 
   /// Creates an [Event] from a JSON map.
@@ -84,13 +87,23 @@ class Event {
   /// Current confirmed registrations.
   final int registeredCount;
 
-  /// Converts this [Event] to a JSON map with snake_case keys.
-  ///
-  /// Includes `slots_remaining`, computed server-side as
-  /// `slots_total - registered_count`.
+  /// Event status (e.g. `approved`); internal, used for feed filtering only.
+  @JsonKey(includeToJson: false, includeFromJson: false)
+  final String status;
+
+  /// Soft-delete flag; internal, used for feed filtering only.
+  @JsonKey(includeToJson: false, includeFromJson: false)
+  final bool isDeleted;
+
+  /// Remaining slots = total - registered.
+  int get slotsRemaining => slotsTotal - registeredCount;
+
+  /// Converts this [Event] to a JSON map with snake_case keys, including the
+  /// computed `slots_remaining`.
   Map<String, dynamic> toJson() {
     final json = _$EventToJson(this);
-    json['slots_remaining'] = slotsTotal - registeredCount;
+    json['slots_remaining'] = slotsRemaining;
     return json;
   }
 }
+
