@@ -38,6 +38,8 @@ class User {
         name: name ?? this.name,
         contact: contact ?? this.contact,
         role: role,
+        createdAt: createdAt,
+        lastLoginAt: lastLoginAt,
       );
 
   static DateTime? _parseDate(dynamic value) {
