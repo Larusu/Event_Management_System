@@ -16,7 +16,10 @@ class ApiException implements Exception {
   factory ApiException.fromResponse(Map<String, dynamic> json) {
     final code = json['code'] as String?;
     final message = json['message'] as String? ??
-        (code != null ? AuthErrorCodes.defaultMessages[code] : null) ??
+        (code != null
+            ? (AuthErrorCodes.defaultMessages[code] ??
+                EventErrorCodes.defaultMessages[code])
+            : null) ??
         'Something went wrong. Please try again.';
     return ApiException(message, code: code);
   }

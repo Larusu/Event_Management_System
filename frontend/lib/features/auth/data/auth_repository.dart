@@ -54,7 +54,29 @@ class AuthRepository {
   Future<void> forgotPassword(String email) async {
     await _api.post(ApiRoutes.forgotPassword, {'email': email}, auth: false);
   }
-    
+
+  Future<User> updateProfile({
+    required String currentPassword,
+    required String name,
+    required String contact,
+    String? newPassword,
+  }) async {
+    final body = <String, dynamic>{
+      'current_password': currentPassword,
+      'name': name,
+      'contact': contact,
+    };
+    if (newPassword != null && newPassword.isNotEmpty) {
+      body['new_password'] = newPassword;
+    }
+    final response = await _api.patch(ApiRoutes.usersMe, body);
+    final userJson = response.data['user'];
+    if (userJson is! Map<String, dynamic>) {
+      throw const ApiException('Something went wrong. Please try again.');
+    }
+    return User.fromJson(userJson);
+  }
+
   Future<User> fetchCurrentUser() async {
     final response = await _api.get(ApiRoutes.usersMe);
     final userJson = response.data['user'];

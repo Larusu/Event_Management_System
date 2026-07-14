@@ -22,11 +22,13 @@ class AuthProvider extends ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _errorCode;
 
   AuthStatus get status => _status;
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get errorCode => _errorCode;
 
   @override
   void dispose() {
@@ -76,6 +78,50 @@ class AuthProvider extends ChangeNotifier {
         ));
   }
 
+  /// Updates the signed-in user's profile via PATCH /users/me.
+  ///
+  /// Deliberately does NOT go through [_run]: a failed update (e.g. AUTH010
+  /// wrong current_password) is an expected form error, not a session failure,
+  /// so [_status] must stay [AuthStatus.authenticated] and the current session
+  /// must be preserved. On success only name/contact are updated locally, per
+  /// the Feature 2 doc — no forced sign-out after a password change.
+  Future<bool> updateProfile({
+    required String currentPassword,
+    required String name,
+    required String contact,
+    String? newPassword,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _errorCode = null;
+    notifyListeners();
+
+    try {
+      final updated = await _repository.updateProfile(
+        currentPassword: currentPassword,
+        name: name,
+        contact: contact,
+        newPassword: newPassword,
+      );
+      final current = _currentUser;
+      _currentUser = current == null
+          ? updated
+          : current.copyWith(name: updated.name, contact: updated.contact);
+      return true;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      _errorCode = e.code;
+      return false;
+    } catch (_) {
+      _errorMessage = 'Something went wrong. Please try again.';
+      _errorCode = null;
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> signOut() async {
     await _repository.signOut();
     _currentUser = null;
@@ -106,8 +152,9 @@ class AuthProvider extends ChangeNotifier {
 
   /// Clears any surfaced error (e.g. when the user edits the form again).
   void clearError() {
-    if (_errorMessage == null) return;
+    if (_errorMessage == null && _errorCode == null) return;
     _errorMessage = null;
+    _errorCode = null;
     notifyListeners();
   }
 
@@ -125,10 +172,12 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on ApiException catch (e) {
       _errorMessage = e.message;
+      _errorCode = e.code;
       _status = AuthStatus.unauthenticated;
       return false;
     } catch (_) {
       _errorMessage = 'Something went wrong. Please try again.';
+      _errorCode = null;
       _status = AuthStatus.unauthenticated;
       return false;
     } finally {

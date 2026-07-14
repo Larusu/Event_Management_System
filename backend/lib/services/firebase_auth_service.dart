@@ -190,14 +190,15 @@ class FirebaseAuthService {
       return decoded.claims.subject; // the uid from the JWT sub claim
     } catch (e) {
       throw AuthException(
-        AuthErrorCode.invalidToken, 'Invalid or expired token.',
+        AuthErrorCode.invalidToken,
+        'Invalid or expired token.',
       );
     }
   }
 
   /// Reads the `users/{uid}` document and returns it merged with `uid`.
   /// Throws [AuthException] with AUTH004 if no document exists.
-  static Future<Map<String, dynamic>>getUserByUid(String uid) async {
+  static Future<Map<String, dynamic>> getUserByUid(String uid) async {
     final doc = await _getUserDocument(uid);
     if (doc == null) {
       throw AuthException(AuthErrorCode.userNotFound, 'User not found');
@@ -229,25 +230,31 @@ class FirebaseAuthService {
 
     // Check permission. AUTH003
     if (requesterRole != 'faculty' && requesterRole != 'super_admin') {
-      throw AuthException(AuthErrorCode.insufficientPermission, 
-        'You do not have permission to assign this role.');
+      throw AuthException(
+        AuthErrorCode.insufficientPermission,
+        'You do not have permission to assign this role.',
+      );
     }
 
     // Faculty may only assign `organizer`; assigning any other valid role is
     // a permission failure, not an invalid-role error. AUTH003
     if (requesterRole == 'faculty' && newRole != 'organizer') {
-      throw AuthException(AuthErrorCode.insufficientPermission, 
-        'You do not have permission to assign this role.');
+      throw AuthException(
+        AuthErrorCode.insufficientPermission,
+        'You do not have permission to assign this role.',
+      );
     }
 
     // Self-promotion check. AUTH003
     if (targetUid == requesterUid) {
-      throw AuthException(AuthErrorCode.insufficientPermission, 
-        'Cannot promote yourself.');
+      throw AuthException(
+        AuthErrorCode.insufficientPermission,
+        'Cannot promote yourself.',
+      );
     }
 
     final existing = await _getUserDocument(targetUid);
-    
+
     // Check target exists. AUTH004
     if (existing == null) {
       throw AuthException(AuthErrorCode.userNotFound, 'Target user not found');
@@ -264,7 +271,7 @@ class FirebaseAuthService {
   /// `updated_at`. Throws [AuthException] with AUTH004 if the user is missing.
   static Future<void> deactivateUser(String uid) async {
     final existing = await _getUserDocument(uid);
-    
+
     // Check target exists. AUTH004
     if (existing == null) {
       throw AuthException(AuthErrorCode.userNotFound, 'Target user not found');
@@ -280,12 +287,12 @@ class FirebaseAuthService {
   /// with is_deleted == true -> AUTH006 (no email sent either way). For an
   /// active match, asks the Identity Toolkit to send the PASSWORD_RESET email
   /// (sendOobCode); Firebase sends it and hosts the reset page - no in-app
-  /// reset screen. 
+  /// reset screen.
   static Future<void> forgotPassword({required String email}) async {
     final normalizedEmail = email.trim().toLowerCase();
-    
+
     final userDoc = await _getUserDocumentByEmail(normalizedEmail);
-    if(userDoc == null){
+    if (userDoc == null) {
       throw AuthException(AuthErrorCode.userNotFound, 'User not found');
     }
 
@@ -299,6 +306,91 @@ class FirebaseAuthService {
 
     await _sendPasswordResetEmail(normalizedEmail);
   }
+
+  /// Updates the user's profile and/or password.
+  ///
+  /// Enforces the all-or-nothing rule: [currentPassword] is verified via
+  /// the Identity Toolkit before any Firestore writes occur. If a [newPassword]
+  /// is provided, it updates the Firebase Auth record. Then, patches Firestore.
+  static Future<Map<String, dynamic>> updateOwnProfile({
+    required String uid,
+    required String email,
+    required String currentPassword,
+    String? name,
+    String? contact,
+    String? newPassword,
+  }) async {
+    // 1. ALL-OR-NOTHING: Verify current password first
+    try {
+      final verifiedUid = await _verifyPasswordAndGetUid(
+        email: email,
+        password: currentPassword,
+      );
+      if (verifiedUid != uid) {
+        throw AuthException(
+          AuthErrorCode.currentPasswordIncorrect,
+          'Current password is incorrect.',
+          field: 'current_password', // ADDED: field parameter
+        );
+      }
+    } on AuthException catch (e) {
+      // If it's already an AuthException, check if it's the specific invalid
+      // credential one
+      if (e.code == AuthErrorCode.invalidCredentials) {
+        throw AuthException(
+          AuthErrorCode.currentPasswordIncorrect,
+          'Current password is incorrect.',
+          field: 'current_password', // ADDED: field parameter
+        );
+      }
+      // Otherwise, let it bubble up (like AUTH009 internal errors)
+      rethrow;
+    }
+
+    // 2. PASSWORD CHANGE LOGIC
+    if (newPassword != null && newPassword.trim().isNotEmpty) {
+      if (newPassword == currentPassword) {
+        throw AuthException(
+          AuthErrorCode.passwordSameAsCurrent,
+          'New password must be different from your current password.',
+          field: 'new_password', // ADDED: field parameter
+        );
+      }
+      // Update password via Admin SDK
+      await _firebaseAuth.updateUser(uid, password: newPassword);
+    }
+
+    // 3. FIRESTORE PROFILE UPDATE
+    final patchData = <String, dynamic>{
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    };
+
+    if (name != null && name.trim().isNotEmpty) {
+      patchData['name'] = name.trim();
+    }
+    if (contact != null && contact.trim().isNotEmpty) {
+      patchData['contact'] = contact.trim();
+    }
+
+    await _patchUserDocument(uid, patchData);
+
+    // 4. Return the updated user map
+    // Re-fetch to ensure we return the exact state, and strip any accidental
+    // internal fields
+    final freshDoc = await getUserByUid(uid);
+
+    return publicUserFields(freshDoc);
+  }
+
+  /// Whitelist of user fields safe to return in any response.
+  static Map<String, dynamic> publicUserFields(Map<String, dynamic> doc) => {
+    'uid': doc['uid'],
+    'email': doc['email'],
+    'name': doc['name'],
+    'contact': doc['contact'],
+    'role': doc['role'],
+    'updated_at': doc['updated_at'],
+  };
 
   // ---------------------------------------------------------------------
   // Identity Toolkit REST API
@@ -409,7 +501,10 @@ class FirebaseAuthService {
       'type': 'service_account',
       'project_id': projectId,
       'private_key_id': envMap['FIREBASE_PRIVATE_KEY_ID'],
-      'private_key': envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(r'\n', '\n'),
+      'private_key': envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(
+        r'\n',
+        '\n',
+      ),
       'client_email': envMap['FIREBASE_CLIENT_EMAIL'],
       'client_id': envMap['FIREBASE_CLIENT_ID'],
     });
@@ -485,8 +580,9 @@ class FirebaseAuthService {
     final client = await _firestoreClient();
     final projectId = _firestoreProjectId();
 
-    final fieldPaths =
-        fields.keys.map((k) => 'updateMask.fieldPaths=$k').join('&');
+    final fieldPaths = fields.keys
+        .map((k) => 'updateMask.fieldPaths=$k')
+        .join('&');
     final uri = Uri.parse(
       'https://firestore.googleapis.com/v1/projects/$projectId'
       '/databases/(default)/documents/users/$uid'
@@ -572,8 +668,9 @@ class FirebaseAuthService {
   /// Email is stored normalized (trimmed + lowercased) at registration, so
   /// callers must pass an already-normalized email for the EQUAL filter to
   /// match.
-  static Future<Map<String, dynamic>?> _getUserDocumentByEmail( String email,
-  ) async {  
+  static Future<Map<String, dynamic>?> _getUserDocumentByEmail(
+    String email,
+  ) async {
     final client = await _firestoreClient();
     final projectId = _firestoreProjectId();
 
@@ -582,8 +679,8 @@ class FirebaseAuthService {
       '/databases/(default)/documents:runQuery',
     );
 
-    final response = await client.post( 
-      uri, 
+    final response = await client.post(
+      uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'structuredQuery': {
@@ -606,7 +703,7 @@ class FirebaseAuthService {
       throw StateError(
         'Firestore query failed for email $email: '
         '${response.statusCode} ${response.body}',
-      );    
+      );
     }
 
     final decoded = jsonDecode(response.body) as List<dynamic>;
@@ -623,10 +720,10 @@ class FirebaseAuthService {
       final resourceName = document['name'] as String? ?? '';
       final uid = resourceName.split('/').last;
       String? stringField(String key) =>
-        (fields[key] as Map<String, dynamic>?)?['stringValue'] as String?;
+          (fields[key] as Map<String, dynamic>?)?['stringValue'] as String?;
       bool? boolField(String key) =>
-        (fields[key] as Map<String, dynamic>?)?['booleanValue'] as bool?;
-      
+          (fields[key] as Map<String, dynamic>?)?['booleanValue'] as bool?;
+
       return {
         'uid': uid,
         'email': stringField('email'),
@@ -647,16 +744,16 @@ class FirebaseAuthService {
   /// the email, and hosts the reset page - the app never sees the code.
   /// Only called after an active, matching Firestore user has been found,
   /// so a non-200 here is a genuine server-side failure (AUTH009).
-  static Future<void> _sendPasswordResetEmail(String email) async{ 
+  static Future<void> _sendPasswordResetEmail(String email) async {
     final apiKey = _requireApiKey();
-    final uri = Uri.parse( 
+    final uri = Uri.parse(
       'https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode'
       '?key=$apiKey',
     );
 
     http.Response response;
-    try { 
-      response = await http.post( 
+    try {
+      response = await http.post(
         uri,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -665,13 +762,14 @@ class FirebaseAuthService {
         }),
       );
     } catch (_) {
-      throw AuthException(AuthErrorCode.internalError, 
-        'Internal server error while sending reset email.'
+      throw AuthException(
+        AuthErrorCode.internalError,
+        'Internal server error while sending reset email.',
       );
     }
 
     if (response.statusCode != 200) {
-      throw AuthException( 
+      throw AuthException(
         AuthErrorCode.internalError,
         'Failed to send password reset email',
       );
