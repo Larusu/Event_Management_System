@@ -69,10 +69,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() {
       _isLoading = false;
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
+        showDialog(
+          context: context,
+          builder: (_) => Dialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            child: Padding(
+              padding: EdgeInsetsGeometry.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Icon(Icons.check_circle_outline_rounded),
+                  const SizedBox(height: 10),
+                  const Text(
+                    "Your profile has been updated successfully.",
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  AppButton(
+                    label: "Ok",
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
-        Navigator.pop(context);
       } else {
         final provider = context.read<AuthProvider>();
         final code = provider.errorCode;

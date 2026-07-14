@@ -20,7 +20,10 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Log out',
-            onPressed: () => context.read<AuthProvider>().signOut(),
+            onPressed: () {
+              context.read<AuthProvider>().signOut();
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
           ),
         ],
       ),

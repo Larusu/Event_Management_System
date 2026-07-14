@@ -1,8 +1,10 @@
+import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
 import 'package:campus_event_app/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/settings_card.dart';
 import 'package:campus_event_app/shared/widgets/header.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -75,6 +77,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: SettingsCard(
                     icon: Icons.notifications_outlined,
                     label: 'Edit notifications'),
+              ),
+              Padding(
+                padding:
+                    EdgeInsetsGeometry.symmetric(vertical: 10, horizontal: 20),
+                child: InkWell(
+                  onTap: () {
+                    context.read<AuthProvider>().signOut();
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    child: Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      color: Colors.red.shade50,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        child: Row(
+                          children: [
+                            Icon(Icons.logout,
+                                size: 22, color: Colors.red.shade700),
+                            const SizedBox(width: 16),
+                            Text(
+                              'Sign out',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.red.shade700,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

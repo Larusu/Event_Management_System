@@ -5,8 +5,8 @@ class FeaturedEventCard extends StatefulWidget {
   final String imageUrl;
   final String description;
   final String date;
-  final String start_time;
-  final String end_time;
+  final String startTime;
+  final String endTime;
 
   const FeaturedEventCard({
     super.key,
@@ -14,8 +14,8 @@ class FeaturedEventCard extends StatefulWidget {
     required this.imageUrl,
     required this.description,
     required this.date,
-    required this.start_time,
-    required this.end_time,
+    required this.startTime,
+    required this.endTime,
   });
 
   @override
@@ -93,7 +93,7 @@ class _FeaturedEventCardState extends State<FeaturedEventCard> {
                               ),
                             ),
                             Text(
-                              '${widget.start_time} - ${widget.end_time}',
+                              '${widget.startTime} - ${widget.endTime}',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 14,
@@ -129,8 +129,8 @@ class EventCard extends StatefulWidget {
   final int participants;
   final String day;
   final String date;
-  final String start_time;
-  final String end_time;
+  final String startTime;
+  final String endTime;
   final int openSlots;
   final String imageUrl;
 
@@ -140,8 +140,8 @@ class EventCard extends StatefulWidget {
     required this.participants,
     required this.day,
     required this.date,
-    required this.start_time,
-    required this.end_time,
+    required this.startTime,
+    required this.endTime,
     required this.openSlots,
     required this.imageUrl,
   });
@@ -165,68 +165,6 @@ class _EventCardState extends State<EventCard> {
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  widget.imageUrl,
-                  width: 85,
-                  height: 85,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const Spacer(),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.title,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${widget.participants} participants',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    '${widget.day}, ${widget.date}',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${widget.start_time} - ${widget.end_time}',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${widget.openSlots} open slots',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
