@@ -125,7 +125,7 @@ class EventService {
   /// Decodes and validates the incoming opaque [cursor].
   ///
   /// Returns null when no cursor is supplied, or the `{date, eventId}` payload.
-  /// Throws [EventException] with [EventErrorCode.invalidCursor] when the
+  /// Throws [EventException] with [EventErrorCode.invalidQueryParam] when the
   /// cursor is malformed or missing required fields.
   static Map<String, String>? _decodeCursor(String? cursor) {
     if (cursor == null) {
@@ -137,7 +137,10 @@ class EventService {
           decoded['eventId'] is! String ||
           (decoded['eventId'] as String).isEmpty ||
           decoded['date'] is! String) {
-        throw EventException(EventErrorCode.invalidCursor, 'Invalid cursor');
+        throw EventException(
+          EventErrorCode.invalidQueryParam,
+          'Invalid cursor',
+        );
       }
       return {
         'date': decoded['date'] as String,
@@ -145,7 +148,7 @@ class EventService {
       };
     } catch (e) {
       if (e is EventException) rethrow;
-      throw EventException(EventErrorCode.invalidCursor, 'Invalid cursor');
+      throw EventException(EventErrorCode.invalidQueryParam, 'Invalid cursor');
     }
   }
 

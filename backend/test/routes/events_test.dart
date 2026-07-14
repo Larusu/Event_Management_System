@@ -71,7 +71,7 @@ void main() {
       expect(body['code'], equals('EVT001'));
     });
 
-    test('returns 400 with EVT003 for invalid limit', () async {
+    test('returns 400 with EVT001 for invalid limit', () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
 
@@ -86,11 +86,11 @@ void main() {
       expect(response.statusCode, equals(400));
       final body = jsonDecode(await response.body()) as Map<String, dynamic>;
       expect(body['success'], isFalse);
-      expect(body['code'], equals('EVT003'));
+      expect(body['code'], equals('EVT001'));
       expect(body['message'], contains('Invalid limit'));
     });
 
-    test('returns 400 with EVT003 for negative limit', () async {
+    test('returns 400 with EVT001 for negative limit', () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
 
@@ -105,10 +105,10 @@ void main() {
       expect(response.statusCode, equals(400));
       final body = jsonDecode(await response.body()) as Map<String, dynamic>;
       expect(body['success'], isFalse);
-      expect(body['code'], equals('EVT003'));
+      expect(body['code'], equals('EVT001'));
     });
 
-    test('returns 400 with EVT003 for limit=0', () async {
+    test('returns 400 with EVT001 for limit=0', () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
 
@@ -123,7 +123,7 @@ void main() {
       expect(response.statusCode, equals(400));
       final body = jsonDecode(await response.body()) as Map<String, dynamic>;
       expect(body['success'], isFalse);
-      expect(body['code'], equals('EVT003'));
+      expect(body['code'], equals('EVT001'));
     });
 
     test('tags parameter is URL-decoded', () async {
