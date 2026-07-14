@@ -14,6 +14,9 @@ import 'package:http/http.dart' as http;
 /// Handles querying the events collection with filtering, search, and
 /// cursor-based pagination.
 class EventService {
+  /// Number of documents fetched from Firestore per batch while scanning.
+  static const int _batchSize = 100;
+
   static Future<http.Client> _firestoreClient() async {
     final envMap = FirebaseConfig.envMap;
     final projectId = envMap['FIREBASE_PROJECT_ID'];
@@ -25,7 +28,8 @@ class EventService {
       'type': 'service_account',
       'project_id': projectId,
       'private_key_id': envMap['FIREBASE_PRIVATE_KEY_ID'],
-      'private_key': envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(r'\n', '\n'),
+      'private_key':
+          envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(r'\n', '\n'),
       'client_email': envMap['FIREBASE_CLIENT_EMAIL'],
       'client_id': envMap['FIREBASE_CLIENT_ID'],
     });
@@ -50,41 +54,119 @@ class EventService {
     return projectId;
   }
 
-  /// Fetches events with optional filtering and pagination.
+  /// Fetches a page of events with optional filtering and pagination.
   ///
-  /// - Fetches events ordered by event_id (uses single-field index)
-  /// - Applies `status == "approved"` and `is_deleted == false` filters client-side
-  /// - `tags`: comma-separated, URL-decoded, matched case-sensitively
+  /// Firestore is queried in batches ordered by `date` ascending (then document
+  /// ID as a tiebreaker) - a chronological feed. This uses only single-field
+  /// indexes: there are no where-filters (`status == "approved"`,
+  /// `is_deleted == false`, `tags`, and `search` are applied client-side).
+  /// Because filtering happens after fetching, we keep pulling batches until
+  /// the page is full or the collection is exhausted - this prevents a page
+  /// from ending early (and silently dropping matching events) just because a
+  /// batch happened to be mostly filtered out.
+  ///
+  /// Note: documents without a `date` field are excluded by Firestore's
+  /// order-by, which is the intended behavior for a dated event feed.
+  ///
+  /// - `tags`: comma-separated, URL-decoded, matched case-sensitively (ANY)
   /// - `search`: case-insensitive substring match on title
-  /// - `cursor`: base64-encoded JSON `{eventId}` for pagination
-  /// - `limit`: max number of results after client-side filtering (default 20)
-  static Future<List<Event>> fetchEvents({
+  /// - `cursor`: base64-encoded JSON `{date, eventId}` for pagination
+  /// - `limit`: max number of results returned (default 20)
+  ///
+  /// Returns an [EventPage] with the matched events and the cursor payload to
+  /// resume from on the next page (null when there are no more results).
+  static Future<EventPage> fetchEvents({
     String? tags,
     String? search,
     String? cursor,
     int limit = 20,
   }) async {
-    if (cursor != null) {
-      try {
-        final decoded = jsonDecode(utf8.decode(base64.decode(cursor)));
-        if (decoded is! Map<String, dynamic> ||
-            !decoded.containsKey('eventId')) {
-          throw EventException(EventErrorCode.invalidCursor, 'Invalid cursor');
+    final startAfter = _decodeCursor(cursor);
+
+    final matched = <Event>[];
+    // Where the next Firestore batch resumes. Starts at the incoming cursor and
+    // advances by the LAST document scanned each batch, so we keep moving
+    // forward even through documents that get filtered out.
+    var batchStartAfter = startAfter;
+    // The sort position (date + id) of the last event we actually added to the
+    // page. This - not the last doc scanned - is what the next client page must
+    // resume after.
+    Map<String, String>? lastMatched;
+    var exhausted = false;
+
+    while (matched.length < limit && !exhausted) {
+      final batch = await _fetchBatch(startAfter: batchStartAfter);
+
+      // Firestore returned fewer docs than requested -> no more docs exist.
+      if (batch.docCount < _batchSize) {
+        exhausted = true;
+      }
+      if (batch.lastDoc != null) {
+        batchStartAfter = batch.lastDoc;
+      }
+
+      for (final event in batch.events) {
+        if (_passesFilters(event, tags: tags, search: search)) {
+          matched.add(event);
+          lastMatched = {'date': event.date, 'eventId': event.eventId};
+          if (matched.length == limit) {
+            break;
+          }
         }
-      } catch (e) {
-        if (e is EventException) rethrow;
-        throw EventException(EventErrorCode.invalidCursor, 'Invalid cursor');
       }
     }
 
+    // A full page means there may be more results, so hand back a cursor.
+    // Stopping because the collection ran out means this is the last page.
+    final nextCursor = matched.length == limit ? lastMatched : null;
+    return EventPage(events: matched, nextCursor: nextCursor);
+  }
+
+  /// Decodes and validates the incoming opaque [cursor].
+  ///
+  /// Returns null when no cursor is supplied, or the `{date, eventId}` payload.
+  /// Throws [EventException] with [EventErrorCode.invalidCursor] when the
+  /// cursor is malformed or missing required fields.
+  static Map<String, String>? _decodeCursor(String? cursor) {
+    if (cursor == null) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(utf8.decode(base64.decode(cursor)));
+      if (decoded is! Map<String, dynamic> ||
+          decoded['eventId'] is! String ||
+          (decoded['eventId'] as String).isEmpty ||
+          decoded['date'] is! String) {
+        throw EventException(EventErrorCode.invalidCursor, 'Invalid cursor');
+      }
+      return {
+        'date': decoded['date'] as String,
+        'eventId': decoded['eventId'] as String,
+      };
+    } catch (e) {
+      if (e is EventException) rethrow;
+      throw EventException(EventErrorCode.invalidCursor, 'Invalid cursor');
+    }
+  }
+
+  /// Fetches a single batch of events from Firestore ordered by date then id.
+  ///
+  /// Returns the parsed events plus the raw document count and the sort
+  /// position of the last document seen. Exhaustion is detected from the raw
+  /// document count (not the parsed count) so filtered/unparseable docs can't
+  /// be mistaken for the end of the collection, and the scan cursor advances by
+  /// the last document seen so a bad document can never stall pagination.
+  static Future<_EventBatch> _fetchBatch({
+    Map<String, String>? startAfter,
+    int batchSize = _batchSize,
+  }) async {
     final client = await _firestoreClient();
     final projectId = _firestoreProjectId();
 
-    // Fetch with pagination limit (may return more before client-side filtering)
-    final fetchLimit = limit * 3; // Fetch extra to account for client-side filtering
     final structuredQuery = _buildQuery(
-      cursor: cursor,
-      limit: fetchLimit,
+      projectId: projectId,
+      startAfter: startAfter,
+      limit: batchSize,
     );
 
     final uri = Uri.parse(
@@ -112,47 +194,57 @@ class EventService {
 
     final decoded = jsonDecode(response.body) as List<dynamic>;
     final events = <Event>[];
+    var docCount = 0;
+    Map<String, String>? lastDoc;
 
     for (final entry in decoded) {
+      // runQuery rows may be bare readTime entries with no document key.
+      final row = entry as Map<String, dynamic>?;
+      final document = row?['document'] as Map<String, dynamic>?;
+      if (document == null) {
+        continue;
+      }
+
+      docCount++;
+      final fields = document['fields'] as Map<String, dynamic>? ?? {};
+      final resourceName = document['name'] as String? ?? '';
+      final eventId = resourceName.split('/').last;
+      // Read date directly so the scan cursor is correct even if the full parse
+      // fails. Every returned doc has a date (order-by excludes docs without).
+      final dateField = fields['date'] as Map<String, dynamic>?;
+      final date = dateField?['stringValue'] as String? ?? '';
+      lastDoc = {'date': date, 'eventId': eventId};
+
       try {
-        final row = entry as Map<String, dynamic>;
-        final document = row['document'] as Map<String, dynamic>?;
-        if (document == null) {
-          continue;
-        }
-
-        final fields = document['fields'] as Map<String, dynamic>? ?? {};
-        final resourceName = document['name'] as String? ?? '';
-        final eventId = resourceName.split('/').last;
-
         final event = _parseEventFromFields(fields, eventId);
         if (event != null) {
           events.add(event);
         }
       } catch (_) {
-        // Skip malformed entries - don't let one bad document crash the whole query
+        // Skip a malformed document - don't let one bad doc crash the query.
         continue;
       }
     }
 
-    // Apply client-side filters for fields that require composite indexes
-    return _applyClientFilters(events, tags: tags, search: search, limit: limit);
+    return _EventBatch(events: events, lastDoc: lastDoc, docCount: docCount);
   }
 
   static Map<String, dynamic> _buildQuery({
-    String? cursor,
+    required String projectId,
+    Map<String, String>? startAfter,
     int limit = 20,
   }) {
-    // Use only single-field indexes by:
-    // 1. Not filtering by status (filter client-side)
-    // 2. Ordering by document ID (__name__) for pagination
-    // Firestore orders by __name__ which is the document path
-    final query = {
+    // Chronological order (date, then document id as a stable tiebreaker).
+    // Both are covered by single-field indexes, so no composite index needed.
+    final query = <String, dynamic>{
       'from': [
         {'collectionId': 'events'},
       ],
-      // No filters - we'll filter client-side
       'orderBy': [
+        {
+          'field': {'fieldPath': 'date'},
+          'direction': 'ASCENDING',
+        },
         {
           'field': {'fieldPath': '__name__'},
           'direction': 'ASCENDING',
@@ -161,61 +253,73 @@ class EventService {
       'limit': limit,
     };
 
-    if (cursor != null) {
-      // Cursor is now based on eventId (document ID)
-      final cursorData = jsonDecode(
-        utf8.decode(base64.decode(cursor)),
-      ) as Map<String, dynamic>;
-      // Use the full document path for startAt
-      query['startAt'] = ['projects/${FirebaseConfig.envMap['FIREBASE_PROJECT_ID']}/databases/(default)/documents/events/${cursorData['eventId']}'];
+    if (startAfter != null) {
+      query['startAt'] = buildStartAtCursor(
+        projectId: projectId,
+        date: startAfter['date'] ?? '',
+        eventId: startAfter['eventId'] ?? '',
+      );
     }
 
     return query;
   }
 
-  /// Filters events client-side for fields that require composite indexes.
-  /// This is necessary because Firestore single-field indexes can only filter
-  /// on one field efficiently.
-  static List<Event> _applyClientFilters(
-    List<Event> events, {
+  /// Builds the Firestore `startAt` Cursor object used to resume pagination
+  /// strictly after the event identified by [date] and [eventId].
+  ///
+  /// The value order must match the query's order-by (date, then `__name__`).
+  /// Exposed so the cursor structure can be unit-tested without a live
+  /// Firestore.
+  static Map<String, dynamic> buildStartAtCursor({
+    required String projectId,
+    required String date,
+    required String eventId,
+  }) {
+    final docPath = 'projects/$projectId/databases/(default)'
+        '/documents/events/$eventId';
+    return {
+      'values': [
+        {'stringValue': date},
+        {'referenceValue': docPath},
+      ],
+      // Exclusive: resume strictly after this document.
+      'before': false,
+    };
+  }
+
+  /// Client-side filter predicate for a single event.
+  ///
+  /// Applied per event during the batch scan (fields here would otherwise need
+  /// Firestore composite indexes).
+  static bool _passesFilters(
+    Event event, {
     String? tags,
     String? search,
-    int limit = 20,
   }) {
-    final filtered = events.where((event) {
-      // Filter by status == "approved"
-      if (event.status != 'approved') {
+    if (event.status != 'approved') {
+      return false;
+    }
+    if (event.isDeleted) {
+      return false;
+    }
+
+    // Tags: match if ANY requested tag is present (case-sensitive).
+    if (tags != null && tags.isNotEmpty) {
+      final eventTags = event.tags.toSet();
+      final filterTags = tags.split(',').map((t) => t.trim()).toSet();
+      if (!eventTags.any(filterTags.contains)) {
         return false;
       }
+    }
 
-      // Filter by is_deleted == false
-      if (event.isDeleted) {
+    // Search: case-insensitive substring match on title.
+    if (search != null && search.isNotEmpty) {
+      if (!event.title.toLowerCase().contains(search.toLowerCase())) {
         return false;
       }
+    }
 
-      // Filter by tags (case-sensitive)
-      if (tags != null && tags.isNotEmpty) {
-        final tagSet = event.tags.toSet();
-        final filterTags = tags.split(',').map((t) => t.trim()).toSet();
-        // Match if ANY filter tag is in event's tags
-        if (!tagSet.any((tag) => filterTags.contains(tag))) {
-          return false;
-        }
-      }
-
-      // Filter by search (case-insensitive on title)
-      if (search != null && search.isNotEmpty) {
-        final searchLower = search.toLowerCase();
-        if (!event.title.toLowerCase().contains(searchLower)) {
-          return false;
-        }
-      }
-
-      return true;
-    }).toList();
-
-    // Apply limit after filtering
-    return filtered.take(limit).toList();
+    return true;
   }
 
   static Event? _parseEventFromFields(
@@ -230,6 +334,7 @@ class EventService {
       if (value == null) return null;
       return int.tryParse(value);
     }
+
     List<String>? arrayField(String key) {
       final arr = fields[key] as Map<String, dynamic>?;
       if (arr == null) {
@@ -253,14 +358,8 @@ class EventService {
       return null;
     }
 
-    // eventId is derived from document ID (resourceName)
-    // This is the unique identifier for the event
-    final eventIdFromDoc = eventId;
-
-    // Extract status field
     final status = stringField('status') ?? 'draft';
 
-    // Extract is_deleted field safely
     final isDeleted = () {
       final field = fields['is_deleted'];
       if (field is Map<String, dynamic>) {
@@ -271,7 +370,7 @@ class EventService {
     }();
 
     return Event(
-      eventId: eventIdFromDoc,
+      eventId: eventId,
       title: title,
       coverImageUrl: stringField('cover_image_url') ?? '',
       date: stringField('date') ?? '',
@@ -286,7 +385,40 @@ class EventService {
   }
 }
 
+/// A single page of events plus the cursor payload for the next page.
+class EventPage {
+  /// Creates a page of [events] with an optional [nextCursor] payload.
+  EventPage({required this.events, this.nextCursor});
+
+  /// The events in this page (already filtered, at most `limit`).
+  final List<Event> events;
+
+  /// `{date, eventId}` to resume after on the next page, or null if this is the
+  /// last page. The route encodes this into the opaque base64 cursor.
+  final Map<String, String>? nextCursor;
+}
+
+/// One batch of documents read from Firestore.
+class _EventBatch {
+  _EventBatch({
+    required this.events,
+    required this.docCount,
+    this.lastDoc,
+  });
+
+  /// Successfully parsed events from this batch.
+  final List<Event> events;
+
+  /// Number of raw documents returned (used to detect exhaustion).
+  final int docCount;
+
+  /// Sort position `{date, eventId}` of the last raw document seen (used to
+  /// advance the scan cursor).
+  final Map<String, String>? lastDoc;
+}
+
 /// Exception thrown when event operations fail.
 class EventException extends AppException {
+  /// Creates an [EventException] with an error [code] and [message].
   EventException(super.code, super.message);
 }

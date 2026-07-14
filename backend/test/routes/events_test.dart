@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:backend/services/event_service.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -70,7 +71,7 @@ void main() {
       expect(body['code'], equals('EVT001'));
     });
 
-    test('returns 400 with EVT001 for invalid limit', () async {
+    test('returns 400 with EVT003 for invalid limit', () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
 
@@ -85,11 +86,11 @@ void main() {
       expect(response.statusCode, equals(400));
       final body = jsonDecode(await response.body()) as Map<String, dynamic>;
       expect(body['success'], isFalse);
-      expect(body['code'], equals('EVT001'));
+      expect(body['code'], equals('EVT003'));
       expect(body['message'], contains('Invalid limit'));
     });
 
-    test('returns 400 with EVT001 for negative limit', () async {
+    test('returns 400 with EVT003 for negative limit', () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
 
@@ -104,10 +105,10 @@ void main() {
       expect(response.statusCode, equals(400));
       final body = jsonDecode(await response.body()) as Map<String, dynamic>;
       expect(body['success'], isFalse);
-      expect(body['code'], equals('EVT001'));
+      expect(body['code'], equals('EVT003'));
     });
 
-    test('returns 400 with EVT001 for limit=0', () async {
+    test('returns 400 with EVT003 for limit=0', () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
 
@@ -122,7 +123,7 @@ void main() {
       expect(response.statusCode, equals(400));
       final body = jsonDecode(await response.body()) as Map<String, dynamic>;
       expect(body['success'], isFalse);
-      expect(body['code'], equals('EVT001'));
+      expect(body['code'], equals('EVT003'));
     });
 
     test('tags parameter is URL-decoded', () async {
@@ -157,22 +158,23 @@ void main() {
   });
 
   group('Opaque cursor pagination', () {
-    test('opaque cursor contains eventId', () {
+    test('opaque cursor round-trips date and eventId', () {
       final cursorData = {
+        'date': '2024-01-15',
         'eventId': 'event123',
       };
       final encoded = base64.encode(utf8.encode(jsonEncode(cursorData)));
 
-      final decoded =
-          jsonDecode(utf8.decode(base64.decode(encoded))) as Map<String, dynamic>;
+      final decoded = jsonDecode(utf8.decode(base64.decode(encoded)))
+          as Map<String, dynamic>;
 
+      expect(decoded['date'], equals('2024-01-15'));
       expect(decoded['eventId'], equals('event123'));
     });
 
-    test('cursor validation requires eventId', () {
-      // Cursor without eventId should fail validation
+    test('returns 400 with EVT001 for cursor missing date', () async {
       final invalidCursor = base64.encode(
-        utf8.encode(jsonEncode({'date': '2024-01-15'})),
+        utf8.encode(jsonEncode({'eventId': 'event123'})),
       );
 
       final context = _MockRequestContext();
@@ -184,8 +186,38 @@ void main() {
         Uri.parse('/events?cursor=$invalidCursor'),
       );
 
-      // The route should return EVT001 for invalid cursor
-      // (This is tested in the cursor validation tests above)
+      final response = await events_route.onRequest(context);
+
+      expect(response.statusCode, equals(400));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['success'], isFalse);
+      expect(body['code'], equals('EVT001'));
+    });
+  });
+
+  group('buildStartAtCursor', () {
+    test('is a Firestore Cursor object ordered date then reference', () {
+      final startAt = EventService.buildStartAtCursor(
+        projectId: 'my-project',
+        date: '2024-01-15',
+        eventId: 'event123',
+      );
+
+      expect(startAt['before'], isFalse);
+
+      final values = startAt['values'] as List<dynamic>;
+      expect(values, hasLength(2));
+
+      final dateValue = values[0] as Map<String, dynamic>;
+      expect(dateValue['stringValue'], equals('2024-01-15'));
+
+      final refValue = values[1] as Map<String, dynamic>;
+      expect(
+        refValue['referenceValue'],
+        equals(
+          'projects/my-project/databases/(default)/documents/events/event123',
+        ),
+      );
     });
   });
 }

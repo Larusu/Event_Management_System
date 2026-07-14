@@ -5,6 +5,13 @@ import 'package:backend/services/event_service.dart';
 import 'package:backend/utils/response_helper.dart';
 import 'package:dart_frog/dart_frog.dart';
 
+/// Default page size when no `limit` query parameter is supplied.
+const _defaultLimit = 20;
+
+/// Upper bound on `limit` to protect Firestore from runaway reads. Values above
+/// this are clamped down rather than rejected.
+const _maxLimit = 100;
+
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method != HttpMethod.get) {
     return Response.json(
@@ -25,7 +32,7 @@ Future<Response> onRequest(RequestContext context) async {
     final cursorParam = query['cursor'];
     final limitParam = query['limit'];
 
-    var limit = 20;
+    var limit = _defaultLimit;
     if (limitParam != null) {
       final parsedLimit = int.tryParse(limitParam);
       if (parsedLimit == null || parsedLimit < 1) {
@@ -33,15 +40,16 @@ Future<Response> onRequest(RequestContext context) async {
           statusCode: 400,
           body: {
             'success': false,
-            'code': EventErrorCode.invalidCursor,
+            'code': EventErrorCode.invalidQueryParam,
             'message': 'Invalid limit parameter',
           },
         );
       }
-      limit = parsedLimit;
+      // Clamp oversized limits down to protect Firestore from runaway reads.
+      limit = parsedLimit > _maxLimit ? _maxLimit : parsedLimit;
     }
 
-    final events = await EventService.fetchEvents(
+    final page = await EventService.fetchEvents(
       tags: tagsParam,
       search: searchParam,
       cursor: cursorParam,
@@ -49,17 +57,13 @@ Future<Response> onRequest(RequestContext context) async {
     );
 
     String? nextCursor;
-    if (events.length == limit && events.isNotEmpty) {
-      final lastEvent = events.last;
-      final cursorData = {
-        'eventId': lastEvent.eventId,
-      };
+    if (page.nextCursor != null) {
       nextCursor = base64.encode(
-        utf8.encode(jsonEncode(cursorData)),
+        utf8.encode(jsonEncode(page.nextCursor)),
       );
     }
 
-    final responseEvents = events.map((event) {
+    final responseEvents = page.events.map((event) {
       return {
         'event_id': event.eventId,
         'title': event.title,
