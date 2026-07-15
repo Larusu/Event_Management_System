@@ -1,0 +1,42 @@
+import "package:flutter/material.dart";
+
+class NavBar extends StatelessWidget {
+  final int selectedPageIndex;
+  final ValueChanged<int> onPageSelected;
+
+  const NavBar(
+      {super.key,
+      required this.selectedPageIndex,
+      required this.onPageSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return BottomNavigationBar(
+        backgroundColor: Color(0xFF00364D),
+        currentIndex: selectedPageIndex,
+        onTap: onPageSelected,
+        type: BottomNavigationBarType.fixed,
+        unselectedItemColor: Colors.white,
+        selectedItemColor: Colors.white,
+        showUnselectedLabels: false,
+        showSelectedLabels: false,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month_outlined),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.menu),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: '',
+          ),
+        ]);
+  }
+}

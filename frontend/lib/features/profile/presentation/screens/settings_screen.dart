@@ -16,108 +16,106 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Header(
-                  header: 'Account \nSettings',
-                  views: const [],
-                  page: 'settings'),
-              Padding(
-                padding: EdgeInsetsGeometry.symmetric(vertical: 30),
-                child: const Center(
-                  child: ProfileAvatar(),
-                ),
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Header(
+                header: 'Account \nSettings',
+                views: const [],
+                page: 'settings'),
+            Padding(
+              padding: EdgeInsetsGeometry.symmetric(vertical: 30),
+              child: const Center(
+                child: ProfileAvatar(),
               ),
-              Padding(
-                padding:
-                    EdgeInsetsGeometry.symmetric(vertical: 20, horizontal: 20),
-                child: SettingsCard(
-                  icon: Icons.person_outline,
-                  label: 'Edit profile information',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const EditProfileScreen()),
-                    );
-                  },
-                ),
+            ),
+            Padding(
+              padding:
+                  EdgeInsetsGeometry.symmetric(vertical: 20, horizontal: 20),
+              child: SettingsCard(
+                icon: Icons.person_outline,
+                label: 'Edit profile information',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const EditProfileScreen()),
+                  );
+                },
               ),
-              Padding(
-                padding: EdgeInsetsGeometry.symmetric(horizontal: 20),
-                child: Text(
-                  'Application Settings',
-                  style: Theme.of(context).textTheme.titleMedium,
-                  textAlign: TextAlign.start,
-                ),
+            ),
+            Padding(
+              padding: EdgeInsetsGeometry.symmetric(horizontal: 20),
+              child: Text(
+                'Application Settings',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.start,
               ),
-              Padding(
-                padding:
-                    EdgeInsetsGeometry.symmetric(vertical: 10, horizontal: 20),
-                child: SettingsCard(
-                  icon: Icons.water_drop_outlined,
-                  label: 'Choose theme',
-                ),
+            ),
+            Padding(
+              padding:
+                  EdgeInsetsGeometry.symmetric(vertical: 10, horizontal: 20),
+              child: SettingsCard(
+                icon: Icons.water_drop_outlined,
+                label: 'Choose theme',
               ),
-              Padding(
-                padding: EdgeInsetsGeometry.symmetric(horizontal: 20),
-                child: Text(
-                  'Notification Settings',
-                  style: Theme.of(context).textTheme.titleMedium,
-                  textAlign: TextAlign.start,
-                ),
+            ),
+            Padding(
+              padding: EdgeInsetsGeometry.symmetric(horizontal: 20),
+              child: Text(
+                'Notification Settings',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.start,
               ),
-              Padding(
-                padding:
-                    EdgeInsetsGeometry.symmetric(vertical: 10, horizontal: 20),
-                child: SettingsCard(
-                    icon: Icons.notifications_outlined,
-                    label: 'Edit notifications'),
-              ),
-              Padding(
-                padding:
-                    EdgeInsetsGeometry.symmetric(vertical: 10, horizontal: 20),
-                child: InkWell(
-                  onTap: () {
-                    context.read<AuthProvider>().signOut();
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  },
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    child: Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      color: Colors.red.shade50,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
-                        child: Row(
-                          children: [
-                            Icon(Icons.logout,
-                                size: 22, color: Colors.red.shade700),
-                            const SizedBox(width: 16),
-                            Text(
-                              'Sign out',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.red.shade700,
-                                  fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
+            ),
+            Padding(
+              padding:
+                  EdgeInsetsGeometry.symmetric(vertical: 10, horizontal: 20),
+              child: SettingsCard(
+                  icon: Icons.notifications_outlined,
+                  label: 'Edit notifications'),
+            ),
+            Padding(
+              padding:
+                  EdgeInsetsGeometry.symmetric(vertical: 10, horizontal: 20),
+              child: InkWell(
+                onTap: () {
+                  context.read<AuthProvider>().signOut();
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    color: Colors.red.shade50,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          Icon(Icons.logout,
+                              size: 22, color: Colors.red.shade700),
+                          const SizedBox(width: 16),
+                          Text(
+                            'Sign out',
+                            style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.red.shade700,
+                                fontWeight: FontWeight.w500),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

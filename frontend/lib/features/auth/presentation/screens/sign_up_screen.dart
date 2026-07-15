@@ -54,11 +54,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         );
 
     if (!mounted) return;
+    if (success) {
+      Navigator.pushReplacementNamed(context, '/sign-in');
+      return;
+    }
     setState(() {
       _isLoading = false;
-      if (!success) {
-        _errorMessage = context.read<AuthProvider>().errorMessage;
-      }
+      _errorMessage = context.read<AuthProvider>().errorMessage;
     });
   }
 
