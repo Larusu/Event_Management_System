@@ -2,7 +2,6 @@ import "package:flutter/material.dart";
 
 import "../../../../shared/widgets/event_banners.dart";
 import "../../../../shared/widgets/event_cards.dart";
-import "../../../../shared/widgets/navbar.dart";
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -12,8 +11,6 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  int _selectedPageIndex = 1;
-
   @override
   Widget build(BuildContext context) {
     final List<Map<String, String>> upcomingEvents = [
@@ -71,76 +68,72 @@ class _DashboardPageState extends State<DashboardPage> {
       },
     ];
 
-    return Scaffold(
-        appBar: AppBar(title: const Text("EMS")),
-        bottomNavigationBar: NavBar(
-          selectedPageIndex: _selectedPageIndex,
-          onPageSelected: (index) {
-            setState(() {
-              _selectedPageIndex = index;
-            });
-          },
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 15.0),
+      child: Center(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Text(
+            "EMS",
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
         ),
-        body: Container(
-          padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 15.0),
-          child: Center(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                NextEventBanner(
-                    title: "Event Title 1",
-                    day: "Thursday",
-                    date: "July 9, 2026",
-                    startTime: "8:00 AM",
-                    endTime: "10:00 AM",
-                    location: "7th Floor, Gymnasium, Interweave Building"),
-                const SizedBox(height: 15),
-                const Text(
-                  "Featured Events",
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                    child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: featuredEvents.length,
-                        itemBuilder: (context, index) {
-                          final feature = featuredEvents[index];
-                          return FeaturedEventCard(
-                              title: feature["title"]!,
-                              imageUrl: feature["imageUrl"]!,
-                              description: feature["description"]!,
-                              date: feature["date"]!,
-                              startTime: feature["startTime"]!,
-                              endTime: feature["endTime"]!);
-                        })),
-                const SizedBox(height: 15),
-                const Text(
-                  "Upcoming Registered Events",
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                    child: ListView.builder(
-                        itemCount: upcomingEvents.length,
-                        itemBuilder: (context, index) {
-                          final event = upcomingEvents[index];
-                          return UpcomingEventBanner(
-                              title: event["title"]!,
-                              day: event["day"]!,
-                              date: event["date"]!,
-                              startTime: event["startTime"]!,
-                              endTime: event["endTime"]!);
-                        }))
-              ])),
-        ));
+        NextEventBanner(
+            title: "Event Title 1",
+            day: "Thursday",
+            date: "July 9, 2026",
+            startTime: "8:00 AM",
+            endTime: "10:00 AM",
+            location: "7th Floor, Gymnasium, Interweave Building"),
+        const SizedBox(height: 15),
+        const Text(
+          "Featured Events",
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+            child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: featuredEvents.length,
+                itemBuilder: (context, index) {
+                  final feature = featuredEvents[index];
+                  return FeaturedEventCard(
+                      title: feature["title"]!,
+                      imageUrl: feature["imageUrl"]!,
+                      description: feature["description"]!,
+                      date: feature["date"]!,
+                      startTime: feature["startTime"]!,
+                      endTime: feature["endTime"]!);
+                })),
+        const SizedBox(height: 15),
+        const Text(
+          "Upcoming Registered Events",
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+            child: ListView.builder(
+                itemCount: upcomingEvents.length,
+                itemBuilder: (context, index) {
+                  final event = upcomingEvents[index];
+                  return UpcomingEventBanner(
+                      title: event["title"]!,
+                      day: event["day"]!,
+                      date: event["date"]!,
+                      startTime: event["startTime"]!,
+                      endTime: event["endTime"]!);
+                }))
+      ])),
+    );
   }
 }

@@ -1,5 +1,4 @@
 import "package:flutter/material.dart";
-import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "../../../../shared/widgets/modal.dart";
 
@@ -30,7 +29,7 @@ void viewEventDetails(BuildContext context) {
   );
 }
 
-class _ViewEventDetails extends ConsumerStatefulWidget {
+class _ViewEventDetails extends StatefulWidget {
   final String title;
   final String date;
   final String day;
@@ -58,10 +57,10 @@ class _ViewEventDetails extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_ViewEventDetails> createState() => _ViewEventDetailsState();
+  State<_ViewEventDetails> createState() => _ViewEventDetailsState();
 }
 
-class _ViewEventDetailsState extends ConsumerState<_ViewEventDetails> {
+class _ViewEventDetailsState extends State<_ViewEventDetails> {
   String _names(List<Map<String, String>> people) {
     return people.map((person) => person["name"] ?? "").join(", ");
   }

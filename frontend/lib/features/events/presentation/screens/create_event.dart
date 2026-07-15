@@ -1,5 +1,4 @@
 import "package:flutter/material.dart";
-import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "../../../../shared/widgets/modal.dart";
 
@@ -7,14 +6,14 @@ void createNewEvent(BuildContext context) {
   ModalContainer.show(context: context, child: const _CreateEventModal());
 }
 
-class _CreateEventModal extends ConsumerStatefulWidget {
+class _CreateEventModal extends StatefulWidget {
   const _CreateEventModal();
 
   @override
-  ConsumerState<_CreateEventModal> createState() => _CreateEventModalState();
+  State<_CreateEventModal> createState() => _CreateEventModalState();
 }
 
-class _CreateEventModalState extends ConsumerState<_CreateEventModal> {
+class _CreateEventModalState extends State<_CreateEventModal> {
   @override
   Widget build(BuildContext context) {
     return (Padding(

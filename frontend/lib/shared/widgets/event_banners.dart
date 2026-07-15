@@ -4,8 +4,8 @@ class NextEventBanner extends StatefulWidget {
   final String title;
   final String day;
   final String date;
-  final String start_time;
-  final String end_time;
+  final String startTime;
+  final String endTime;
   final String location;
 
   const NextEventBanner({
@@ -13,8 +13,8 @@ class NextEventBanner extends StatefulWidget {
     required this.title,
     required this.day,
     required this.date,
-    required this.start_time,
-    required this.end_time,
+    required this.startTime,
+    required this.endTime,
     required this.location,
   });
 
@@ -51,7 +51,7 @@ class _NextEventBannerState extends State<NextEventBanner> {
               ),
               const Spacer(),
               Text(
-                '${widget.start_time} - ${widget.end_time}',
+                '${widget.startTime} - ${widget.endTime}',
                 style: const TextStyle(
                   color: Colors.black,
                   fontSize: 14,
@@ -85,16 +85,16 @@ class UpcomingEventBanner extends StatefulWidget {
   final String title;
   final String day;
   final String date;
-  final String start_time;
-  final String end_time;
+  final String startTime;
+  final String endTime;
 
   const UpcomingEventBanner({
     super.key,
     required this.title,
     required this.day,
     required this.date,
-    required this.start_time,
-    required this.end_time,
+    required this.startTime,
+    required this.endTime,
   });
 
   @override
@@ -141,7 +141,7 @@ class _UpcomingEventBannerState extends State<UpcomingEventBanner> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${widget.start_time} - ${widget.end_time}',
+                    '${widget.startTime} - ${widget.endTime}',
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 14,

@@ -12,7 +12,7 @@ class NavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
-        backgroundColor: Colors.blue,
+        backgroundColor: Color(0xFF00364D),
         currentIndex: selectedPageIndex,
         onTap: onPageSelected,
         type: BottomNavigationBarType.fixed,

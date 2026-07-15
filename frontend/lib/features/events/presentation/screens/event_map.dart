@@ -1,5 +1,4 @@
 import "package:flutter/material.dart";
-import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "../../../../shared/widgets/modal.dart";
 
@@ -31,7 +30,7 @@ void viewEventMap(BuildContext context) {
   );
 }
 
-class _ViewEventMap extends ConsumerStatefulWidget {
+class _ViewEventMap extends StatefulWidget {
   final String title;
   final String date;
   final String day;
@@ -61,10 +60,10 @@ class _ViewEventMap extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_ViewEventMap> createState() => _ViewEventMapState();
+  State<_ViewEventMap> createState() => _ViewEventMapState();
 }
 
-class _ViewEventMapState extends ConsumerState<_ViewEventMap> {
+class _ViewEventMapState extends State<_ViewEventMap> {
   String _names(List<Map<String, String>> people) {
     return people.map((person) => person["name"] ?? "").join(", ");
   }
@@ -170,22 +169,23 @@ class _ViewEventMapState extends ConsumerState<_ViewEventMap> {
                       ),
                       const SizedBox(height: 2),
                       ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF003B4A),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF003B4A),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Text("Registered"),
-                            const SizedBox(width: 8.0,),
-                            Icon(Icons.check),
-                          ],
-                        )
-                      ),
+                          child: Row(
+                            children: [
+                              const Text("Registered"),
+                              const SizedBox(
+                                width: 8.0,
+                              ),
+                              Icon(Icons.check),
+                            ],
+                          )),
                     ],
                   ),
                 ],

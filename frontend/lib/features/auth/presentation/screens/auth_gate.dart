@@ -1,5 +1,6 @@
 // lib/features/auth/presentation/screens/auth_gate.dart
 import 'package:campus_event_app/features/auth/presentation/screens/home_screen.dart';
+import 'package:campus_event_app/shared/widgets/main_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -15,7 +16,7 @@ class AuthGate extends StatelessWidget {
 
     switch (status) {
       case AuthStatus.authenticated:
-        return const HomeScreen();
+        return const MainShell();
       case AuthStatus.unauthenticated:
         return const SignInScreen();
       case AuthStatus.unknown:
