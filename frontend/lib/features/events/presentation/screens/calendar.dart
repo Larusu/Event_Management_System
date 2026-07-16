@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import "../../../../shared/widgets/header.dart";
 import "../../providers/calendar_provider.dart";
+import "../widgets/calendar_month_grid.dart";
 import "../widgets/calendar_time_grid.dart";
 
 class CalendarPage extends StatefulWidget {
@@ -57,9 +58,9 @@ class _CalendarBody extends StatelessWidget {
       );
     }
 
-    // Month view is built in the next step; Day and Week share the time-grid.
+    // Day and Week share the time-grid; Month is a separate square grid.
     if (calendar.viewMode == CalendarViewMode.month) {
-      return const Center(child: Text('Month view coming soon'));
+      return const CalendarMonthGrid();
     }
     return const CalendarTimeGrid();
   }

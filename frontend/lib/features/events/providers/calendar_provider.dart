@@ -85,6 +85,14 @@ class CalendarProvider extends ChangeNotifier {
     load();
   }
 
+  /// Focuses [date] and switches to the Day view — used when a Month cell is
+  /// tapped to drill into that day.
+  void openDay(DateTime date) {
+    _focusedDate = _dateOnly(date);
+    _viewMode = CalendarViewMode.day;
+    load();
+  }
+
   void nextPeriod() => _shiftPeriod(1);
 
   void previousPeriod() => _shiftPeriod(-1);
