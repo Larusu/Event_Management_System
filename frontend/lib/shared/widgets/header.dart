@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../../features/events/providers/calendar_provider.dart';
 
 class Header extends StatefulWidget {
   final String header;
@@ -32,23 +35,38 @@ class _HeaderState extends State<Header> {
   @override
   Widget build(BuildContext context) {
     final isSettingsPage = widget.page == "settings";
+    final isCalendarPage = widget.page == 'calendar';
 
-    final startOfWeek = focusedDate.subtract(
-      Duration(days: focusedDate.weekday % 7),
-    );
-    final month = focusedDate.month;
+    // On the calendar page the CalendarProvider is the single source of truth
+    // for the selected view and focused date, so the Header and the calendar
+    // body can never drift apart. Other pages keep the Header's own state.
+    final calendar =
+        isCalendarPage ? context.watch<CalendarProvider>() : null;
+    final effectiveView =
+        isCalendarPage ? calendar!.viewMode.label : selectedValue;
+    final effectiveFocused =
+        isCalendarPage ? calendar!.focusedDate : focusedDate;
 
-    final monthlyDates = List.generate(
-      DateTime(focusedDate.year, focusedDate.month + 1, 0).day,
-      (index) => index + 1,
+    final startOfWeek = effectiveFocused.subtract(
+      Duration(days: effectiveFocused.weekday % 7),
     );
-    final weeklyDates = List.generate(
+
+    // Day and Week both show the focused week (Sunday-start); Month shows the
+    // 12 months of the focused year. The selected item is centered + bolded.
+    final weekDates = List.generate(
       7,
-      (index) => startOfWeek.add(Duration(days: index)).day,
+      (index) => startOfWeek.add(Duration(days: index)),
     );
-    final dailyDates = [focusedDate.day];
+    final monthDates = List.generate(
+      12,
+      (index) => DateTime(effectiveFocused.year, index + 1, 1),
+    );
 
     void previousPeriod() {
+      if (isCalendarPage) {
+        calendar!.previousPeriod();
+        return;
+      }
       setState(() {
         if (selectedValue == 'Week') {
           focusedDate = focusedDate.subtract(
@@ -68,6 +86,10 @@ class _HeaderState extends State<Header> {
     }
 
     void nextPeriod() {
+      if (isCalendarPage) {
+        calendar!.nextPeriod();
+        return;
+      }
       setState(() {
         if (selectedValue == 'Week') {
           focusedDate = focusedDate.add(
@@ -87,6 +109,10 @@ class _HeaderState extends State<Header> {
     }
 
     void goToToday() {
+      if (isCalendarPage) {
+        calendar!.goToToday();
+        return;
+      }
       setState(() {
         focusedDate = DateTime.now();
       });
@@ -113,7 +139,9 @@ class _HeaderState extends State<Header> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.header,
+                  isCalendarPage
+                      ? DateFormat('MMMM yyyy').format(effectiveFocused)
+                      : widget.header,
                   style: TextStyle(
                     color: Colors.black,
                     fontSize: 24,
@@ -174,13 +202,19 @@ class _HeaderState extends State<Header> {
                       ),
                       onSelected: (value) {
                         if (value != null) {
-                          setState(() {
-                            selectedValue = value;
-                          });
+                          if (isCalendarPage) {
+                            calendar!.setView(
+                              CalendarViewMode.fromLabel(value),
+                            );
+                          } else {
+                            setState(() {
+                              selectedValue = value;
+                            });
+                          }
                         }
-                        _scrollToToday();
+                        _scrollToSelected();
                       },
-                      initialSelection: selectedValue,
+                      initialSelection: effectiveView,
                     ),
                     const SizedBox(height: 4),
                     IconButton(
@@ -212,16 +246,18 @@ class _HeaderState extends State<Header> {
               thickness: 1,
             ),
             const SizedBox(height: 4),
-            widget.page == 'calendar'
+            isCalendarPage
                 ? CalendarHeader(
-                    key: ValueKey(
-                        '$selectedValue-${focusedDate.year}-${focusedDate.month}-${focusedDate.day}'),
-                    month: month,
-                    dates: selectedValue == "Month"
-                        ? monthlyDates
-                        : selectedValue == "Week"
-                            ? weeklyDates
-                            : dailyDates,
+                    // No ValueKey: keeping the same State (and scroll offset)
+                    // across navigation lets the strip glide the highlight to
+                    // the next cell instead of rebuilding from the left edge.
+                    isMonthView: effectiveView == "Month",
+                    dates: effectiveView == "Month" ? monthDates : weekDates,
+                    selectedDate: effectiveFocused,
+                    hasEvents: effectiveView == "Week"
+                        ? (date) => calendar!.eventsOn(date).isNotEmpty
+                        : null,
+                    onDateSelected: calendar!.goToDate,
                     onPrevious: previousPeriod,
                     onNext: nextPeriod,
                   )
@@ -365,31 +401,48 @@ class _EventsListHeaderState extends State<EventsListHeader> {
 }
 
 // CALENDAR PAGE
+//
+// A horizontally scrollable strip. Day and Week show the focused week's days
+// (weekday + day number); Month shows the 12 months of the focused year
+// (month name). The [selectedDate]'s cell is bolded/filled and auto-centered.
 class CalendarHeader extends StatefulWidget {
-  final int month;
-  final List<int> dates;
+  final List<DateTime> dates;
+  final DateTime selectedDate;
+  final bool isMonthView;
+
+  /// When non-null, cells whose date returns true get an event dot (Week view).
+  final bool Function(DateTime)? hasEvents;
+
+  /// Called when a strip cell is tapped.
+  final void Function(DateTime)? onDateSelected;
+
   final VoidCallback onPrevious;
   final VoidCallback onNext;
 
-  const CalendarHeader(
-      {super.key,
-      required this.month,
-      required this.dates,
-      required this.onPrevious,
-      required this.onNext});
+  const CalendarHeader({
+    super.key,
+    required this.dates,
+    required this.selectedDate,
+    required this.isMonthView,
+    this.hasEvents,
+    this.onDateSelected,
+    required this.onPrevious,
+    required this.onNext,
+  });
 
   @override
   State<CalendarHeader> createState() => _CalendarHeaderState();
 }
 
 class _CalendarHeaderState extends State<CalendarHeader> {
-  final year = DateTime.now().year;
+  static const Color _eventDotColor = Color(0xFF4C7F9F); // Figma --sec
+
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _scrollToToday();
+    _scrollToSelected();
   }
 
   @override
@@ -401,141 +454,129 @@ class _CalendarHeaderState extends State<CalendarHeader> {
   @override
   void didUpdateWidget(CalendarHeader oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _scrollToToday();
+    _scrollToSelected();
+  }
+
+  bool _isSelected(DateTime date) {
+    final sel = widget.selectedDate;
+    if (widget.isMonthView) {
+      return date.year == sel.year && date.month == sel.month;
+    }
+    return date.year == sel.year &&
+        date.month == sel.month &&
+        date.day == sel.day;
+  }
+
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    if (widget.isMonthView) {
+      return date.year == now.year && date.month == now.month;
+    }
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  Widget _cell(DateTime date) {
+    final isSelected = _isSelected(date);
+    // The focused cell is filled; today (when not focused) stays bold so it
+    // remains findable after navigating away.
+    final isBold = isSelected || _isToday(date);
+    final labelColor = isSelected ? Colors.white : null;
+    final weight = isBold ? FontWeight.bold : FontWeight.normal;
+    final showDot =
+        !widget.isMonthView && (widget.hasEvents?.call(date) ?? false);
+
+    final cell = Container(
+      key: isSelected ? _selectedKey : null,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isSelected ? Theme.of(context).primaryColor : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: widget.isMonthView
+          ? Text(
+              DateFormat('MMM').format(date),
+              style: TextStyle(color: labelColor, fontWeight: weight),
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  DateFormat('E').format(date),
+                  style: TextStyle(color: labelColor, fontWeight: weight),
+                ),
+                Text(
+                  date.day.toString(),
+                  style: TextStyle(color: labelColor, fontWeight: weight),
+                ),
+                const SizedBox(height: 2),
+                // Always reserve the dot's space so cell heights stay uniform.
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: !showDot
+                        ? Colors.transparent
+                        : isSelected
+                            ? Colors.white
+                            : _eventDotColor,
+                  ),
+                ),
+              ],
+            ),
+    );
+
+    if (widget.onDateSelected == null) return cell;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => widget.onDateSelected!(date),
+      child: cell,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDayView = widget.dates.length == 1;
-
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        Text(DateFormat('MMMM').format(DateTime(year, widget.month))),
+        Text(DateFormat('MMMM').format(widget.selectedDate)),
         const SizedBox(width: 4),
         IconButton(
           onPressed: widget.onPrevious,
-          icon: Icon(Icons.arrow_left),
-          padding: EdgeInsets.all(4),
+          icon: const Icon(Icons.arrow_left),
+          padding: const EdgeInsets.all(4),
         ),
-        isDayView
-            ? Expanded(
-                child: Center(
-                  child: Builder(
-                    builder: (context) {
-                      final date = widget.dates.first;
-                      final fullDate = DateTime(year, widget.month, date);
-                      final now = DateTime.now();
-
-                      final isToday = date == now.day &&
-                          widget.month == now.month &&
-                          year == now.year;
-
-                      return Container(
-                        key: isToday ? _todayKey : null,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isToday
-                              ? Theme.of(context).primaryColor
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              DateFormat('E').format(fullDate),
-                              style: TextStyle(
-                                color: isToday ? Colors.white : null,
-                                fontWeight: isToday
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                            Text(
-                              date.toString(),
-                              style: TextStyle(
-                                color: isToday ? Colors.white : null,
-                                fontWeight: isToday
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              )
-            : Expanded(
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    spacing: 40,
-                    children: widget.dates.asMap().entries.map((entry) {
-                      final date = entry.value;
-                      final fullDate = DateTime(year, widget.month, date);
-                      final now = DateTime.now();
-
-                      final isToday = fullDate.year == now.year &&
-                          fullDate.month == now.month &&
-                          fullDate.day == now.day;
-
-                      return Container(
-                        key: isToday ? _todayKey : null,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isToday
-                              ? Theme.of(context).primaryColor
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              DateFormat('E').format(fullDate),
-                              style: TextStyle(
-                                color: isToday ? Colors.white : null,
-                                fontWeight: isToday
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                            Text(
-                              date.toString(),
-                              style: TextStyle(
-                                color: isToday ? Colors.white : null,
-                                fontWeight: isToday
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-        IconButton(onPressed: widget.onNext, icon: Icon(Icons.arrow_right)),
+        Expanded(
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              spacing: 40,
+              children: widget.dates.map(_cell).toList(),
+            ),
+          ),
+        ),
+        IconButton(
+          onPressed: widget.onNext,
+          icon: const Icon(Icons.arrow_right),
+        ),
       ],
     );
   }
 }
 
 // METHODS
-final GlobalKey _todayKey = GlobalKey();
+final GlobalKey _selectedKey = GlobalKey();
 
-void _scrollToToday() {
+void _scrollToSelected() {
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (_todayKey.currentContext != null) {
+    if (_selectedKey.currentContext != null) {
       Scrollable.ensureVisible(
-        _todayKey.currentContext!,
+        _selectedKey.currentContext!,
         duration: const Duration(milliseconds: 500),
-        alignment: 0,
+        alignment: 0.5, // center the focused cell
       );
     }
   });
