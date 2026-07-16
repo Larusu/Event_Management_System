@@ -301,30 +301,7 @@ class EventModalContent extends StatelessWidget {
                 ),
               )
             : InkWell(
-                onTap: () => viewEventMap(
-                  context,
-                  title: title,
-                  date: date,
-                  startTime: startTime,
-                  endTime: endTime,
-                  location: location ?? '',
-                  description: description,
-                  participants: registeredCount,
-                  slots: slotsRemaining,
-                  guestsAllowed: isOpenToGuests,
-                  hosts: [
-                    {
-                      'name': hostName,
-                      'email':
-                          contactEmails.isNotEmpty ? contactEmails.first : '',
-                    },
-                  ],
-                  speakers: guestSpeaker != null
-                      ? [
-                          {'name': guestSpeaker!, 'email': ''},
-                        ]
-                      : const [],
-                ),
+                onTap: () => viewEventMap(context, location: location ?? ''),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
