@@ -1,7 +1,9 @@
 /// Base URL of the Dart Frog backend (Cloud Run).
-const String apiBaseUrl = String.fromEnvironment( 
+const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://127.0.0.1:8080',
+  defaultValue: 'http://192.168.100.14:8080',
+  // 192.168.100.14 ip ko po yan
+  // 127.0.0.1 default
 );
 
 /// When true, event features use mock repositories instead of hitting the
@@ -10,7 +12,7 @@ const String apiBaseUrl = String.fromEnvironment(
 // TODO(backend): set to `false` once Backend Dev B deploys
 // GET /events/{eventId}. This single flag switches the whole events feature
 // from mock data to the real API — no other UI changes required.
-const bool useMockEvents = false;
+const bool useMockEvents = true;
 
 /// Auth route paths currently implemented by the backend.
 class ApiRoutes {
@@ -26,4 +28,31 @@ class ApiRoutes {
 
   /// Single-event detail (Feature 3): `/events/{eventId}`.
   static String eventById(String eventId) => '/events/$eventId';
+
+  /// Featured events (Feature 3): `/events/featured?limit=N`.
+  static String eventsFeatured({int limit = 3}) =>
+      '/events/featured?limit=$limit';
+
+  /// Registered events (Feature 3): `/events/registered`.
+  static const String eventsRegistered = '/events/registered';
+
+  /// Next registered event (Feature 3): `/events/next-registered`.
+  static const String eventsNextRegistered = '/events/next-registered';
+
+  /// Events list with optional query/cursor/tags.
+  static String eventsList(
+      {String? q, List<String>? tags, String? cursor, int? limit}) {
+    final params = <String, String>{};
+    if (q != null && q.isNotEmpty) params['q'] = q;
+    if (tags != null) {
+      for (final tag in tags) {
+        params['tag'] = Uri.encodeComponent(tag);
+      }
+    }
+    if (cursor != null) params['cursor'] = cursor;
+    if (limit != null) params['limit'] = limit.toString();
+    if (params.isEmpty) return events;
+    final qs = params.entries.map((e) => '${e.key}=${e.value}').join('&');
+    return '$events?$qs';
+  }
 }

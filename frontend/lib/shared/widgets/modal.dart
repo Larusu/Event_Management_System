@@ -5,7 +5,7 @@ class ModalContainer {
   static void show({
     required BuildContext context,
     required Widget child,
-    double initialSize = 0.5,
+    double initialSize = 0.88,
     double minSize = 0.15,
     double maxSize = 0.9,
     List<double>? snapSizes,

@@ -6,13 +6,26 @@ class Header extends StatefulWidget {
   final List<String> views;
   final List<String>? filters;
   final String page;
+  final bool showSearch;
+  final TextEditingController? searchController;
+  final ValueChanged<String>? onSearchChanged;
+  final ValueChanged<List<String>>? onFiltersChanged;
+  final String searchHintText;
+  final String? headerSubtitle;
 
-  const Header(
-      {super.key,
-      required this.header,
-      required this.views,
-      this.filters,
-      required this.page});
+  const Header({
+    super.key,
+    required this.header,
+    required this.views,
+    this.filters,
+    required this.page,
+    this.showSearch = false,
+    this.searchController,
+    this.onSearchChanged,
+    this.onFiltersChanged,
+    this.searchHintText = 'Search events...',
+    this.headerSubtitle,
+  });
 
   @override
   State<Header> createState() => _HeaderState();
@@ -21,6 +34,7 @@ class Header extends StatefulWidget {
 class _HeaderState extends State<Header> {
   late String selectedValue;
   late DateTime focusedDate;
+  bool _isSearchOpen = false;
 
   @override
   void initState() {
@@ -32,6 +46,8 @@ class _HeaderState extends State<Header> {
   @override
   Widget build(BuildContext context) {
     final isSettingsPage = widget.page == "settings";
+    final showAccountPill = isSettingsPage || widget.page == "dashboard";
+    final showEventsHeader = !showAccountPill;
 
     final startOfWeek = focusedDate.subtract(
       Duration(days: focusedDate.weekday % 7),
@@ -94,7 +110,7 @@ class _HeaderState extends State<Header> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -116,7 +132,7 @@ class _HeaderState extends State<Header> {
                   widget.header,
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: 24,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -142,53 +158,69 @@ class _HeaderState extends State<Header> {
               ],
             ),
             const Spacer(),
-            !isSettingsPage
+            !showAccountPill
                 ? Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    DropdownMenu<String>(
-                      dropdownMenuEntries: widget.views
-                          .map(
-                            (view) => DropdownMenuEntry<String>(
-                              value: view,
-                              label: view,
-                            ),
-                          )
-                          .toList(),
-                      menuStyle: MenuStyle(
+                    if (widget.views.isNotEmpty)
+                      DropdownMenu<String>(
+                        dropdownMenuEntries: widget.views
+                            .map(
+                              (view) => DropdownMenuEntry<String>(
+                                value: view,
+                                label: view,
+                              ),
+                            )
+                            .toList(),
+                        menuStyle: MenuStyle(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        inputDecorationTheme: InputDecorationTheme(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                        ),
+                        onSelected: (value) {
+                          if (value != null) {
+                            setState(() {
+                              selectedValue = value;
+                            });
+                          }
+                          _scrollToToday();
+                        },
+                        initialSelection: selectedValue,
+                      ),
+                    if (widget.showSearch) ...[
+                      const SizedBox(height: 4),
+                      IconButton(
                         visualDensity: VisualDensity.compact,
-                      ),
-                      inputDecorationTheme: InputDecorationTheme(
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                      ),
-                      onSelected: (value) {
-                        if (value != null) {
+                        iconSize: 20,
+                        icon: Icon(_isSearchOpen ? Icons.close : Icons.search),
+                        onPressed: () {
                           setState(() {
-                            selectedValue = value;
+                            _isSearchOpen = !_isSearchOpen;
                           });
-                        }
-                        _scrollToToday();
-                      },
-                      initialSelection: selectedValue,
-                    ),
-                    const SizedBox(height: 4),
-                    IconButton(
-                      icon: const Icon(Icons.search),
-                      onPressed: () {
-                        // Handle filter action
-                      },
-                    ),
+                          if (!_isSearchOpen) {
+                            final hasText =
+                                widget.searchController?.text.isNotEmpty ??
+                                    false;
+                            widget.searchController?.clear();
+                            if (hasText) {
+                              widget.onSearchChanged?.call('');
+                            }
+                          }
+                        },
+                      ),
+                    ],
                   ])
                 : Container(
                     padding: const EdgeInsets.symmetric(
@@ -201,17 +233,43 @@ class _HeaderState extends State<Header> {
                       ),
                       borderRadius: BorderRadius.circular(50),
                     ),
-                    child:
-                        const Text("Account"), // TODO: Implement account role
+                    child: Text(widget.headerSubtitle ?? "Account"),
                   )
           ]),
-          if (!isSettingsPage) ...[
-            const SizedBox(height: 4),
+          if (showEventsHeader) ...[
+            const SizedBox(height: 2),
             Divider(
               color: Colors.grey[300],
               thickness: 1,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
+            if (_isSearchOpen)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: TextField(
+                  controller: widget.searchController,
+                  onChanged: widget.onSearchChanged,
+                  decoration: InputDecoration(
+                    hintText: widget.searchHintText,
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: widget.searchController != null &&
+                            widget.searchController!.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              widget.searchController?.clear();
+                              widget.onSearchChanged?.call('');
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
+              ),
             widget.page == 'calendar'
                 ? CalendarHeader(
                     key: ValueKey(
@@ -225,7 +283,10 @@ class _HeaderState extends State<Header> {
                     onPrevious: previousPeriod,
                     onNext: nextPeriod,
                   )
-                : EventsListHeader(filters: widget.filters)
+                : EventsListHeader(
+                    filters: widget.filters,
+                    onFiltersChanged: widget.onFiltersChanged,
+                  )
           ]
         ],
       ),
@@ -236,10 +297,12 @@ class _HeaderState extends State<Header> {
 // EVENTS LIST PAGE
 class EventsListHeader extends StatefulWidget {
   final List<String>? filters;
+  final ValueChanged<List<String>>? onFiltersChanged;
 
   const EventsListHeader({
     super.key,
     required this.filters,
+    this.onFiltersChanged,
   });
 
   @override
@@ -321,6 +384,7 @@ class _EventsListHeaderState extends State<EventsListHeader> {
           ..clear()
           ..addAll(result);
       });
+      widget.onFiltersChanged?.call(selectedFilters);
     }
   }
 
@@ -339,15 +403,17 @@ class _EventsListHeaderState extends State<EventsListHeader> {
                   spacing: 8,
                   children: selectedFilters.map((filter) {
                     return Chip(
-                      label: Text(filter),
+                      visualDensity: VisualDensity.compact,
+                      label: Text(filter, style: const TextStyle(fontSize: 12)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      deleteIcon: const Icon(Icons.close, size: 14),
+                      deleteIcon: const Icon(Icons.close, size: 12),
                       onDeleted: () {
                         setState(() {
                           selectedFilters.remove(filter);
                         });
+                        widget.onFiltersChanged?.call(selectedFilters);
                       },
                     );
                   }).toList(),
@@ -356,6 +422,8 @@ class _EventsListHeaderState extends State<EventsListHeader> {
             ),
           ),
         IconButton(
+          visualDensity: VisualDensity.compact,
+          iconSize: 20,
           icon: const Icon(Icons.filter_alt_outlined),
           onPressed: _showFilterDialog,
         ),

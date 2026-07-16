@@ -4,20 +4,22 @@ import '../../../core/network/api_exception.dart';
 import '../data/event_repository.dart';
 import '../models/event.dart';
 
-enum EventDetailStatus { loading, loaded, error }
+enum EventDetailStatus { idle, loading, loaded, error }
 
-/// Loads a single event's detail for the Event Modal. UI reads [status] /
-/// [event] / [errorMessage]; all backend work is delegated to
-/// [EventRepository]. Mirrors the try/catch pattern used by AuthProvider.
+/// Loads a single event by ID. Used by the event modal.
+///
+/// Each modal creates its own scoped instance so concurrent modals
+/// do not interfere with each other's state.
 class EventDetailProvider extends ChangeNotifier {
   final EventRepository _repository;
 
   EventDetailProvider({EventRepository? repository})
       : _repository = repository ?? createEventRepository();
 
-  EventDetailStatus _status = EventDetailStatus.loading;
+  EventDetailStatus _status = EventDetailStatus.idle;
   Event? _event;
   String? _errorMessage;
+  bool _isDisposed = false;
 
   EventDetailStatus get status => _status;
   Event? get event => _event;
@@ -26,7 +28,7 @@ class EventDetailProvider extends ChangeNotifier {
   Future<void> load(String eventId) async {
     _status = EventDetailStatus.loading;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotify();
 
     try {
       _event = await _repository.getEvent(eventId);
@@ -38,6 +40,16 @@ class EventDetailProvider extends ChangeNotifier {
       _errorMessage = 'Something went wrong. Please try again.';
       _status = EventDetailStatus.error;
     }
-    notifyListeners();
+    _safeNotify();
+  }
+
+  void _safeNotify() {
+    if (!_isDisposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 }
