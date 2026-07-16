@@ -1,9 +1,7 @@
 /// Base URL of the Dart Frog backend (Cloud Run).
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://192.168.100.14:8080',
-  // 192.168.100.14 ip ko po yan
-  // 127.0.0.1 default
+  defaultValue: 'http://localhost:8080',
 );
 
 /// When true, event features use mock repositories instead of hitting the
