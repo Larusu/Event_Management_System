@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1400" width="1000" height="1400" font-family="sans-serif">
+  <rect x="0" y="0" width="1000" height="1400" fill="#eef2f4"/>
+  <rect x="50" y="60" width="900" height="1240" rx="8" fill="#f8fafb" stroke="#2b3b42" stroke-width="8"/>
+
+  <!-- airwell -->
+  <rect x="70" y="75" width="120" height="95" rx="4" fill="none" stroke="#b3c0c6" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="130" y="128" text-anchor="middle" font-size="14" font-weight="600" fill="#859399">AIRWELL</text>
+
+  <!-- top row -->
+  <rect x="205" y="75" width="105" height="95" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="257" y="118" text-anchor="middle" font-size="12" font-weight="600" fill="#55636b">ELECTRICAL</text>
+  <text x="257" y="136" text-anchor="middle" font-size="12" font-weight="600" fill="#55636b">ROOM</text>
+
+  <rect x="320" y="75" width="80" height="95" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="360" y="124" text-anchor="middle" font-size="12" font-weight="600" fill="#55636b">TOILET 1</text>
+  <rect x="410" y="75" width="80" height="95" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="450" y="124" text-anchor="middle" font-size="12" font-weight="600" fill="#55636b">TOILET 2</text>
+  <rect x="500" y="75" width="80" height="95" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="540" y="124" text-anchor="middle" font-size="12" font-weight="600" fill="#55636b">TOILET 3</text>
+  <rect x="590" y="75" width="80" height="95" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="630" y="124" text-anchor="middle" font-size="12" font-weight="600" fill="#55636b">TOILET 4</text>
+
+  <rect x="680" y="75" width="95" height="95" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="727" y="118" text-anchor="middle" font-size="12" font-weight="600" fill="#55636b">PWD</text>
+  <text x="727" y="136" text-anchor="middle" font-size="12" font-weight="600" fill="#55636b">TOILET</text>
+
+  <rect x="800" y="75" width="150" height="95" rx="4" fill="#f3e7e7" stroke="#c9a4a4" stroke-width="2"/>
+  <text x="875" y="128" text-anchor="middle" font-size="15" font-weight="700" fill="#a15a5a">FIRE EXIT</text>
+
+  <!-- left column -->
+  <rect x="70" y="185" width="135" height="110" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="137" y="246" text-anchor="middle" font-size="16" font-weight="600" fill="#55636b">KITCHEN</text>
+
+  <rect x="70" y="310" width="135" height="130" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="137" y="370" text-anchor="middle" font-size="13" font-weight="600" fill="#55636b">CAFE ORDER</text>
+  <text x="137" y="390" text-anchor="middle" font-size="13" font-weight="600" fill="#55636b">COUNTER</text>
+
+  <rect x="70" y="470" width="150" height="220" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="145" y="574" text-anchor="middle" font-size="13" font-weight="600" fill="#55636b">LIBRARIAN'S</text>
+  <text x="145" y="594" text-anchor="middle" font-size="13" font-weight="600" fill="#55636b">AREA</text>
+
+  <!-- student lounge (cafe) -->
+  <rect x="225" y="185" width="415" height="150" rx="6" fill="#eaf1f3" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="432" y="252" text-anchor="middle" font-size="18" font-weight="600" fill="#4a5a62">STUDENT LOUNGE</text>
+  <text x="432" y="276" text-anchor="middle" font-size="16" font-weight="500" fill="#6b7a81">(CAFE)</text>
+
+  <!-- student orgs -->
+  <rect x="720" y="185" width="230" height="115" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="835" y="234" text-anchor="middle" font-size="14" font-weight="600" fill="#55636b">STUDENT</text>
+  <text x="835" y="254" text-anchor="middle" font-size="14" font-weight="600" fill="#55636b">ORGANIZATIONS' AREA</text>
+
+  <!-- dental + clinic -->
+  <rect x="760" y="320" width="190" height="95" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="855" y="374" text-anchor="middle" font-size="14" font-weight="600" fill="#55636b">DENTAL OFFICE</text>
+
+  <rect x="720" y="430" width="230" height="130" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="835" y="500" text-anchor="middle" font-size="16" font-weight="600" fill="#55636b">CLINIC</text>
+
+  <!-- student lounge (library) -->
+  <rect x="250" y="360" width="320" height="200" rx="6" fill="#eaf1f3" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="410" y="452" text-anchor="middle" font-size="18" font-weight="600" fill="#4a5a62">STUDENT LOUNGE</text>
+  <text x="410" y="476" text-anchor="middle" font-size="16" font-weight="500" fill="#6b7a81">(LIBRARY)</text>
+
+  <!-- elevator lobby + elevator -->
+  <rect x="640" y="580" width="140" height="120" rx="4" fill="#dbe7ec" stroke="#8fa9b3" stroke-width="2"/>
+  <text x="710" y="634" text-anchor="middle" font-size="14" font-weight="700" fill="#43606b">ELEVATOR</text>
+  <text x="710" y="654" text-anchor="middle" font-size="14" font-weight="700" fill="#43606b">LOBBY</text>
+
+  <rect x="800" y="565" width="135" height="130" rx="4" fill="#cdd9de" stroke="#8fa9b3" stroke-width="2"/>
+  <text x="867" y="636" text-anchor="middle" font-size="15" font-weight="700" fill="#43606b">ELEVATOR</text>
+
+  <!-- reception + stair lobby -->
+  <rect x="250" y="600" width="220" height="220" rx="4" fill="#e4eef1" stroke="#9fb3ba" stroke-width="2"/>
+  <text x="360" y="704" text-anchor="middle" font-size="15" font-weight="700" fill="#3e4f57">MAIN RECEPTION</text>
+  <text x="360" y="726" text-anchor="middle" font-size="15" font-weight="700" fill="#3e4f57">LOBBY</text>
+
+  <rect x="560" y="720" width="200" height="100" rx="4" fill="#dbe7ec" stroke="#8fa9b3" stroke-width="2"/>
+  <text x="660" y="776" text-anchor="middle" font-size="15" font-weight="700" fill="#43606b">STAIR LOBBY</text>
+
+  <!-- stairs -->
+  <g stroke="#8fa9b3" stroke-width="2">
+    <rect x="770" y="560" width="165" height="260" rx="4" fill="#e7eef1"/>
+    <line x1="770" y1="595" x2="935" y2="595"/>
+    <line x1="770" y1="630" x2="935" y2="630"/>
+    <line x1="770" y1="665" x2="935" y2="665"/>
+    <line x1="770" y1="700" x2="935" y2="700"/>
+    <line x1="770" y1="735" x2="935" y2="735"/>
+    <line x1="770" y1="770" x2="935" y2="770"/>
+  </g>
+
+  <!-- library formal / casual -->
+  <rect x="90" y="940" width="340" height="240" rx="6" fill="#eaf1f3" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="260" y="1052" text-anchor="middle" font-size="17" font-weight="600" fill="#4a5a62">LIBRARY</text>
+  <text x="260" y="1076" text-anchor="middle" font-size="15" font-weight="500" fill="#6b7a81">(FORMAL STUDY)</text>
+
+  <rect x="470" y="960" width="290" height="220" rx="6" fill="#eaf1f3" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="615" y="1062" text-anchor="middle" font-size="17" font-weight="600" fill="#4a5a62">LIBRARY</text>
+  <text x="615" y="1086" text-anchor="middle" font-size="15" font-weight="500" fill="#6b7a81">(CASUAL STUDY)</text>
+
+  <!-- library pair study (left lower) -->
+  <rect x="70" y="720" width="150" height="180" rx="4" fill="#eaf1f3" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="145" y="804" text-anchor="middle" font-size="13" font-weight="600" fill="#4a5a62">LIBRARY</text>
+  <text x="145" y="824" text-anchor="middle" font-size="12" font-weight="500" fill="#6b7a81">(PAIR STUDY)</text>
+</svg>

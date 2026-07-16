@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/roles.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../providers/event_detail_provider.dart';
+import '../screens/event_map.dart';
 
 const Color _kGrey = Color(0xFF828282);
 
@@ -289,17 +290,64 @@ class EventModalContent extends StatelessWidget {
         const SizedBox(height: 6),
 
         // Location / stream link
-        Text(
-          eventMode == 'online'
-              ? (streamLink ?? '')
-              : (location ?? ''),
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w300,
-            fontStyle: FontStyle.italic,
-            color: Colors.black,
-          ),
-        ),
+        eventMode == 'online'
+            ? Text(
+                streamLink ?? '',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w300,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.black,
+                ),
+              )
+            : InkWell(
+                onTap: () => viewEventMap(
+                  context,
+                  title: title,
+                  date: date,
+                  startTime: startTime,
+                  endTime: endTime,
+                  location: location ?? '',
+                  description: description,
+                  participants: registeredCount,
+                  slots: slotsRemaining,
+                  guestsAllowed: isOpenToGuests,
+                  hosts: [
+                    {
+                      'name': hostName,
+                      'email':
+                          contactEmails.isNotEmpty ? contactEmails.first : '',
+                    },
+                  ],
+                  speakers: guestSpeaker != null
+                      ? [
+                          {'name': guestSpeaker!, 'email': ''},
+                        ]
+                      : const [],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        location ?? '',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w300,
+                          fontStyle: FontStyle.italic,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.map_outlined,
+                      size: 15,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),        
         const SizedBox(height: 12),
 
         // Host / guest speaker + register button

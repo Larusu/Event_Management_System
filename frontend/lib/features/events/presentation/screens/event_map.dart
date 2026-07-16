@@ -1,31 +1,39 @@
 import "package:flutter/material.dart";
 
 import "../../../../shared/widgets/modal.dart";
+import "../../data/campus_map_data.dart";
+import "../widgets/floor_map_view.dart";
 
-void viewEventMap(BuildContext context) {
+void viewEventMap(
+  BuildContext context, {
+  required String title,
+  required String date,
+  required String startTime,
+  required String endTime,
+  required String location,
+  required String description,
+  required int participants,
+  required int slots,
+  required bool guestsAllowed,
+  String day = "",
+  List<Map<String, String>> hosts = const [],
+  List<Map<String, String>> speakers = const [],
+}) {
   ModalContainer.show(
     context: context,
-    child: const _ViewEventMap(
-      title: "Map Event",
-      day: "Saturday",
-      date: "May 16, 2026",
-      startTime: "1:30 PM",
-      endTime: "4:00 PM",
-      location: "7th Floor, Gymnasium, Interweave Building",
-      description:
-          "Very long description of the event. Thank you. Lorem ipsum. Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday Happy birthday",
-      participants: 14,
-      guestsAllowed: true,
-      hosts: [
-        {"name": "Sean Audric Salvador", "email": "sean.salvador@ciit.edu.ph"},
-        {"name": "Sean Audric Salvador", "email": "sean.salvador@ciit.edu.ph"},
-        {"name": "Sean Audric Salvador", "email": "sean.salvador@ciit.edu.ph"},
-      ],
-      speakers: [
-        {"name": "Jhervis Arevalo", "email": "jhervis.arevalo@ciit.edu.ph"},
-        {"name": "Jhervis Arevalo", "email": "jhervis.arevalo@ciit.edu.ph"},
-      ],
-      slots: 5,
+    child: _ViewEventMap ( 
+      title: title,
+      day: day,
+      date: date,
+      startTime: startTime,
+      endTime: endTime,
+      location: location,
+      description: description,
+      participants: participants,
+      guestsAllowed: guestsAllowed,
+      hosts: hosts,
+      speakers: speakers,
+      slots: slots,
     ),
   );
 }
@@ -75,20 +83,14 @@ class _ViewEventMapState extends State<_ViewEventMap> {
   @override
   Widget build(BuildContext context) {
     final openToGuests = widget.guestsAllowed;
+    final room = resolveRoomFromLocation(widget.location);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // TODO: Change to map
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.network(
-            "https://upload.wikimedia.org/wikipedia/commons/a/a3/Whitebulldog.jpg",
-            width: double.infinity,
-            height: 275,
-            fit: BoxFit.cover,
-          ),
-        ),
+        room != null 
+          ? FloorMapView(room: room)
+          : MapUnavailable(location: widget.location),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 16.0),
           child: Column(
