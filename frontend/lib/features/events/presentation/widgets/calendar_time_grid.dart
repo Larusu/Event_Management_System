@@ -15,8 +15,8 @@ import 'event_modal.dart';
 class CalendarTimeGrid extends StatelessWidget {
   const CalendarTimeGrid({super.key});
 
-  static const int _startHour = 8; // 8:00 AM
-  static const int _endHour = 18; // 6:00 PM
+  static const int _startHour = 0; // 12:00 AM
+  static const int _endHour = 24; // 12:00 AM next day (full 24h day)
   static const double _hourHeight = 74; // px per hour (from the Figma spacing)
   static const double _allDayHeight = 40; // top "All Day" band
   static const double _gutterWidth = 66; // left time-label column
@@ -128,9 +128,8 @@ class CalendarTimeGrid extends StatelessWidget {
         final endMin = _minutesOf(event.endTime);
         if (startMin == null || endMin == null) continue;
 
-        // Map minutes-of-day onto the grid; clamp so out-of-window events
-        // (before 8 AM / after 6 PM) still show at the edge instead of
-        // overflowing.
+        // Map minutes-of-day onto the grid; clamp as a safety net so any
+        // malformed time still renders inside the grid instead of overflowing.
         final rawTop = _yForMinutes(startMin);
         final rawBottom = _yForMinutes(endMin);
         final top = rawTop.clamp(_allDayHeight, _totalHeight).toDouble();
