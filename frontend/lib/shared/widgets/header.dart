@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../../features/events/providers/calendar_provider.dart';
 
 class Header extends StatefulWidget {
   final String header;
@@ -32,23 +35,38 @@ class _HeaderState extends State<Header> {
   @override
   Widget build(BuildContext context) {
     final isSettingsPage = widget.page == "settings";
+    final isCalendarPage = widget.page == 'calendar';
 
-    final startOfWeek = focusedDate.subtract(
-      Duration(days: focusedDate.weekday % 7),
+    // On the calendar page the CalendarProvider is the single source of truth
+    // for the selected view and focused date, so the Header and the calendar
+    // body can never drift apart. Other pages keep the Header's own state.
+    final calendar =
+        isCalendarPage ? context.watch<CalendarProvider>() : null;
+    final effectiveView =
+        isCalendarPage ? calendar!.viewMode.label : selectedValue;
+    final effectiveFocused =
+        isCalendarPage ? calendar!.focusedDate : focusedDate;
+
+    final startOfWeek = effectiveFocused.subtract(
+      Duration(days: effectiveFocused.weekday % 7),
     );
-    final month = focusedDate.month;
+    final month = effectiveFocused.month;
 
     final monthlyDates = List.generate(
-      DateTime(focusedDate.year, focusedDate.month + 1, 0).day,
+      DateTime(effectiveFocused.year, effectiveFocused.month + 1, 0).day,
       (index) => index + 1,
     );
     final weeklyDates = List.generate(
       7,
       (index) => startOfWeek.add(Duration(days: index)).day,
     );
-    final dailyDates = [focusedDate.day];
+    final dailyDates = [effectiveFocused.day];
 
     void previousPeriod() {
+      if (isCalendarPage) {
+        calendar!.previousPeriod();
+        return;
+      }
       setState(() {
         if (selectedValue == 'Week') {
           focusedDate = focusedDate.subtract(
@@ -68,6 +86,10 @@ class _HeaderState extends State<Header> {
     }
 
     void nextPeriod() {
+      if (isCalendarPage) {
+        calendar!.nextPeriod();
+        return;
+      }
       setState(() {
         if (selectedValue == 'Week') {
           focusedDate = focusedDate.add(
@@ -87,6 +109,10 @@ class _HeaderState extends State<Header> {
     }
 
     void goToToday() {
+      if (isCalendarPage) {
+        calendar!.goToToday();
+        return;
+      }
       setState(() {
         focusedDate = DateTime.now();
       });
@@ -113,7 +139,9 @@ class _HeaderState extends State<Header> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.header,
+                  isCalendarPage
+                      ? DateFormat('MMMM yyyy').format(effectiveFocused)
+                      : widget.header,
                   style: TextStyle(
                     color: Colors.black,
                     fontSize: 24,
@@ -174,13 +202,19 @@ class _HeaderState extends State<Header> {
                       ),
                       onSelected: (value) {
                         if (value != null) {
-                          setState(() {
-                            selectedValue = value;
-                          });
+                          if (isCalendarPage) {
+                            calendar!.setView(
+                              CalendarViewMode.fromLabel(value),
+                            );
+                          } else {
+                            setState(() {
+                              selectedValue = value;
+                            });
+                          }
                         }
                         _scrollToToday();
                       },
-                      initialSelection: selectedValue,
+                      initialSelection: effectiveView,
                     ),
                     const SizedBox(height: 4),
                     IconButton(
@@ -212,14 +246,15 @@ class _HeaderState extends State<Header> {
               thickness: 1,
             ),
             const SizedBox(height: 4),
-            widget.page == 'calendar'
+            isCalendarPage
                 ? CalendarHeader(
                     key: ValueKey(
-                        '$selectedValue-${focusedDate.year}-${focusedDate.month}-${focusedDate.day}'),
+                        '$effectiveView-${effectiveFocused.year}-${effectiveFocused.month}-${effectiveFocused.day}'),
+                    year: effectiveFocused.year,
                     month: month,
-                    dates: selectedValue == "Month"
+                    dates: effectiveView == "Month"
                         ? monthlyDates
-                        : selectedValue == "Week"
+                        : effectiveView == "Week"
                             ? weeklyDates
                             : dailyDates,
                     onPrevious: previousPeriod,
@@ -366,6 +401,7 @@ class _EventsListHeaderState extends State<EventsListHeader> {
 
 // CALENDAR PAGE
 class CalendarHeader extends StatefulWidget {
+  final int year;
   final int month;
   final List<int> dates;
   final VoidCallback onPrevious;
@@ -373,6 +409,7 @@ class CalendarHeader extends StatefulWidget {
 
   const CalendarHeader(
       {super.key,
+      required this.year,
       required this.month,
       required this.dates,
       required this.onPrevious,
@@ -383,7 +420,6 @@ class CalendarHeader extends StatefulWidget {
 }
 
 class _CalendarHeaderState extends State<CalendarHeader> {
-  final year = DateTime.now().year;
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -411,7 +447,7 @@ class _CalendarHeaderState extends State<CalendarHeader> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        Text(DateFormat('MMMM').format(DateTime(year, widget.month))),
+        Text(DateFormat('MMMM').format(DateTime(widget.year, widget.month))),
         const SizedBox(width: 4),
         IconButton(
           onPressed: widget.onPrevious,
@@ -424,12 +460,12 @@ class _CalendarHeaderState extends State<CalendarHeader> {
                   child: Builder(
                     builder: (context) {
                       final date = widget.dates.first;
-                      final fullDate = DateTime(year, widget.month, date);
+                      final fullDate = DateTime(widget.year, widget.month, date);
                       final now = DateTime.now();
 
                       final isToday = date == now.day &&
                           widget.month == now.month &&
-                          year == now.year;
+                          widget.year == now.year;
 
                       return Container(
                         key: isToday ? _todayKey : null,
@@ -476,7 +512,7 @@ class _CalendarHeaderState extends State<CalendarHeader> {
                     spacing: 40,
                     children: widget.dates.asMap().entries.map((entry) {
                       final date = entry.value;
-                      final fullDate = DateTime(year, widget.month, date);
+                      final fullDate = DateTime(widget.year, widget.month, date);
                       final now = DateTime.now();
 
                       final isToday = fullDate.year == now.year &&
