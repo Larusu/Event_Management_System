@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 /// Single-event detail as returned by `GET /events/{eventId}` (doc 3.5.2).
 ///
 /// Scoped to the fields the Event Modal displays. Internal fields such as
@@ -67,5 +69,41 @@ class Event {
       return value.map((e) => e.toString()).toList();
     }
     return const [];
+  }
+
+  String get displayDate {
+    try {
+      return DateFormat('MMM d, yyyy').format(DateTime.parse(date));
+    } catch (_) {
+      return date;
+    }
+  }
+
+  String get displayStartTime {
+    try {
+      final parts = startTime.split(':');
+      final t = DateTime(0, 1, 1, int.parse(parts[0]), int.parse(parts[1]));
+      return DateFormat('h:mm a').format(t);
+    } catch (_) {
+      return startTime;
+    }
+  }
+
+  String get displayEndTime {
+    try {
+      final parts = endTime.split(':');
+      final t = DateTime(0, 1, 1, int.parse(parts[0]), int.parse(parts[1]));
+      return DateFormat('h:mm a').format(t);
+    } catch (_) {
+      return endTime;
+    }
+  }
+
+  String get displayDay {
+    try {
+      return DateFormat('EEEE').format(DateTime.parse(date));
+    } catch (_) {
+      return '';
+    }
   }
 }

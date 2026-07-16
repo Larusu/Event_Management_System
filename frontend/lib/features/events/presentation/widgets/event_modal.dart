@@ -30,8 +30,8 @@ class EventModal {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ChangeNotifierProvider(
-        create: (_) => EventDetailProvider()..load(eventId),
-        child: const _EventModalView(),
+        create: (_) => EventDetailProvider(),
+        child: _EventModalView(eventId: eventId),
       ),
     );
   }
@@ -39,14 +39,30 @@ class EventModal {
 
 /// Renders the modal based on the fetch state and applies the guest-role rule
 /// for the Register button (client-side only, per doc 3.9).
-class _EventModalView extends StatelessWidget {
-  const _EventModalView();
+class _EventModalView extends StatefulWidget {
+  final String eventId;
+  const _EventModalView({required this.eventId});
+
+  @override
+  State<_EventModalView> createState() => _EventModalViewState();
+}
+
+class _EventModalViewState extends State<_EventModalView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<EventDetailProvider>().load(widget.eventId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<EventDetailProvider>();
 
     switch (provider.status) {
+      case EventDetailStatus.idle:
       case EventDetailStatus.loading:
         return const _SheetShell(
           child: SizedBox(
@@ -69,9 +85,7 @@ class _EventModalView extends StatelessWidget {
       case EventDetailStatus.loaded:
         final event = provider.event!;
         final role = context.read<AuthProvider>().currentUser?.role;
-        // Hide Register for guests when the event isn't open to guests.
-        final showRegister =
-            !(role == Roles.guest && !event.isOpenToGuests);
+        final showRegister = !(role == Roles.guest && !event.isOpenToGuests);
         return EventModalContent(
           coverImageUrl: event.coverImageUrl,
           title: event.title,
@@ -188,7 +202,7 @@ class EventModalContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: 0.9,
+      initialChildSize: 0.87,
       minChildSize: 0.5,
       maxChildSize: 0.95,
       expand: false,
@@ -290,9 +304,7 @@ class EventModalContent extends StatelessWidget {
 
         // Location / stream link
         Text(
-          eventMode == 'online'
-              ? (streamLink ?? '')
-              : (location ?? ''),
+          eventMode == 'online' ? (streamLink ?? '') : (location ?? ''),
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w300,
