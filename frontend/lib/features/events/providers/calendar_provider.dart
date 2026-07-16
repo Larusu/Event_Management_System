@@ -93,6 +93,13 @@ class CalendarProvider extends ChangeNotifier {
     load();
   }
 
+  /// Focuses [date] without changing the current view — used when a header
+  /// strip cell is tapped.
+  void goToDate(DateTime date) {
+    _focusedDate = _dateOnly(date);
+    load();
+  }
+
   void nextPeriod() => _shiftPeriod(1);
 
   void previousPeriod() => _shiftPeriod(-1);
