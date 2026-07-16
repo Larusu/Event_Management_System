@@ -3,37 +3,25 @@ import '../../../core/constants/error_codes.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../models/event.dart';
-
-/// One page of the events feed: the [events] on this page plus an opaque
-/// [nextCursor] to pass back in as `cursor` for the following page. A null
-/// [nextCursor] means the feed has been exhausted.
-class EventsPage {
-  const EventsPage({required this.events, this.nextCursor});
-
-  final List<Event> events;
-  final String? nextCursor;
-}
+import '../models/event_list_response.dart';
 
 /// Data access for the events feature. Screens depend on this interface, not on
 /// a concrete implementation, so the mock can be swapped for the real backend
 /// via the [useMockEvents] flag without touching the UI.
 abstract class EventRepository {
   Future<Event> getEvent(String eventId);
-
-  /// Fetches one page of the events feed (`GET /events`, Feature 3).
-  ///
-  /// The feed is ordered by `date` ascending. Pass the previous page's
-  /// [EventsPage.nextCursor] as [cursor] to page forward; [limit] is clamped
-  /// server-side to 100. [tags] / [search] are optional server-side filters.
-  Future<EventsPage> getEvents({
+  Future<EventListResponse> getEvents({
+    String? query,
+    List<String>? tags,
     String? cursor,
     int? limit,
-    String? tags,
-    String? search,
   });
+  Future<List<Event>> getFeaturedEvents({int limit = 3});
+  Future<List<Event>> getRegisteredEvents();
+  Future<Event?> getNextRegisteredEvent();
 }
 
-/// Talks to the real Dart Frog backend (`GET /events/{eventId}`, doc 3.5.2).
+/// Talks to the real Dart Frog backend.
 class EventApiRepository implements EventRepository {
   final ApiClient _api;
 
@@ -42,10 +30,6 @@ class EventApiRepository implements EventRepository {
   @override
   Future<Event> getEvent(String eventId) async {
     final response = await _api.get(ApiRoutes.eventById(eventId));
-    // The doc uses the key `events` for a single object; accept `event` too.
-    // TODO(backend): once live, confirm the real response envelope key against
-    // doc 3.5.2, and verify AUTH001 (expired token) and EVT002 (not found /
-    // deleted / unapproved) surface correctly through ApiException.
     final json = response.data['event'] ?? response.data['events'];
     if (json is! Map<String, dynamic>) {
       throw const ApiException('Something went wrong. Please try again.');
@@ -54,48 +38,207 @@ class EventApiRepository implements EventRepository {
   }
 
   @override
-  Future<EventsPage> getEvents({
+  Future<EventListResponse> getEvents({
+    String? query,
+    List<String>? tags,
     String? cursor,
     int? limit,
-    String? tags,
-    String? search,
   }) async {
-    final params = <String, String>{};
-    if (limit != null) params['limit'] = '$limit';
-    if (cursor != null) params['cursor'] = cursor;
-    if (tags != null) params['tags'] = tags;
-    if (search != null) params['search'] = search;
-
-    final query =
-        params.isEmpty ? '' : '?${Uri(queryParameters: params).query}';
-    final response = await _api.get('${ApiRoutes.events}$query');
-
-    // The feed merges `events` and `next_cursor` into the top-level envelope
-    // (see backend ResponseHelper.success). Feed items are a slim shape
-    // (title/date/start_time/end_time/tags/slots); Event.fromJson defaults the
-    // detail-only fields, which the calendar cells don't need.
-    final rawEvents = response.data['events'];
-    final events = rawEvents is List
-        ? rawEvents
-            .whereType<Map<String, dynamic>>()
-            .map(Event.fromJson)
-            .toList()
-        : <Event>[];
-
-    return EventsPage(
-      events: events,
-      nextCursor: response.data['next_cursor'] as String?,
+    final path = ApiEventsListHelper.buildPath(
+      query: query,
+      tags: tags,
+      cursor: cursor,
+      limit: limit,
     );
+    final response = await _api.get(path);
+    final json = response.data['events'];
+    if (json is! List) {
+      return const EventListResponse(events: []);
+    }
+    final events =
+        json.map((e) => Event.fromJson(e as Map<String, dynamic>)).toList();
+    final nextCursor = response.data['next_cursor'] as String?;
+    return EventListResponse(events: events, nextCursor: nextCursor);
+  }
+
+  @override
+  Future<List<Event>> getFeaturedEvents({int limit = 3}) async {
+    final response = await _api.get(ApiRoutes.eventsFeatured(limit: limit));
+    final json = response.data['events'];
+    if (json is! List) {
+      return const [];
+    }
+    return json.map((e) => Event.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  Future<List<Event>> getRegisteredEvents() async {
+    final response = await _api.get(ApiRoutes.eventsRegistered);
+    final json = response.data['events'];
+    if (json is! List) {
+      return const [];
+    }
+    return json.map((e) => Event.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  Future<Event?> getNextRegisteredEvent() async {
+    final response = await _api.get(ApiRoutes.eventsNextRegistered);
+    final json = response.data['event'];
+    if (json == null || json is! Map<String, dynamic>) {
+      return null;
+    }
+    return Event.fromJson(json);
+  }
+}
+
+/// Helper to build the events list query path.
+class ApiEventsListHelper {
+  const ApiEventsListHelper._();
+
+  static String buildPath({
+    String? query,
+    List<String>? tags,
+    String? cursor,
+    int? limit,
+  }) {
+    final params = <String, String>{};
+    if (query != null && query.isNotEmpty) params['q'] = query;
+    if (tags != null) {
+      for (final tag in tags) {
+        params['tag'] = Uri.encodeComponent(tag);
+      }
+    }
+    if (cursor != null) params['cursor'] = cursor;
+    if (limit != null) params['limit'] = limit.toString();
+    if (params.isEmpty) return ApiRoutes.events;
+    final qs = params.entries.map((e) => '${e.key}=${e.value}').join('&');
+    return '${ApiRoutes.events}?$qs';
   }
 }
 
 /// Returns sample data so the modal can be built and demoed before the backend
 /// ships. Pass the id `missing` to exercise the EVT002 not-found state.
-///
-// TODO(backend): once the real endpoint is verified, remove this mock and the
-// artificial 600ms delay (or keep it solely for widget tests). The `missing`
-// id shortcut is mock-only and has no backend equivalent.
 class MockEventRepository implements EventRepository {
+  final _allEvents = [
+    Event.fromJson({
+      'event_id': '1',
+      'title': 'Paws-to-Pause',
+      'description':
+          'Take a break with adorable therapy dogs! Relax, de-stress, and enjoy quality time with certified therapy animals.',
+      'cover_image_url': 'https://picsum.photos/600/400?random=1',
+      'date': '2026-07-21',
+      'start_time': '16:00',
+      'end_time': '18:30',
+      'event_mode': 'offline',
+      'location': '7th Floor, Gymnasium, Interweave Building',
+      'stream_link': null,
+      'host_name': 'Sean Audric Salvado',
+      'guest_speaker': null,
+      'contact_emails': ['sao@ciit.edu.ph'],
+      'tags': ['Students Only', 'Wellness'],
+      'is_open_to_guests': true,
+      'registered_count': 24,
+      'slots_remaining': 6,
+    }),
+    Event.fromJson({
+      'event_id': '2',
+      'title': 'Tech Talk: AI in 2026',
+      'description': 'Explore the latest in AI and machine learning.',
+      'cover_image_url': 'https://picsum.photos/600/400?random=2',
+      'date': '2026-07-22',
+      'start_time': '13:00',
+      'end_time': '15:00',
+      'event_mode': 'online',
+      'location': null,
+      'stream_link': 'https://meet.google.com/abc-defg-hij',
+      'host_name': 'Jhervis Arevalo',
+      'guest_speaker': 'Dr. Maria Santos',
+      'contact_emails': ['jeff.marquez@ciit.edu.ph'],
+      'tags': ['Technology', 'Open to All'],
+      'is_open_to_guests': true,
+      'registered_count': 45,
+      'slots_remaining': 55,
+    }),
+    Event.fromJson({
+      'event_id': '3',
+      'title': 'End of Classes',
+      'description': 'Celebrate the end of the semester!',
+      'cover_image_url': 'https://picsum.photos/600/400?random=3',
+      'date': '2026-07-25',
+      'start_time': '18:30',
+      'end_time': '21:00',
+      'event_mode': 'offline',
+      'location': 'Main Hall, Interweave Building',
+      'stream_link': null,
+      'host_name': 'Student Council',
+      'guest_speaker': null,
+      'contact_emails': ['council@ciit.edu.ph'],
+      'tags': ['Social', 'Students Only'],
+      'is_open_to_guests': false,
+      'registered_count': 120,
+      'slots_remaining': 30,
+    }),
+    Event.fromJson({
+      'event_id': '1',
+      'title': 'Paws-to-Pause',
+      'description':
+          'Take a break with adorable therapy dogs! Relax, de-stress, and enjoy quality time with certified therapy animals.',
+      'cover_image_url': 'https://picsum.photos/600/400?random=1',
+      'date': '2026-07-21',
+      'start_time': '16:00',
+      'end_time': '18:30',
+      'event_mode': 'offline',
+      'location': '7th Floor, Gymnasium, Interweave Building',
+      'stream_link': null,
+      'host_name': 'Sean Audric Salvado',
+      'guest_speaker': null,
+      'contact_emails': ['sao@ciit.edu.ph'],
+      'tags': ['Students Only', 'Wellness'],
+      'is_open_to_guests': true,
+      'registered_count': 24,
+      'slots_remaining': 6,
+    }),
+    Event.fromJson({
+      'event_id': '2',
+      'title': 'Tech Talk: AI in 2026',
+      'description': 'Explore the latest in AI and machine learning.',
+      'cover_image_url': 'https://picsum.photos/600/400?random=2',
+      'date': '2026-07-22',
+      'start_time': '13:00',
+      'end_time': '15:00',
+      'event_mode': 'online',
+      'location': null,
+      'stream_link': 'https://meet.google.com/abc-defg-hij',
+      'host_name': 'Jhervis Arevalo',
+      'guest_speaker': 'Dr. Maria Santos',
+      'contact_emails': ['jeff.marquez@ciit.edu.ph'],
+      'tags': ['Technology', 'Open to All'],
+      'is_open_to_guests': true,
+      'registered_count': 45,
+      'slots_remaining': 55,
+    }),
+    Event.fromJson({
+      'event_id': '3',
+      'title': 'End of Classes',
+      'description': 'Celebrate the end of the semester!',
+      'cover_image_url': 'https://picsum.photos/600/400?random=3',
+      'date': '2026-07-25',
+      'start_time': '18:30',
+      'end_time': '21:00',
+      'event_mode': 'offline',
+      'location': 'Main Hall, Interweave Building',
+      'stream_link': null,
+      'host_name': 'Student Council',
+      'guest_speaker': null,
+      'contact_emails': ['council@ciit.edu.ph'],
+      'tags': ['Social', 'Students Only'],
+      'is_open_to_guests': false,
+      'registered_count': 120,
+      'slots_remaining': 30,
+    }),
+  ];
+
   @override
   Future<Event> getEvent(String eventId) async {
     if (eventId == 'missing') {
@@ -104,69 +247,71 @@ class MockEventRepository implements EventRepository {
         code: EventErrorCodes.notFound,
       );
     }
-
-    return Event.fromJson({
-      'event_id': eventId,
-      'title': 'Event Details 2',
-      'description':
-          'Very long description of the event. Thank you. Lorem ipsum. '
-              'Dolor sit amet, consectetur adipiscing elit, sed do eiusmod '
-              'tempor incididunt ut labore et dolore magna aliqua.',
-      'cover_image_url': 'https://picsum.photos/600/400',
-      'date': '2026-05-16',
-      'start_time': '13:30',
-      'end_time': '16:00',
-      'event_mode': 'offline',
-      'location': '7th Floor, Gymnasium, Interweave Building',
-      'stream_link': null,
-      'host_name': 'Sean Audric Salvado',
-      'guest_speaker': 'Jhervis Arevalo',
-      'contact_emails': ['jeff.marquez@ciit.edu.ph', 'lars.timajo@ciit.edu.ph'],
-      'tags': ['Students Only', 'Technology'],
-      'is_open_to_guests': true,
-      'slots_total': 30,
-      'registered_count': 14,
-      'slots_remaining': 16,
-    });
+    return _allEvents.firstWhere(
+      (e) => e.eventId == eventId,
+      orElse: () => _allEvents.first,
+    );
   }
 
   @override
-  Future<EventsPage> getEvents({
+  Future<EventListResponse> getEvents({
+    String? query,
+    List<String>? tags,
     String? cursor,
     int? limit,
-    String? tags,
-    String? search,
   }) async {
-    // A small fixed set spanning a few days so Day/Week/Month views all render
-    // something while building the UI. Returned as a single page
-    // (nextCursor == null) — pagination is exercised against the real backend.
-    final events = <Event>[
-      Event.fromJson({
-        'event_id': 'mock-1',
-        'title': 'Orientation',
-        'date': '2026-05-14',
-        'start_time': '09:00',
-        'end_time': '11:00',
-        'tags': <String>['Education'],
-      }),
-      Event.fromJson({
-        'event_id': 'mock-2',
-        'title': 'Coding Workshop',
-        'date': '2026-05-16',
-        'start_time': '10:00',
-        'end_time': '12:00',
-        'tags': <String>['Technology'],
-      }),
-      Event.fromJson({
-        'event_id': 'mock-3',
-        'title': 'Basketball Finals',
-        'date': '2026-05-16',
-        'start_time': '13:30',
-        'end_time': '16:00',
-        'tags': <String>['Sports'],
-      }),
-    ];
-    return EventsPage(events: events, nextCursor: null);
+    var results = List<Event>.from(_allEvents);
+
+    if (query != null && query.isNotEmpty) {
+      final q = query.toLowerCase();
+      results = results
+          .where((e) =>
+              e.title.toLowerCase().contains(q) ||
+              e.description.toLowerCase().contains(q))
+          .toList();
+    }
+
+    if (tags != null && tags.isNotEmpty) {
+      results =
+          results.where((e) => e.tags.any((t) => tags.contains(t))).toList();
+    }
+
+    final startIndex = cursor != null ? int.tryParse(cursor) ?? 0 : 0;
+    final pageSize = limit ?? 10;
+    final page = results.skip(startIndex).take(pageSize).toList();
+    final nextIndex = startIndex + pageSize;
+    final nextCursor = nextIndex < results.length ? '$nextIndex' : null;
+
+    return EventListResponse(events: page, nextCursor: nextCursor);
+  }
+
+  @override
+  Future<List<Event>> getFeaturedEvents({int limit = 3}) async {
+    final now = DateTime.now();
+    final featured = _allEvents
+        .where((e) {
+          try {
+            return DateTime.parse(e.date).isAfter(now);
+          } catch (_) {
+            return false;
+          }
+        })
+        .take(limit.clamp(0, 10))
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+    return featured;
+  }
+
+  @override
+  Future<List<Event>> getRegisteredEvents() async {
+    // Stub: empty until Registration feature exists.
+    return const [];
+  }
+
+  @override
+  Future<Event?> getNextRegisteredEvent() async {
+    // Stub: null until Registration feature exists.
+    return null;
   }
 }
 

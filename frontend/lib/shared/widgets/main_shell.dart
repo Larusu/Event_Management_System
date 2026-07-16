@@ -1,5 +1,9 @@
+import 'package:campus_event_app/features/events/presentation/screens/create_event.dart';
+import 'package:campus_event_app/features/events/presentation/screens/events_screen.dart';
 import 'package:flutter/material.dart';
-
+import 'package:provider/provider.dart';
+import '../../features/auth/providers/auth_provider.dart';
+import '../../../../core/constants/roles.dart';
 import '../../features/events/presentation/screens/calendar.dart';
 import '../../features/events/presentation/screens/dashboard.dart';
 import '../../features/profile/presentation/screens/settings_screen.dart';
@@ -18,12 +22,15 @@ class _MainShellState extends State<MainShell> {
   final List<Widget> _pages = const [
     CalendarPage(),
     DashboardPage(),
-    Center(child: Text('Menu')),
+    EventsScreen(),
     SettingsScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final isGuest =
+        context.watch<AuthProvider>().currentUser?.role == Roles.guest;
+
     return Scaffold(
       bottomNavigationBar: NavBar(
         selectedPageIndex: _selectedPageIndex,
@@ -33,6 +40,12 @@ class _MainShellState extends State<MainShell> {
           });
         },
       ),
+      floatingActionButton: _selectedPageIndex == 2 && !isGuest
+          ? FloatingActionButton(
+              onPressed: () => createNewEvent(context),
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: IndexedStack(
         index: _selectedPageIndex,
         children: _pages,

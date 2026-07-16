@@ -14,32 +14,24 @@ class SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: Card(
-            elevation: 2,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: onTap,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Row(
-                  children: [
-                    Icon(icon, size: 22, color: Colors.grey.shade700),
-                    const SizedBox(width: 16),
-                    Text(label,
-                        style: const TextStyle(
-                            fontSize: 15, color: Colors.black87)),
-                  ],
-                ),
-              ),
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: Colors.grey.shade700),
+              const SizedBox(width: 16),
+              Text(label,
+                  style: const TextStyle(fontSize: 15, color: Colors.black87)),
+            ],
           ),
-        ));
+        ),
+      ),
+    );
   }
 }
