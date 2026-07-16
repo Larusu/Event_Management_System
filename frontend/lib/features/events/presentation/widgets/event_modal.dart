@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/roles.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../providers/event_detail_provider.dart';
+import '../screens/event_map.dart';
 
 const Color _kGrey = Color(0xFF828282);
 
@@ -303,15 +304,41 @@ class EventModalContent extends StatelessWidget {
         const SizedBox(height: 6),
 
         // Location / stream link
-        Text(
-          eventMode == 'online' ? (streamLink ?? '') : (location ?? ''),
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w300,
-            fontStyle: FontStyle.italic,
-            color: Colors.black,
-          ),
-        ),
+        eventMode == 'online'
+            ? Text(
+                streamLink ?? '',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w300,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.black,
+                ),
+              )
+            : InkWell(
+                onTap: () => viewEventMap(context, location: location ?? ''),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        location ?? '',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w300,
+                          fontStyle: FontStyle.italic,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.map_outlined,
+                      size: 15,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),        
         const SizedBox(height: 12),
 
         // Host / guest speaker + register button

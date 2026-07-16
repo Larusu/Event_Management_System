@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1400" width="1000" height="1400" font-family="sans-serif">
+  <rect x="0" y="0" width="1000" height="1400" fill="#eef2f4"/>
+  <rect x="50" y="60" width="900" height="1240" rx="8" fill="#f8fafb" stroke="#2b3b42" stroke-width="8"/>
+
+  <!-- top service rooms -->
+  <rect x="70" y="75" width="130" height="110" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="135" y="126" text-anchor="middle" font-size="15" font-weight="600" fill="#55636b">GARBAGE</text>
+  <text x="135" y="146" text-anchor="middle" font-size="15" font-weight="600" fill="#55636b">ROOM</text>
+
+  <rect x="210" y="75" width="120" height="110" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="270" y="126" text-anchor="middle" font-size="14" font-weight="600" fill="#55636b">ELECTRICAL</text>
+  <text x="270" y="146" text-anchor="middle" font-size="14" font-weight="600" fill="#55636b">ROOM</text>
+
+  <rect x="340" y="75" width="130" height="110" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="405" y="136" text-anchor="middle" font-size="15" font-weight="600" fill="#55636b">TOILET</text>
+
+  <rect x="480" y="75" width="130" height="110" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="545" y="126" text-anchor="middle" font-size="13" font-weight="600" fill="#55636b">ACCELOGRAM</text>
+  <text x="545" y="146" text-anchor="middle" font-size="13" font-weight="600" fill="#55636b">ROOM</text>
+
+  <rect x="770" y="75" width="180" height="110" rx="4" fill="#f3e7e7" stroke="#c9a4a4" stroke-width="2"/>
+  <text x="860" y="136" text-anchor="middle" font-size="16" font-weight="700" fill="#a15a5a">FIRE EXIT</text>
+
+  <!-- right column services -->
+  <rect x="700" y="200" width="250" height="120" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="825" y="266" text-anchor="middle" font-size="16" font-weight="600" fill="#55636b">GENSET ROOM</text>
+
+  <rect x="700" y="340" width="250" height="110" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="825" y="390" text-anchor="middle" font-size="15" font-weight="600" fill="#55636b">FIRE PUMP</text>
+  <text x="825" y="410" text-anchor="middle" font-size="15" font-weight="600" fill="#55636b">CISTERN</text>
+
+  <rect x="700" y="470" width="250" height="120" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="825" y="524" text-anchor="middle" font-size="14" font-weight="600" fill="#55636b">WAITING AREA /</text>
+  <text x="825" y="544" text-anchor="middle" font-size="14" font-weight="600" fill="#55636b">CARETAKER ROOM</text>
+
+  <!-- parking area (big) -->
+  <rect x="70" y="200" width="590" height="920" rx="6" fill="#eaf1f3" stroke="#b3c0c6" stroke-width="2"/>
+  <g stroke="#cdd9de" stroke-width="2">
+    <line x1="70" y1="320" x2="360" y2="320"/>
+    <line x1="70" y1="440" x2="360" y2="440"/>
+    <line x1="70" y1="560" x2="360" y2="560"/>
+    <line x1="70" y1="680" x2="360" y2="680"/>
+    <line x1="70" y1="800" x2="360" y2="800"/>
+    <line x1="70" y1="920" x2="360" y2="920"/>
+    <line x1="70" y1="1040" x2="360" y2="1040"/>
+    <line x1="360" y1="200" x2="360" y2="1120"/>
+  </g>
+  <text x="300" y="255" text-anchor="middle" font-size="26" font-weight="700" fill="#4a5a62" letter-spacing="1">PARKING AREA</text>
+
+  <!-- reception + lobby -->
+  <rect x="380" y="610" width="140" height="160" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
+  <text x="450" y="682" text-anchor="middle" font-size="15" font-weight="600" fill="#55636b">GF</text>
+  <text x="450" y="702" text-anchor="middle" font-size="15" font-weight="600" fill="#55636b">RECEPTION</text>
+
+  <rect x="380" y="790" width="280" height="150" rx="4" fill="#e4eef1" stroke="#9fb3ba" stroke-width="2"/>
+  <text x="520" y="872" text-anchor="middle" font-size="20" font-weight="700" fill="#3e4f57">GF LOBBY</text>
+
+  <!-- elevator lobby + elevator -->
+  <rect x="640" y="620" width="140" height="120" rx="4" fill="#dbe7ec" stroke="#8fa9b3" stroke-width="2"/>
+  <text x="710" y="674" text-anchor="middle" font-size="14" font-weight="700" fill="#43606b">ELEVATOR</text>
+  <text x="710" y="694" text-anchor="middle" font-size="14" font-weight="700" fill="#43606b">LOBBY</text>
+
+  <rect x="800" y="605" width="135" height="130" rx="4" fill="#cdd9de" stroke="#8fa9b3" stroke-width="2"/>
+  <text x="867" y="676" text-anchor="middle" font-size="15" font-weight="700" fill="#43606b">ELEVATOR</text>
+
+  <!-- stairs -->
+  <g stroke="#8fa9b3" stroke-width="2">
+    <rect x="700" y="790" width="235" height="180" rx="4" fill="#e7eef1"/>
+    <line x1="700" y1="820" x2="935" y2="820"/>
+    <line x1="700" y1="850" x2="935" y2="850"/>
+    <line x1="700" y1="880" x2="935" y2="880"/>
+    <line x1="700" y1="910" x2="935" y2="910"/>
+    <line x1="700" y1="940" x2="935" y2="940"/>
+  </g>
+  <text x="817" y="886" text-anchor="middle" font-size="15" font-weight="600" fill="#5a6d75">STAIRS</text>
+
+  <!-- outdoor lounge -->
+  <rect x="700" y="1010" width="235" height="140" rx="4" fill="#e7f0e7" stroke="#a6c1a6" stroke-width="2"/>
+  <text x="817" y="1076" text-anchor="middle" font-size="15" font-weight="600" fill="#5a7a5a">OUTDOOR</text>
+  <text x="817" y="1096" text-anchor="middle" font-size="15" font-weight="600" fill="#5a7a5a">LOUNGE</text>
+
+  <!-- entrances -->
+  <text x="330" y="1250" text-anchor="middle" font-size="15" font-weight="600" fill="#7a868c">VEHICULAR ENTRANCE / EXIT</text>
+  <text x="620" y="1250" text-anchor="middle" font-size="15" font-weight="600" fill="#7a868c">PEDESTRIAN ENTRANCE / EXIT</text>
+  <path d="M330 1210 l-12 -22 l24 0 z" fill="#7a868c"/>
+  <path d="M620 1210 l-12 -22 l24 0 z" fill="#7a868c"/>
+</svg>
