@@ -28,8 +28,10 @@ class EventService {
       'type': 'service_account',
       'project_id': projectId,
       'private_key_id': envMap['FIREBASE_PRIVATE_KEY_ID'],
-      'private_key':
-          envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(r'\n', '\n'),
+      'private_key': envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(
+        r'\n',
+        '\n',
+      ),
       'client_email': envMap['FIREBASE_CLIENT_EMAIL'],
       'client_id': envMap['FIREBASE_CLIENT_ID'],
     });
@@ -157,6 +159,38 @@ class EventService {
     }
 
     return matched;
+  }
+
+  /// Returns all unique tags from approved, non-deleted events.
+  ///
+  /// Uses the same batch-scanning approach as [fetchEvents] but only
+  /// collects tags, stopping early once the collection is exhausted.
+  static Future<List<String>> fetchTags() async {
+    var batchStartAfter = <String, String>{};
+    var exhausted = false;
+    final allTags = <String>{};
+
+    while (!exhausted) {
+      final batch = await _fetchBatch(
+        startAfter: batchStartAfter.isNotEmpty ? batchStartAfter : null,
+      );
+
+      if (batch.docCount < _batchSize) {
+        exhausted = true;
+      }
+      if (batch.lastDoc != null) {
+        batchStartAfter = batch.lastDoc!;
+      }
+
+      for (final event in batch.events) {
+        if (_passesFilters(event)) {
+          allTags.addAll(event.tags);
+        }
+      }
+    }
+
+    final sorted = allTags.toList()..sort();
+    return sorted;
   }
 
   /// UTC calendar date as `YYYY-MM-DD` — used for featured `date >= today`.
@@ -333,7 +367,8 @@ class EventService {
     required String date,
     required String eventId,
   }) {
-    final docPath = 'projects/$projectId/databases/(default)'
+    final docPath =
+        'projects/$projectId/databases/(default)'
         '/documents/events/$eventId';
     return {
       'values': [

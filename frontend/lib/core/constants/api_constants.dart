@@ -29,15 +29,19 @@ class ApiRoutes {
   /// Next registered event (Feature 3): `/events/next-registered`.
   static const String eventsNextRegistered = '/events/next-registered';
 
+  /// All unique tags (Feature 3): `/events/tags`.
+  static const String eventsTags = '/events/tags';
+
+  /// Register for an event: `/events/{eventId}/register`.
+  static String eventRegister(String eventId) => '/events/$eventId/register';
+
   /// Events list with optional query/cursor/tags.
   static String eventsList(
       {String? q, List<String>? tags, String? cursor, int? limit}) {
     final params = <String, String>{};
     if (q != null && q.isNotEmpty) params['q'] = q;
-    if (tags != null) {
-      for (final tag in tags) {
-        params['tag'] = Uri.encodeComponent(tag);
-      }
+    if (tags != null && tags.isNotEmpty) {
+      params['tags'] = Uri.encodeComponent(tags.join(','));
     }
     if (cursor != null) params['cursor'] = cursor;
     if (limit != null) params['limit'] = limit.toString();
