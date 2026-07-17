@@ -9,7 +9,10 @@ import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import '../../routes/events/[eventId]/index.dart' as event_detail_route;
+import '../../routes/events/featured.dart' as featured_route;
 import '../../routes/events/index.dart' as events_route;
+import '../../routes/events/next-registered.dart' as next_registered_route;
+import '../../routes/events/registered.dart' as registered_route;
 
 class _MockRequestContext extends Mock implements RequestContext {}
 
@@ -320,6 +323,150 @@ void main() {
   group('EventErrorCode', () {
     test('EVT002 maps to HTTP 404', () {
       expect(EventErrorCode.statusFor[EventErrorCode.notFound], equals(404));
+    });
+  });
+
+  group('GET /events/featured', () {
+    test('returns 405 for POST', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.post);
+
+      final response = await featured_route.onRequest(context);
+
+      expect(response.statusCode, equals(405));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['success'], isFalse);
+      expect(body['message'], contains('Method not allowed'));
+    });
+
+    test('returns 400 with EVT001 for non-integer limit', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => request.url).thenReturn(
+        Uri.parse('/events/featured?limit=abc'),
+      );
+
+      final response = await featured_route.onRequest(context);
+
+      expect(response.statusCode, equals(400));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['code'], equals('EVT001'));
+    });
+
+    test('returns 400 with EVT001 for limit below 3', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => request.url).thenReturn(
+        Uri.parse('/events/featured?limit=2'),
+      );
+
+      final response = await featured_route.onRequest(context);
+
+      expect(response.statusCode, equals(400));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['code'], equals('EVT001'));
+    });
+
+    test('returns 400 with EVT001 for limit above 10', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => request.url).thenReturn(
+        Uri.parse('/events/featured?limit=11'),
+      );
+
+      final response = await featured_route.onRequest(context);
+
+      expect(response.statusCode, equals(400));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['code'], equals('EVT001'));
+    });
+
+    test('accepts limit=3 without EVT001 (may hit Firestore)', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => request.url).thenReturn(
+        Uri.parse('/events/featured?limit=3'),
+      );
+
+      final response = await featured_route.onRequest(context);
+
+      // 200 when Firebase is configured; 500 without .env in CI.
+      expect(response.statusCode, anyOf(equals(200), equals(500)));
+    });
+  });
+
+  group('GET /events/registered (stub)', () {
+    test('returns 405 for POST', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.post);
+
+      final response = await registered_route.onRequest(context);
+
+      expect(response.statusCode, equals(405));
+    });
+
+    test('returns locked empty shape', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+
+      final response = await registered_route.onRequest(context);
+
+      expect(response.statusCode, equals(200));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['success'], isTrue);
+      expect(body['events'], isEmpty);
+      expect(body['next_cursor'], isNull);
+    });
+  });
+
+  group('GET /events/next-registered (stub)', () {
+    test('returns 405 for POST', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.post);
+
+      final response = await next_registered_route.onRequest(context);
+
+      expect(response.statusCode, equals(405));
+    });
+
+    test('returns locked empty shape with event: null', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+
+      final response = await next_registered_route.onRequest(context);
+
+      expect(response.statusCode, equals(200));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['success'], isTrue);
+      expect(body.containsKey('event'), isTrue);
+      expect(body['event'], isNull);
     });
   });
 }
