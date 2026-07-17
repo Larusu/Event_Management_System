@@ -122,6 +122,61 @@ class EventService {
     return EventPage(events: matched, nextCursor: nextCursor);
   }
 
+  /// Fetches the soonest [limit] upcoming approved events (Featured).
+  ///
+  /// Filters `status == approved`, `is_deleted == false`, and `date >= today`
+  /// (YYYY-MM-DD, UTC calendar date). Sorted by date ascending — this is the
+  /// entire "featured" rule; no popularity weighting.
+  ///
+  /// [limit] must already be validated by the route (default 3, max 10).
+  static Future<List<Event>> fetchFeatured({int limit = 3}) async {
+    final today = _todayUtcDateString();
+    final matched = <Event>[];
+    Map<String, String>? batchStartAfter;
+    var exhausted = false;
+
+    while (matched.length < limit && !exhausted) {
+      final batch = await _fetchBatch(startAfter: batchStartAfter);
+
+      if (batch.docCount < _batchSize) {
+        exhausted = true;
+      }
+      if (batch.lastDoc != null) {
+        batchStartAfter = batch.lastDoc;
+      }
+
+      for (final event in batch.events) {
+        if (!_passesFeaturedFilters(event, today: today)) {
+          continue;
+        }
+        matched.add(event);
+        if (matched.length == limit) {
+          break;
+        }
+      }
+    }
+
+    return matched;
+  }
+
+  /// UTC calendar date as `YYYY-MM-DD` — used for featured `date >= today`.
+  static String _todayUtcDateString() {
+    final now = DateTime.now().toUtc();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  /// Featured filter: approved, not deleted, and on/after [today].
+  static bool _passesFeaturedFilters(Event event, {required String today}) {
+    if (!_passesFilters(event)) {
+      return false;
+    }
+    // ISO date strings compare lexicographically in chronological order.
+    return event.date.compareTo(today) >= 0;
+  }
+
   /// Decodes and validates the incoming opaque [cursor].
   ///
   /// Returns null when no cursor is supplied, or the `{date, eventId}` payload.

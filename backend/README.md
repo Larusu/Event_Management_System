@@ -253,7 +253,10 @@ backend/
 │   │   └── forgot-password.dart     # POST /auth/forgot-password  (public)
 │   ├── events/
 │   │   ├── _middleware.dart         # auth middleware for /events/*
-│   │   ├── index.dart               # GET /events      (feed / filter / search / paginate)
+│   │   ├── index.dart               # GET /events              (feed / filter / search / paginate)
+│   │   ├── featured.dart            # GET /events/featured     (soonest N upcoming)
+│   │   ├── registered.dart          # GET /events/registered   (stub until Registration)
+│   │   ├── next-registered.dart     # GET /events/next-registered (stub until Registration)
 │   │   └── [eventId]/
 │   │       └── index.dart           # GET /events/{eventId}
 │   └── users/
