@@ -5,6 +5,7 @@ import 'package:backend/models/event.dart';
 import 'package:backend/services/event_moderation_service.dart';
 import 'package:backend/services/event_service.dart';
 import 'package:backend/services/firebase_event_service.dart';
+import 'package:backend/utils/validators.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -321,11 +322,41 @@ void main() {
       expect(body['success'], isFalse);
       expect(body['message'], contains('Method not allowed'));
     });
+
+    test('returns 405 for PUT', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.put);
+
+      final response =
+          await event_detail_route.onRequest(context, 'evt_abc123');
+
+      expect(response.statusCode, equals(405));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['success'], isFalse);
+    });
   });
 
   group('EventErrorCode', () {
     test('EVT002 maps to HTTP 404', () {
       expect(EventErrorCode.statusFor[EventErrorCode.notFound], equals(404));
+    });
+
+    test('EVT003 maps to HTTP 400', () {
+      expect(EventErrorCode.statusFor[EventErrorCode.isOpenToGuestsLocked],
+          equals(400));
+    });
+
+    test('EVT004 maps to HTTP 403', () {
+      expect(EventErrorCode.statusFor[EventErrorCode.permissionDenied],
+          equals(403));
+    });
+
+    test('EVT007 maps to HTTP 400', () {
+      expect(EventErrorCode.statusFor[EventErrorCode.validationError],
+          equals(400));
     });
   });
 
@@ -470,6 +501,93 @@ void main() {
       expect(body['success'], isTrue);
       expect(body.containsKey('event'), isTrue);
       expect(body['event'], isNull);
+    });
+  });
+
+  group('EventValidationService', () {
+    test('returns null for valid date in future', () {
+      final today = DateTime.now();
+      final futureDate = DateTime(today.year, today.month, today.day + 7);
+      final dateStr = '${futureDate.year}-${futureDate.month.toString().padLeft(2, '0')}-${futureDate.day.toString().padLeft(2, '0')}';
+
+      final result = EventValidationService.validateEventPatch(
+        {'date': dateStr},
+        {},
+      );
+
+      expect(result, isNull);
+    });
+
+    test('returns error for date in past', () {
+      final result = EventValidationService.validateEventPatch(
+        {'date': '2020-01-01'},
+        {},
+      );
+
+      expect(result, contains('past'));
+    });
+
+    test('accepts valid date format', () {
+      final result = EventValidationService.validateEventPatch(
+        {'date': '2099-12-31'},
+        {},
+      );
+
+      expect(result, isNull);
+    });
+
+    test('returns error for invalid date format', () {
+      final result = EventValidationService.validateEventPatch(
+        {'date': '01/01/2024'},
+        {},
+      );
+
+      expect(result, contains('Invalid date format'));
+    });
+
+    test('online event with stream_link passes validation', () {
+      final result = EventValidationService.validateEventPatch(
+        {'event_mode': 'online', 'stream_link': 'https://zoom.us/j/123'},
+        {},
+      );
+
+      expect(result, isNull);
+    });
+
+    test('online event without stream_link fails validation', () {
+      final result = EventValidationService.validateEventPatch(
+        {'event_mode': 'online'},
+        {},
+      );
+
+      expect(result, contains('Stream link is required'));
+    });
+
+    test('offline event with location passes validation', () {
+      final result = EventValidationService.validateEventPatch(
+        {'event_mode': 'offline', 'location': 'Main Hall'},
+        {},
+      );
+
+      expect(result, isNull);
+    });
+
+    test('offline event without location fails validation', () {
+      final result = EventValidationService.validateEventPatch(
+        {'event_mode': 'offline'},
+        {},
+      );
+
+      expect(result, contains('Location is required'));
+    });
+
+    test('returns null when no validation fields provided', () {
+      final result = EventValidationService.validateEventPatch(
+        {'description': 'New description'},
+        {},
+      );
+
+      expect(result, isNull);
     });
   });
 
