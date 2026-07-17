@@ -101,22 +101,21 @@ class FirebaseEventService {
       'updated_at': timeNow,
     };
 
-    final fieldMask = updatesWithTimestamp.keys.toList();
-
-    final uri = Uri.parse(
+    final baseUri = Uri.parse(
       'https://firestore.googleapis.com/v1/projects/$projectId'
-      '/databases/(default)/documents/events/$eventId:patch',
+      '/databases/(default)/documents/events/$eventId',
     );
-
-    final body = {
-      'fields': _encodeFirestoreFields(updatesWithTimestamp),
-      'updateMask': {'fieldPaths': fieldMask},
-    };
+    final fieldPaths = updatesWithTimestamp.keys
+        .map((k) => 'updateMask.fieldPaths=$k')
+        .join('&');
+    final patchUri = Uri.parse('$baseUri?$fieldPaths');
 
     final response = await client.patch(
-      uri,
-      body: jsonEncode(body),
+      patchUri,
       headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'fields': _encodeFirestoreFields(updatesWithTimestamp),
+      }),
     );
 
     if (response.statusCode != 200) {
