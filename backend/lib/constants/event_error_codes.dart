@@ -15,8 +15,11 @@ class EventErrorCode {
   /// Also returned when is_open_to_guests is present in PATCH body.
   static const String isOpenToGuestsLocked = 'EVT003';
 
-  /// Permission denied for resource. (403)
+  /// Forbidden — not the owner, or role below the required minimum. (403)
   static const String permissionDenied = 'EVT004';
+
+  /// Invalid status transition (action not allowed from current status). (409)
+  static const String invalidStatusTransition = 'EVT005';
 
   /// Validation error. (400)
   static const String validationError = 'EVT007';
@@ -33,6 +36,7 @@ class EventErrorCode {
     notFound: 404,
     isOpenToGuestsLocked: 400,
     permissionDenied: 403,
+    invalidStatusTransition: 409,
     validationError: 400,
     invalidToken: 401,
     internalError: 500,
