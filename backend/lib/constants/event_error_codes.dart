@@ -11,6 +11,12 @@ class EventErrorCode {
   /// reveals whether an unapproved event exists.
   static const String notFound = 'EVT002';
 
+  /// Forbidden — not the owner, or role below the required minimum. (403)
+  static const String permissionDenied = 'EVT004';
+
+  /// Invalid status transition (action not allowed from current status). (409)
+  static const String invalidStatusTransition = 'EVT005';
+
   /// An unexpected server-side error occurred. (500)
   static const String internalError = 'EVT008';
 
@@ -21,6 +27,8 @@ class EventErrorCode {
   static const Map<String, int> statusFor = {
     invalidQueryParam: 400,
     notFound: 404,
+    permissionDenied: 403,
+    invalidStatusTransition: 409,
     invalidToken: 401,
     internalError: 500,
   };

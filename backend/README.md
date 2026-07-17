@@ -257,8 +257,11 @@ backend/
 │   │   ├── featured.dart            # GET /events/featured     (soonest N upcoming)
 │   │   ├── registered.dart          # GET /events/registered   (stub until Registration)
 │   │   ├── next-registered.dart     # GET /events/next-registered (stub until Registration)
+│   │   ├── pending.dart             # GET /events/pending      (faculty review queue)
 │   │   └── [eventId]/
-│   │       └── index.dart           # GET /events/{eventId}
+│   │       ├── index.dart           # GET /events/{eventId}
+│   │       └── status/
+│   │           └── index.dart       # PATCH /events/{eventId}/status
 │   └── users/
 │       ├── _middleware.dart         # token verify → user lookup → deactivation → role
 │       ├── me/
@@ -282,6 +285,7 @@ backend/
 │   ├── services/
 │   │   ├── auth_service.dart
 │   │   ├── event_service.dart
+│   │   ├── event_moderation_service.dart
 │   │   ├── firebase_auth_service.dart
 │   │   └── firebase_event_service.dart
 │   └── utils/
