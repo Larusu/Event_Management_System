@@ -8,16 +8,8 @@ import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 
 /// Firestore-backed event operations.
-///
-/// On failure, every method throws [AuthException] — callers (routes)
-/// catch this one type and hand it to [ResponseHelper.error].
 class FirebaseEventService {
   /// Returns full detail for a single approved, non-deleted event.
-  ///
-  /// Throws [AuthException] with EVT002 when the event does not exist,
-  /// is soft-deleted, or has `status != approved`. All three cases use
-  /// the same error so the API never reveals whether an unapproved event
-  /// exists.
   static Future<Event> getEventById(String eventId) async {
     final doc = await _getEventDocument(eventId);
 
@@ -28,9 +20,90 @@ class FirebaseEventService {
     return _toEvent(eventId, doc);
   }
 
-  /// Whether an event document should be returned to clients.
-  ///
-  /// Exposed for unit testing — routes never call this directly.
+  /// Returns raw event document (including non-approved/deleted events).
+  static Future<Map<String, dynamic>?> getEventDocument(String eventId) async {
+    return _getEventDocument(eventId);
+  }
+
+  /// Updates an event with the given fields.
+  static Future<void> updateEvent(
+    String eventId,
+    Map<String, dynamic> updates,
+  ) async {
+    final client = await _firestoreClient();
+    final projectId = _firestoreProjectId();
+
+    final timeNow = DateTime.now().toUtc().toIso8601String();
+    final updatesWithTimestamp = {
+      ...updates,
+      'updated_at': timeNow,
+    };
+
+    final fieldMask = updatesWithTimestamp.keys.toList();
+
+    final uri = Uri.parse(
+      'https://firestore.googleapis.com/v1/projects/$projectId'
+      '/databases/(default)/documents/events/$eventId:patch',
+    );
+
+    final body = {
+      'fields': _encodeFirestoreFields(updatesWithTimestamp),
+      'updateMask': {'fieldPaths': fieldMask},
+    };
+
+    final response = await client.patch(
+      uri,
+      body: jsonEncode(body),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode != 200) {
+      throw StateError(
+        'Firestore update failed for events/$eventId: '
+        '${response.statusCode} ${response.body}',
+      );
+    }
+  }
+
+  /// Soft deletes an event by setting is_deleted=true and updated_at.
+  static Future<void> softDeleteEvent(String eventId) async {
+    final timeNow = DateTime.now().toUtc().toIso8601String();
+    await updateEvent(eventId, {'is_deleted': true, 'updated_at': timeNow});
+  }
+
+  static Map<String, dynamic> _encodeFirestoreFields(
+    Map<String, dynamic> fields,
+  ) {
+    final result = <String, dynamic>{};
+
+    for (final entry in fields.entries) {
+      final key = entry.key;
+      final value = entry.value;
+
+      if (value == null) {
+        result[key] = {'nullValue': null};
+      } else if (value is String) {
+        result[key] = {'stringValue': value};
+      } else if (value is bool) {
+        result[key] = {'booleanValue': value};
+      } else if (value is int) {
+        result[key] = {'integerValue': value.toString()};
+      } else if (value is double) {
+        result[key] = {'doubleValue': value};
+      } else if (value is List<String>) {
+        result[key] = {
+          'arrayValue': {
+            'values': value.map((v) => {'stringValue': v}).toList(),
+          },
+        };
+      } else {
+        result[key] = {'stringValue': value.toString()};
+      }
+    }
+
+    return result;
+  }
+
   static bool isPubliclyVisible(Map<String, dynamic> doc) =>
       _isPubliclyVisible(doc);
 
@@ -138,6 +211,7 @@ class FirebaseEventService {
       'status': stringField('status'),
       'organizer_uid': stringField('organizer_uid'),
       'is_deleted': boolField('is_deleted'),
+      'updated_at': stringField('updated_at'),
     };
   }
 

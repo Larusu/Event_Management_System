@@ -11,6 +11,16 @@ class EventErrorCode {
   /// reveals whether an unapproved event exists.
   static const String notFound = 'EVT002';
 
+  /// is_open_to_guests locked at creation (400).
+  /// Also returned when is_open_to_guests is present in PATCH body.
+  static const String isOpenToGuestsLocked = 'EVT003';
+
+  /// Permission denied for resource. (403)
+  static const String permissionDenied = 'EVT004';
+
+  /// Validation error. (400)
+  static const String validationError = 'EVT007';
+
   /// An unexpected server-side error occurred. (500)
   static const String internalError = 'EVT008';
 
@@ -21,6 +31,9 @@ class EventErrorCode {
   static const Map<String, int> statusFor = {
     invalidQueryParam: 400,
     notFound: 404,
+    isOpenToGuestsLocked: 400,
+    permissionDenied: 403,
+    validationError: 400,
     invalidToken: 401,
     internalError: 500,
   };
