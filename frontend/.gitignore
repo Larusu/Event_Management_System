@@ -1,0 +1,20 @@
+# Build outputs
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Android
+android/.gradle/
+android/captures/
+android/local.properties
+android/key.properties
+android/app/google-services.json
+**/android/app/release/
+
+# Gradle/CXX intermediates specifically
+**/build/.cxx/
+google-services.json

@@ -1,18 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../../features/auth/presentation/widgets/app_button.dart';
+import '../../features/events/providers/calendar_provider.dart';
 
 class Header extends StatefulWidget {
   final String header;
   final List<String> views;
   final List<String>? filters;
   final String page;
+  final bool showSearch;
+  final TextEditingController? searchController;
+  final ValueChanged<String>? onSearchChanged;
+  final ValueChanged<List<String>>? onFiltersChanged;
+  final String searchHintText;
+  final String? headerSubtitle;
 
-  const Header(
-      {super.key,
-      required this.header,
-      required this.views,
-      this.filters,
-      required this.page});
+  const Header({
+    super.key,
+    required this.header,
+    required this.views,
+    this.filters,
+    required this.page,
+    this.showSearch = false,
+    this.searchController,
+    this.onSearchChanged,
+    this.onFiltersChanged,
+    this.searchHintText = 'Search events...',
+    this.headerSubtitle,
+  });
 
   @override
   State<Header> createState() => _HeaderState();
@@ -21,6 +38,7 @@ class Header extends StatefulWidget {
 class _HeaderState extends State<Header> {
   late String selectedValue;
   late DateTime focusedDate;
+  bool _isSearchOpen = false;
 
   @override
   void initState() {
@@ -32,23 +50,39 @@ class _HeaderState extends State<Header> {
   @override
   Widget build(BuildContext context) {
     final isSettingsPage = widget.page == "settings";
+    final showAccountPill = isSettingsPage || widget.page == "dashboard";
+    final showEventsHeader = !showAccountPill;
+    final isCalendarPage = widget.page == 'calendar';
 
-    final startOfWeek = focusedDate.subtract(
-      Duration(days: focusedDate.weekday % 7),
-    );
-    final month = focusedDate.month;
+    // On the calendar page the CalendarProvider is the single source of truth
+    // for the selected view and focused date, so the Header and the calendar
+    // body can never drift apart. Other pages keep the Header's own state.
+    final calendar = isCalendarPage ? context.watch<CalendarProvider>() : null;
+    final effectiveView =
+        isCalendarPage ? calendar!.viewMode.label : selectedValue;
+    final effectiveFocused =
+        isCalendarPage ? calendar!.focusedDate : focusedDate;
 
-    final monthlyDates = List.generate(
-      DateTime(focusedDate.year, focusedDate.month + 1, 0).day,
-      (index) => index + 1,
+    final startOfWeek = effectiveFocused.subtract(
+      Duration(days: effectiveFocused.weekday % 7),
     );
-    final weeklyDates = List.generate(
+
+    // Day and Week both show the focused week (Sunday-start); Month shows the
+    // 12 months of the focused year. The selected item is centered + bolded.
+    final weekDates = List.generate(
       7,
-      (index) => startOfWeek.add(Duration(days: index)).day,
+      (index) => startOfWeek.add(Duration(days: index)),
     );
-    final dailyDates = [focusedDate.day];
+    final monthDates = List.generate(
+      12,
+      (index) => DateTime(effectiveFocused.year, index + 1, 1),
+    );
 
-    void _previousPeriod() {
+    void previousPeriod() {
+      if (isCalendarPage) {
+        calendar!.previousPeriod();
+        return;
+      }
       setState(() {
         if (selectedValue == 'Week') {
           focusedDate = focusedDate.subtract(
@@ -67,7 +101,11 @@ class _HeaderState extends State<Header> {
       });
     }
 
-    void _nextPeriod() {
+    void nextPeriod() {
+      if (isCalendarPage) {
+        calendar!.nextPeriod();
+        return;
+      }
       setState(() {
         if (selectedValue == 'Week') {
           focusedDate = focusedDate.add(
@@ -86,7 +124,11 @@ class _HeaderState extends State<Header> {
       });
     }
 
-    void _goToToday() {
+    void goToToday() {
+      if (isCalendarPage) {
+        calendar!.goToToday();
+        return;
+      }
       setState(() {
         focusedDate = DateTime.now();
       });
@@ -94,7 +136,7 @@ class _HeaderState extends State<Header> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -113,10 +155,12 @@ class _HeaderState extends State<Header> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.header,
+                  isCalendarPage
+                      ? DateFormat('MMMM yyyy').format(effectiveFocused)
+                      : widget.header,
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: 24,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -125,7 +169,7 @@ class _HeaderState extends State<Header> {
                     height: 4,
                   ),
                   TextButton(
-                    onPressed: _goToToday,
+                    onPressed: goToToday,
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -142,53 +186,75 @@ class _HeaderState extends State<Header> {
               ],
             ),
             const Spacer(),
-            !isSettingsPage
+            !showAccountPill
                 ? Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    DropdownMenu<String>(
-                      dropdownMenuEntries: widget.views
-                          .map(
-                            (view) => DropdownMenuEntry<String>(
-                              value: view,
-                              label: view,
-                            ),
-                          )
-                          .toList(),
-                      menuStyle: MenuStyle(
+                    if (widget.views.isNotEmpty)
+                      DropdownMenu<String>(
+                        dropdownMenuEntries: widget.views
+                            .map(
+                              (view) => DropdownMenuEntry<String>(
+                                value: view,
+                                label: view,
+                              ),
+                            )
+                            .toList(),
+                        menuStyle: MenuStyle(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        inputDecorationTheme: InputDecorationTheme(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                        ),
+                        onSelected: (value) {
+                          if (value != null) {
+                            if (isCalendarPage) {
+                              calendar!.setView(
+                                CalendarViewMode.fromLabel(value),
+                              );
+                            } else {
+                              setState(() {
+                                selectedValue = value;
+                              });
+                            }
+                          }
+                          _scrollToSelected();
+                        },
+                        initialSelection: effectiveView,
+                      ),
+                    if (widget.showSearch) ...[
+                      const SizedBox(height: 4),
+                      IconButton(
                         visualDensity: VisualDensity.compact,
-                      ),
-                      inputDecorationTheme: InputDecorationTheme(
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                      ),
-                      onSelected: (value) {
-                        if (value != null) {
+                        iconSize: 20,
+                        icon: Icon(_isSearchOpen ? Icons.close : Icons.search),
+                        onPressed: () {
                           setState(() {
-                            selectedValue = value;
+                            _isSearchOpen = !_isSearchOpen;
                           });
-                        }
-                        _scrollToToday();
-                      },
-                      initialSelection: selectedValue,
-                    ),
-                    const SizedBox(height: 4),
-                    IconButton(
-                      icon: const Icon(Icons.search),
-                      onPressed: () {
-                        // Handle filter action
-                      },
-                    ),
+                          if (!_isSearchOpen) {
+                            final hasText =
+                                widget.searchController?.text.isNotEmpty ??
+                                    false;
+                            widget.searchController?.clear();
+                            if (hasText) {
+                              widget.onSearchChanged?.call('');
+                            }
+                          }
+                        },
+                      ),
+                    ],
                   ])
                 : Container(
                     padding: const EdgeInsets.symmetric(
@@ -201,30 +267,63 @@ class _HeaderState extends State<Header> {
                       ),
                       borderRadius: BorderRadius.circular(50),
                     ),
-                    child: const Text("Account"), // TODO: Implement account role
+                    child: Text(widget.headerSubtitle ?? "Account"),
                   )
           ]),
-          if (!isSettingsPage) ...[
-            const SizedBox(height: 4),
+          if (showEventsHeader) ...[
+            const SizedBox(height: 2),
             Divider(
               color: Colors.grey[300],
               thickness: 1,
             ),
-            const SizedBox(height: 4),
-            widget.page == 'calendar'
+            const SizedBox(height: 2),
+            if (_isSearchOpen)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: TextField(
+                  controller: widget.searchController,
+                  onChanged: widget.onSearchChanged,
+                  decoration: InputDecoration(
+                    hintText: widget.searchHintText,
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: widget.searchController != null &&
+                            widget.searchController!.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              widget.searchController?.clear();
+                              widget.onSearchChanged?.call('');
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
+              ),
+            isCalendarPage
                 ? CalendarHeader(
-                    key: ValueKey(
-                        '${selectedValue}-${focusedDate.year}-${focusedDate.month}-${focusedDate.day}'),
-                    month: month,
-                    dates: selectedValue == "Month"
-                        ? monthlyDates
-                        : selectedValue == "Week"
-                            ? weeklyDates
-                            : dailyDates,
-                    onPrevious: _previousPeriod,
-                    onNext: _nextPeriod,
+                    // No ValueKey: keeping the same State (and scroll offset)
+                    // across navigation lets the strip glide the highlight to
+                    // the next cell instead of rebuilding from the left edge.
+                    isMonthView: effectiveView == "Month",
+                    dates: effectiveView == "Month" ? monthDates : weekDates,
+                    selectedDate: effectiveFocused,
+                    hasEvents: (effectiveView == "Week" ||
+                            effectiveView == "Day")
+                        ? (date) => calendar!.eventsOn(date).isNotEmpty
+                        : null,
+                    onDateSelected: calendar!.goToDate,
+                    onPrevious: previousPeriod,
+                    onNext: nextPeriod,
                   )
-                : EventsListHeader(filters: widget.filters)
+                : EventsListHeader(
+                    filters: widget.filters,
+                    onFiltersChanged: widget.onFiltersChanged,
+                  )
           ]
         ],
       ),
@@ -235,10 +334,12 @@ class _HeaderState extends State<Header> {
 // EVENTS LIST PAGE
 class EventsListHeader extends StatefulWidget {
   final List<String>? filters;
+  final ValueChanged<List<String>>? onFiltersChanged;
 
   const EventsListHeader({
     super.key,
     required this.filters,
+    this.onFiltersChanged,
   });
 
   @override
@@ -265,12 +366,13 @@ class _EventsListHeaderState extends State<EventsListHeader> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Wrap(
-                    spacing: 5,
+                    spacing: 10,
+                    runSpacing: 10,
                     children: filters.map((filter) {
                       final isSelected = tempSelected.contains(filter);
 
                       return ChoiceChip(
-                        label: Text(filter),
+                        label: Text(filter.toLowerCase()),
                         selected: isSelected,
                         selectedColor: Theme.of(context).primaryColor,
                         labelStyle: TextStyle(
@@ -288,21 +390,28 @@ class _EventsListHeaderState extends State<EventsListHeader> {
                       );
                     }).toList(),
                   ),
+                  SizedBox(
+                    height: 15,
+                  ),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context, tempSelected);
-                        },
-                        child: const Text('Apply'),
+                      Expanded(
+                        child: AppButton(
+                          label: 'Apply',
+                          onPressed: () {
+                            Navigator.pop(context, tempSelected);
+                          },
+                        ),
                       ),
-                      ElevatedButton(
-                        onPressed: () {
-                          tempSelected.clear();
-                          Navigator.pop(context, tempSelected);
-                        },
-                        child: const Text('Clear'),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: AppButton(
+                          label: 'Clear',
+                          onPressed: () {
+                            tempSelected.clear();
+                            Navigator.pop(context, tempSelected);
+                          },
+                        ),
                       ),
                     ],
                   ),
@@ -320,6 +429,7 @@ class _EventsListHeaderState extends State<EventsListHeader> {
           ..clear()
           ..addAll(result);
       });
+      widget.onFiltersChanged?.call(selectedFilters);
     }
   }
 
@@ -338,15 +448,17 @@ class _EventsListHeaderState extends State<EventsListHeader> {
                   spacing: 8,
                   children: selectedFilters.map((filter) {
                     return Chip(
-                      label: Text(filter),
+                      visualDensity: VisualDensity.compact,
+                      label: Text(filter, style: const TextStyle(fontSize: 12)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      deleteIcon: const Icon(Icons.close, size: 14),
+                      deleteIcon: const Icon(Icons.close, size: 12),
                       onDeleted: () {
                         setState(() {
                           selectedFilters.remove(filter);
                         });
+                        widget.onFiltersChanged?.call(selectedFilters);
                       },
                     );
                   }).toList(),
@@ -355,6 +467,8 @@ class _EventsListHeaderState extends State<EventsListHeader> {
             ),
           ),
         IconButton(
+          visualDensity: VisualDensity.compact,
+          iconSize: 20,
           icon: const Icon(Icons.filter_alt_outlined),
           onPressed: _showFilterDialog,
         ),
@@ -364,31 +478,49 @@ class _EventsListHeaderState extends State<EventsListHeader> {
 }
 
 // CALENDAR PAGE
+//
+// A horizontally scrollable strip. Day and Week show the focused week's days
+// (weekday + day number); Month shows the 12 months of the focused year
+// (month name). The [selectedDate]'s cell is bolded/filled and auto-centered.
 class CalendarHeader extends StatefulWidget {
-  final int month;
-  final List<int> dates;
+  final List<DateTime> dates;
+  final DateTime selectedDate;
+  final bool isMonthView;
+
+  /// When non-null, cells whose date returns true get an event dot (Day + Week
+  /// views; both load the whole focused week, so per-day dots have data).
+  final bool Function(DateTime)? hasEvents;
+
+  /// Called when a strip cell is tapped.
+  final void Function(DateTime)? onDateSelected;
+
   final VoidCallback onPrevious;
   final VoidCallback onNext;
 
-  const CalendarHeader(
-      {super.key,
-      required this.month,
-      required this.dates,
-      required this.onPrevious,
-      required this.onNext});
+  const CalendarHeader({
+    super.key,
+    required this.dates,
+    required this.selectedDate,
+    required this.isMonthView,
+    this.hasEvents,
+    this.onDateSelected,
+    required this.onPrevious,
+    required this.onNext,
+  });
 
   @override
   State<CalendarHeader> createState() => _CalendarHeaderState();
 }
 
 class _CalendarHeaderState extends State<CalendarHeader> {
-  final year = DateTime.now().year;
+  static const Color _eventDotColor = Color(0xFF4C7F9F);
+
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _scrollToToday();
+    _scrollToSelected();
   }
 
   @override
@@ -400,141 +532,129 @@ class _CalendarHeaderState extends State<CalendarHeader> {
   @override
   void didUpdateWidget(CalendarHeader oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _scrollToToday();
+    _scrollToSelected();
+  }
+
+  bool _isSelected(DateTime date) {
+    final sel = widget.selectedDate;
+    if (widget.isMonthView) {
+      return date.year == sel.year && date.month == sel.month;
+    }
+    return date.year == sel.year &&
+        date.month == sel.month &&
+        date.day == sel.day;
+  }
+
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    if (widget.isMonthView) {
+      return date.year == now.year && date.month == now.month;
+    }
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  Widget _cell(DateTime date) {
+    final isSelected = _isSelected(date);
+    // The focused cell is filled; today (when not focused) stays bold so it
+    // remains findable after navigating away.
+    final isBold = isSelected || _isToday(date);
+    final labelColor = isSelected ? Colors.white : null;
+    final weight = isBold ? FontWeight.bold : FontWeight.normal;
+    final showDot =
+        !widget.isMonthView && (widget.hasEvents?.call(date) ?? false);
+
+    final cell = Container(
+      key: isSelected ? _selectedKey : null,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isSelected ? Theme.of(context).primaryColor : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: widget.isMonthView
+          ? Text(
+              DateFormat('MMM').format(date),
+              style: TextStyle(color: labelColor, fontWeight: weight),
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  DateFormat('E').format(date),
+                  style: TextStyle(color: labelColor, fontWeight: weight),
+                ),
+                Text(
+                  date.day.toString(),
+                  style: TextStyle(color: labelColor, fontWeight: weight),
+                ),
+                const SizedBox(height: 2),
+                // Always reserve the dot's space so cell heights stay uniform.
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: !showDot
+                        ? Colors.transparent
+                        : isSelected
+                            ? Colors.white
+                            : _eventDotColor,
+                  ),
+                ),
+              ],
+            ),
+    );
+
+    if (widget.onDateSelected == null) return cell;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => widget.onDateSelected!(date),
+      child: cell,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDayView = widget.dates.length == 1;
-
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        Text(DateFormat('MMMM').format(DateTime(year, widget.month))),
+        Text(DateFormat('MMMM').format(widget.selectedDate)),
         const SizedBox(width: 4),
         IconButton(
           onPressed: widget.onPrevious,
-          icon: Icon(Icons.arrow_left),
-          padding: EdgeInsets.all(4),
+          icon: const Icon(Icons.arrow_left),
+          padding: const EdgeInsets.all(4),
         ),
-        isDayView
-            ? Expanded(
-                child: Center(
-                  child: Builder(
-                    builder: (context) {
-                      final date = widget.dates.first;
-                      final fullDate = DateTime(year, widget.month, date);
-                      final now = DateTime.now();
-
-                      final isToday = date == now.day &&
-                          widget.month == now.month &&
-                          year == now.year;
-
-                      return Container(
-                        key: isToday ? _todayKey : null,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isToday
-                              ? Theme.of(context).primaryColor
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              DateFormat('E').format(fullDate),
-                              style: TextStyle(
-                                color: isToday ? Colors.white : null,
-                                fontWeight: isToday
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                            Text(
-                              date.toString(),
-                              style: TextStyle(
-                                color: isToday ? Colors.white : null,
-                                fontWeight: isToday
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              )
-            : Expanded(
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    spacing: 40,
-                    children: widget.dates.asMap().entries.map((entry) {
-                      final date = entry.value;
-                      final fullDate = DateTime(year, widget.month, date);
-                      final now = DateTime.now();
-
-                      final isToday = fullDate.year == now.year &&
-                          fullDate.month == now.month &&
-                          fullDate.day == now.day;
-
-                      return Container(
-                        key: isToday ? _todayKey : null,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isToday
-                              ? Theme.of(context).primaryColor
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              DateFormat('E').format(fullDate),
-                              style: TextStyle(
-                                color: isToday ? Colors.white : null,
-                                fontWeight: isToday
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                            Text(
-                              date.toString(),
-                              style: TextStyle(
-                                color: isToday ? Colors.white : null,
-                                fontWeight: isToday
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-        IconButton(onPressed: widget.onNext, icon: Icon(Icons.arrow_right)),
+        Expanded(
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              spacing: 40,
+              children: widget.dates.map(_cell).toList(),
+            ),
+          ),
+        ),
+        IconButton(
+          onPressed: widget.onNext,
+          icon: const Icon(Icons.arrow_right),
+        ),
       ],
     );
   }
 }
 
 // METHODS
-final GlobalKey _todayKey = GlobalKey();
+final GlobalKey _selectedKey = GlobalKey();
 
-void _scrollToToday() {
+void _scrollToSelected() {
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (_todayKey.currentContext != null) {
+    if (_selectedKey.currentContext != null) {
       Scrollable.ensureVisible(
-        _todayKey.currentContext!,
+        _selectedKey.currentContext!,
         duration: const Duration(milliseconds: 500),
-        alignment: 0,
+        alignment: 0.5, // center the focused cell
       );
     }
   });

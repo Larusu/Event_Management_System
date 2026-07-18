@@ -4,7 +4,7 @@
 [![License: MIT][license_badge]][license_link]
 [![Powered by Dart Frog](https://img.shields.io/endpoint?url=https://tinyurl.com/dartfrog-badge)](https://dart-frog.dev)
 
-An example application built with dart_frog
+REST API for the Campus Event App, built with [Dart Frog](https://dart-frog.dev). All frontend data access flows through this service — the Flutter app never talks to Firestore or Cloudinary directly. It handles authentication, user profiles, and event browsing/management on top of the Firebase Admin SDK (Firestore), with Cloudinary for image storage.
 
 [dart_frog_lint_badge]: https://img.shields.io/badge/style-dart_frog_lint-1DF9D2.svg
 [dart_frog_lint_link]: https://pub.dev/packages/dart_frog_lint
@@ -17,6 +17,8 @@ An example application built with dart_frog
 
 ### macOS
 
+<details>
+<summary>Click to expand macOS setup</summary>
 1. Install [Homebrew](https://brew.sh) if you don't have it:
    ```bash
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -51,11 +53,12 @@ An example application built with dart_frog
    ```bash
    dart_frog --version
    ```
-
----
+</details>
 
 ### Windows
 
+<details>
+<summary>Click to expand Windows setup</summary>
 1. Download and run the Dart SDK installer from [dart.dev/get-dart](https://dart.dev/get-dart) — pick the **Windows** tab and download the `.exe`.
 
 2. The installer adds Dart to your PATH automatically. Open a **new** Command Prompt or PowerShell and verify:
@@ -82,9 +85,12 @@ An example application built with dart_frog
 
 > **Windows tip:** Use **PowerShell** or **Windows Terminal** — not Command Prompt — for a better experience. Git Bash also works.
 
----
+</details>
 
 ### Linux
+
+<details>
+<summary>Click to expand Linux setup</summary>
 
 1. Install the Dart SDK:
    ```bash
@@ -110,23 +116,143 @@ An example application built with dart_frog
    source ~/.bashrc
    ```
 
+</details>
+
 ---
 
 ## Firebase Setup
 
-The backend uses Firebase Admin SDK. You need a service account key to run it locally.
+The backend uses Firebase Admin SDK with credentials managed via environment variables in a `.env` file.
 
-**Get the file from a teammate** — it's not in the repo for security reasons.
+### Getting Access
 
-1. Ask for `service-account.json` file (or download it yourself from Firebase Console → Project Settings → Service Accounts → Generate new private key)
-2. Place it in the `backend/` root:
+All backend developers' Gmail accounts already have access to the Firebase project. You can generate your own service account key directly:
+
+1. Go to the [Firebase Console](https://console.firebase.google.com), sign in with the Gmail account that has project access, and open the project.
+2. Go to **Project Settings → Service Accounts**.
+3. Click **Generate new private key**. This downloads a JSON file containing all the values you need.
+
+> If you sign in and don't see the project, ask Jeff to add your Gmail to the Firebase project's IAM permissions — don't share a single key file around.
+ 
+### Creating Your `.env`
+ 
+1. Copy the template:
+
+```bash
+   cd backend
+   cp .env.example .env
+```
+2. Open the downloaded service account JSON and the new `.env` side by side, and fill in each field:
+   | `.env` variable | JSON field |
+   |---|---|
+   | `FIREBASE_PROJECT_ID` | `project_id` |
+   | `FIREBASE_PRIVATE_KEY_ID` | `private_key_id` |
+   | `FIREBASE_SERVICE_ACCOUNT_KEY` | `private_key` |
+   | `FIREBASE_CLIENT_EMAIL` | `client_email` |
+   | `FIREBASE_CLIENT_ID` | `client_id` |
+   | `FIREBASE_WEB_API_KEY` | Firebase Web Api Key |
+
+3. Copy `private_key` straight into `FIREBASE_SERVICE_ACCOUNT_KEY`, wrapped in quotes, exactly as it appears in the JSON file — it's already a single line with `\n` escape sequences, so no manual editing is needed:
+
+```env
+   FIREBASE_SERVICE_ACCOUNT_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BA...\n-----END PRIVATE KEY-----\n"
+```
+   The app code already converts these back into real newlines on startup (`.replaceAll(r'\n', '\n')`), so this format is required.
+ 
+#### Getting the Firebase Web API Key
+
+You can obtain the Web API Key:
+
+- Firebase Console
+- Open Firebase Console.
+- Go to Project Settings → General.
+- Under 'Your Apps', select `google-services.json`.
+- Copy the Web API Key value.
 
 ```
-backend/
-└── service-account.json   ← put it here
+{
+  "client": [
+    {
+      "api_key": [
+        {
+          "current_key": "AIza..."
+        }
+      ]
+    }
+  ]
+}
 ```
 
-> **Never commit this file.** It's already in `.gitignore`.
+Copy the value of current_key into:
+
+`FIREBASE_WEB_API_KEY=AIza...`
+
+4. Install dependencies and run:
+```bash
+   dart pub get
+   dart_frog dev
+```
+ 
+The Firebase Admin SDK initializes automatically on the first request using the credentials from `.env`.
+ 
+### `.env.example`
+ 
+```env
+FIREBASE_PROJECT_ID=
+FIREBASE_PRIVATE_KEY_ID=
+FIREBASE_SERVICE_ACCOUNT_KEY=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_CLIENT_ID=
+FIREBASE_WEB_API_KEY=
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+```
+ 
+### Security Notes
+ 
+- ✓ `.env` is **never committed** to git (already in `.gitignore`)
+- ✓ `.env.example` is committed as a reference template — keep it empty, never fill in real values
+- ✓ Each developer generates their **own** service account key rather than sharing one
+- ✓ Production uses Cloud Run environment variables, not a `.env` file
+
+---
+
+## Cloudinary Setup
+
+The backend handles all image storage through [Cloudinary](https://cloudinary.com) — the Flutter app never uploads to Cloudinary directly. Uploads and deletes are signed server-side, so the backend needs the **API Secret** (not just the public key).
+
+### Getting Access
+
+The project uses a single shared Cloudinary product environment. Ask Jeff for access to the Cloudinary account (or the credentials directly) rather than creating a personal account.
+
+1. Log in at the [Cloudinary Console](https://console.cloudinary.com).
+2. On the dashboard home, find the **Product Environment Credentials** panel (also under **Settings → API Keys**).
+3. Copy the three values below. The API Secret is hidden by default — click to reveal it.
+
+### Adding to Your `.env`
+
+Fill in the same `backend/.env` you created for Firebase:
+
+| `.env` variable | Cloudinary field |
+|---|---|
+| `CLOUDINARY_CLOUD_NAME` | Cloud name |
+| `CLOUDINARY_API_KEY` | API Key |
+| `CLOUDINARY_API_SECRET` | API Secret |
+
+```env
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=123456789012345
+CLOUDINARY_API_SECRET=your-api-secret
+```
+
+> Cloudinary also shows a combined `CLOUDINARY_URL` in the form `cloudinary://<API_KEY>:<API_SECRET>@<CLOUD_NAME>`. Stick with the three separate variables above for consistency with the rest of the config.
+
+### Security Notes
+
+- ✓ `CLOUDINARY_API_SECRET` is a **secret** — treat it like a password, server-side only
+- ✓ Never expose the API Secret to the Flutter app or any client code
+- ✓ Same rules as Firebase: real values live in `.env` (gitignored), the template stays empty, prod reads from Cloud Run env vars
 
 ---
 
@@ -153,72 +279,86 @@ curl http://localhost:8080
 
 ---
 
-## Environment Variables
-
-Create a `.env` file in `backend/` (also not committed):
-
-```env
-FIREBASE_PROJECT_ID=project-id
-SERVICE_ACCOUNT_PATH=service-account.json
-```
-
----
-
 ## Project Structure
 
 ```
 backend/
-├── routes/
+├── routes/                          # Dart Frog file-based routing
+│   ├── _middleware.dart             # Firebase Admin init (first request) + CORS
+│   ├── index.dart                   # GET /            (health string)
+│   ├── health.dart                  # GET /health      (JSON health check)
 │   ├── auth/
-│   │   ├── signin.dart         # POST /auth/signin
-│   │   └── register.dart       # POST /auth/register
+│   │   ├── index.dart               # GET  /auth       (lists auth endpoints)
+│   │   ├── register.dart            # POST /auth/register
+│   │   ├── signin.dart              # POST /auth/signin
+│   │   └── forgot-password.dart     # POST /auth/forgot-password  (public)
+│   ├── events/
+│   │   ├── _middleware.dart         # auth middleware for /events/*
+│   │   ├── index.dart               # GET /events              (feed / filter / search / paginate)
+│   │   ├── featured.dart            # GET /events/featured     (soonest N upcoming)
+│   │   ├── registered.dart          # GET /events/registered   (stub until Registration)
+│   │   ├── next-registered.dart     # GET /events/next-registered (stub until Registration)
+│   │   ├── pending.dart             # GET /events/pending      (faculty review queue)
+│   │   └── [eventId]/
+│   │       ├── index.dart           # GET /events/{eventId}
+│   │       └── status/
+│   │           └── index.dart       # PATCH /events/{eventId}/status
 │   └── users/
-│       ├── _middleware.dart    # token verify → user lookup → deactivation check
-│       ├── me.dart             # GET /users/me · PATCH /users/me
+│       ├── _middleware.dart         # token verify → user lookup → deactivation → role
 │       ├── me/
-│       │   └── deactivate.dart # POST /users/me/deactivate
+│       │   ├── index.dart           # GET /users/me · PATCH /users/me
+│       │   └── deactivate/
+│       │       └── index.dart       # POST /users/me/deactivate
 │       └── [targetUID]/
-│           └── role.dart       # PATCH /users/{targetUID}/role
+│           └── role/
+│               └── index.dart       # PATCH /users/{targetUID}/role
 ├── lib/
+│   ├── constants/
+│   │   ├── error_codes.dart         # AUTH* codes
+│   │   └── event_error_codes.dart   # EVT* codes
+│   ├── firebase_config.dart         # loads credentials from .env
 │   ├── middleware/
 │   │   └── auth_middleware.dart
+│   ├── models/                      # *.g.dart are generated by build_runner
+│   │   ├── auth_request.dart
+│   │   ├── event.dart
+│   │   └── user.dart
 │   ├── services/
-│   │   ├── firebase_service.dart
 │   │   ├── auth_service.dart
-│   │   └── user_service.dart
-│   ├── models/
-│   │   └── user_model.dart
-│   ├── utils/
-│   │   ├── validators.dart
-│   │   └── response_helper.dart
-│   └── constants/
-│       └── error_codes.dart
-├── service-account.json        # not committed
-├── .env                        # not committed
+│   │   ├── event_service.dart
+│   │   ├── event_moderation_service.dart
+│   │   ├── firebase_auth_service.dart
+│   │   └── firebase_event_service.dart
+│   └── utils/
+│       ├── response_helper.dart
+│       └── validators.dart
+├── .env                             # not committed (see Firebase Setup)
+├── .env.example                     # committed template
+├── firebase.json                    # Firebase CLI config
+├── firestore.rules                  # deny-all rules (Admin SDK bypasses them)
 └── pubspec.yaml
 ```
+
+> **Regenerating models:** the `*.g.dart` files (`@JsonSerializable`) are generated. After editing a model, run `dart run build_runner build --delete-conflicting-outputs`.
 
 ---
 
 ## Running with Docker
 
-If you don't want to install Dart locally, or you're testing the production build:
+Dart Frog generates the production `Dockerfile` for you — there is no hand-written Dockerfile in the repo. From `backend/`:
 
 ```bash
+# generate the production build (creates build/ with a Dockerfile)
+dart_frog build
+
 # build the image
-docker build -t campus-app-backend .
+docker build -t campus-app-backend build/
 
-# run it
-docker run -p 8080:8080 campus-app-backend
+# run it (pass your local .env into the container)
+docker run -p 8080:8080 --env-file .env campus-app-backend
 ```
 
-Or from the repo root using Docker Compose (recommended):
-
-```bash
-docker compose up
-```
-
-> Make sure your `service-account.json` and `.env` are in `backend/` before building.
+> This mirrors the production setup: the app reads its Firebase credentials from environment variables. On Cloud Run those are set as service env vars instead of an `.env` file.
 
 ---
 
@@ -227,8 +367,8 @@ docker compose up
 **`dart_frog: command not found`**
 → See the Prerequisites section for your OS. macOS/Linux: add `$HOME/.pub-cache/bin` to `.zshrc` / `.bashrc`. Windows: add `%APPDATA%\Pub\Cache\bin` to your system PATH via Environment Variables.
 
-**`service-account.json` not found error on startup**
-→ Make sure the file is in `backend/` and the path in `.env` matches.
+**Firebase credential / startup errors**
+→ Make sure `backend/.env` exists and every variable from `.env.example` is filled in. `FIREBASE_SERVICE_ACCOUNT_KEY` must be the full `private_key` in quotes, with its `\n` escape sequences left intact (see Firebase Setup).
 
 **Port 8080 already in use**
 → macOS/Linux: `lsof -ti:8080 | xargs kill`. Windows: `netstat -ano | findstr :8080` then `taskkill /PID <pid> /F`. Or just change the port: `dart_frog dev --port 8081`.

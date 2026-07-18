@@ -1,8 +1,17 @@
-import "package:flutter/material.dart";
+import 'dart:async';
 
-import "../../../../shared/widgets/event_banners.dart";
-import "../../../../shared/widgets/event_cards.dart";
-import "../../../../shared/widgets/navbar.dart";
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../../../shared/widgets/event_banners.dart';
+import '../../../../shared/widgets/event_cards.dart';
+import '../../../../shared/widgets/header.dart';
+import '../../../../shared/widgets/header_delegate.dart';
+import '../widgets/event_modal.dart';
+import '../../providers/event_dashboard_provider.dart';
+import '../../providers/event_detail_provider.dart';
+import '../../providers/event_list_provider.dart';
+import '../../../auth/providers/auth_provider.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -12,135 +21,282 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  int _selectedPageIndex = 1;
+  final _featuredController = PageController(viewportFraction: 1.02);
+  Timer? _autoScrollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = context.read<EventDashboardProvider>();
+      provider.loadNextRegistered();
+      provider.loadFeatured();
+      provider.loadRegistered();
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoScrollTimer?.cancel();
+    _featuredController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoScroll(int itemCount) {
+    if (_autoScrollTimer != null) return;
+    final initialPage = itemCount * 500;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_featuredController.hasClients) return;
+      _featuredController.jumpToPage(initialPage);
+    });
+    _autoScrollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted || !_featuredController.hasClients) return;
+      final current = _featuredController.page?.round() ?? 0;
+      _featuredController.animateToPage(
+        current + 1,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, String>> upcomingEvents = [
-      {
-        "title": "Paws-to-Pause",
-        "day": "Friday",
-        "date": "July 10, 2026",
-        "startTime": "4:00 PM",
-        "endTime": "6:30 PM"
-      },
-      {
-        "title": "1st Day of Finals",
-        "day": "Monday",
-        "date": "July 20, 2026",
-        "startTime": "8:30 PM",
-        "endTime": "9:00 PM"
-      },
-      {
-        "title": "End of Classes",
-        "day": "Saturday",
-        "date": "July 25, 2026",
-        "startTime": "6:30 PM",
-        "endTime": "9:00 PM"
-      },
-    ];
+    final userName =
+        context.watch<AuthProvider>().currentUser?.name ?? 'Account';
 
-    final List<Map<String, String>> featuredEvents = [
-      {
-        "title": "Event Title 1",
-        "imageUrl":
-            "https://miro.medium.com/v2/resize:fit:1100/format:webp/1*uNCVd_VqFOcdxhsL71cT5Q.jpeg",
-        "description":
-            "Sample event description. Lorem ipsum chuchuness. So what if sobrang haba naman ng description? Isa pang line kailangan HAHAHHA. Ayoko na T-T",
-        "date": "July 9, 2026",
-        "startTime": "8:00 AM",
-        "endTime": "10:00 AM",
-      },
-      {
-        "title": "Event Title 2",
-        "imageUrl":
-            "https://miro.medium.com/v2/resize:fit:1100/format:webp/1*uNCVd_VqFOcdxhsL71cT5Q.jpeg",
-        "description": "Eto na yung araw na sukong-suko na ko.",
-        "date": "July 20, 2026",
-        "startTime": "8:00 AM",
-        "endTime": "9:00 PM",
-      },
-      {
-        "title": "Event Title 3",
-        "imageUrl":
-            "https://miro.medium.com/v2/resize:fit:1100/format:webp/1*uNCVd_VqFOcdxhsL71cT5Q.jpeg",
-        "description": "Makakalaya na tayo. :3",
-        "date": "July 25, 2026",
-        "startTime": "6:30 PM",
-        "endTime": "9:00 PM",
-      },
-    ];
+    return SafeArea(
+      child: CustomScrollView(
+        slivers: [
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: HeaderDelegate(
+              child: Header(
+                header: 'EMS',
+                views: const [],
+                page: 'dashboard',
+                headerSubtitle: userName,
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.only(top: 8),
+            sliver: SliverToBoxAdapter(
+              child: _buildNextRegisteredSection(context),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: Text(
+                "Featured Events",
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: _buildFeaturedSection(context),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: Text(
+                "Upcoming Registered Events",
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: _buildRegisteredSection(context),
+          ),
+        ],
+      ),
+    );
+  }
 
-    return Scaffold(
-        appBar: AppBar(title: const Text("EMS")),
-        bottomNavigationBar: NavBar(
-          selectedPageIndex: _selectedPageIndex,
-          onPageSelected: (index) {
-            setState(() {
-              _selectedPageIndex = index;
-            });
-          },
-        ),
-        body: Container(
-          padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 15.0),
-          child: Center(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                NextEventBanner(
-                    title: "Event Title 1",
-                    day: "Thursday",
-                    date: "July 9, 2026",
-                    startTime: "8:00 AM",
-                    endTime: "10:00 AM",
-                    location: "7th Floor, Gymnasium, Interweave Building"),
-                const SizedBox(height: 15),
-                const Text(
-                  "Featured Events",
+  Widget _buildNextRegisteredSection(BuildContext context) {
+    return Consumer<EventDashboardProvider>(
+      builder: (context, provider, _) {
+        if (provider.nextRegisteredStatus == EventDetailStatus.loading) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (provider.nextRegisteredStatus == EventDetailStatus.error) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Text(
+                provider.nextRegisteredErrorMessage ?? 'Could not load event.',
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+          );
+        }
+
+        final event = provider.nextRegisteredEvent;
+
+        if (event == null) {
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              child: Center(
+                child: Text(
+                  "No upcoming registered events yet.\nBrowse events to find something to join!",
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                    fontSize: 14,
                   ),
                 ),
-                const SizedBox(height: 10),
-                Expanded(
-                    child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: featuredEvents.length,
-                        itemBuilder: (context, index) {
-                          final feature = featuredEvents[index];
-                          return FeaturedEventCard(
-                              title: feature["title"]!,
-                              imageUrl: feature["imageUrl"]!,
-                              description: feature["description"]!,
-                              date: feature["date"]!,
-                              startTime: feature["startTime"]!,
-                              endTime: feature["endTime"]!);
-                        })),
-                const SizedBox(height: 15),
-                const Text(
-                  "Upcoming Registered Events",
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+              ),
+            ),
+          );
+        }
+
+        return NextEventBanner(
+          title: event.title,
+          day: event.displayDay,
+          date: event.displayDate,
+          startTime: event.displayStartTime,
+          endTime: event.displayEndTime,
+          location: event.location ?? event.streamLink ?? '',
+        );
+      },
+    );
+  }
+
+  Widget _buildFeaturedSection(BuildContext context) {
+    return Consumer<EventDashboardProvider>(
+      builder: (context, provider, _) {
+        if (provider.featuredStatus == EventListStatus.loading) {
+          return const SizedBox(
+            height: 250,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (provider.featuredStatus == EventListStatus.error) {
+          return SizedBox(
+            height: 250,
+            child: Center(
+              child: Text(
+                provider.featuredErrorMessage ??
+                    'Could not load featured events.',
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+          );
+        }
+
+        final featured = provider.featuredEvents;
+
+        if (featured.isEmpty) {
+          return const SizedBox(
+            height: 250,
+            child: Center(
+              child: Text(
+                "No featured events right now.",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
+
+        _startAutoScroll(featured.length);
+
+        return SizedBox(
+          height: 250,
+          child: PageView.builder(
+            controller: _featuredController,
+            itemCount: featured.length * 1000,
+            itemBuilder: (context, index) {
+              final event = featured[index % featured.length];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: FeaturedEventCard(
+                  title: event.title,
+                  imageUrl: event.coverImageUrl,
+                  description: event.description,
+                  date: event.displayDate,
+                  startTime: event.displayStartTime,
+                  endTime: event.displayEndTime,
+                  onTap: () => EventModal.show(
+                    context,
+                    eventId: event.eventId,
                   ),
                 ),
-                const SizedBox(height: 10),
-                Expanded(
-                    child: ListView.builder(
-                        itemCount: upcomingEvents.length,
-                        itemBuilder: (context, index) {
-                          final event = upcomingEvents[index];
-                          return UpcomingEventBanner(
-                              title: event["title"]!,
-                              day: event["day"]!,
-                              date: event["date"]!,
-                              startTime: event["startTime"]!,
-                              endTime: event["endTime"]!);
-                        }))
-              ])),
-        ));
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRegisteredSection(BuildContext context) {
+    return Consumer<EventDashboardProvider>(
+      builder: (context, provider, _) {
+        if (provider.registeredStatus == EventListStatus.loading) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (provider.registeredStatus == EventListStatus.error) {
+          return Center(
+            child: Text(
+              provider.registeredErrorMessage ??
+                  'Could not load registered events.',
+              style: const TextStyle(color: Colors.red),
+            ),
+          );
+        }
+
+        final registered = provider.registeredEvents;
+
+        if (registered.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text(
+                "You haven't registered for any events yet.",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
+
+        return SizedBox(
+          height: 250,
+          child: ListView.builder(
+            itemCount: registered.length,
+            itemBuilder: (context, index) {
+              final event = registered[index];
+              return UpcomingEventBanner(
+                title: event.title,
+                day: event.displayDay,
+                date: event.displayDate,
+                startTime: event.displayStartTime,
+                endTime: event.displayEndTime,
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 }
