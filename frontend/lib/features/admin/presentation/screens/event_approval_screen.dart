@@ -355,6 +355,12 @@ class _PendingEventTile extends StatelessWidget {
                       style:
                           TextStyle(fontSize: 13, color: Colors.grey.shade600),
                     ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${event.slotsTotal} slots',
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    ),
                   ],
                 ),
               ),
@@ -362,6 +368,34 @@ class _PendingEventTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A single icon + value detail row used inside the pending event sheet.
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String value;
+
+  const _InfoRow({required this.icon, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -388,6 +422,44 @@ class _PendingEventSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey.shade200,
+                  child: Icon(Icons.person, color: Colors.grey.shade600),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Organized by',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      Text(
+                        event.organizerDisplay,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (event.organizerName.isNotEmpty &&
+                          event.organizerEmail.isNotEmpty)
+                        Text(
+                          event.organizerEmail,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             if (event.coverImageUrl.isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
@@ -413,19 +485,33 @@ class _PendingEventSheet extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.event_outlined, size: 18, color: Colors.grey),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '${event.displayDate}  •  '
-                    '${event.displayStartTime} - ${event.displayEndTime}',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 12),
+            _InfoRow(
+              icon: Icons.event_outlined,
+              value: '${event.displayDate}  •  '
+                  '${event.displayStartTime} - ${event.displayEndTime}',
+            ),
+            if (event.hostName.isNotEmpty)
+              _InfoRow(icon: Icons.person_outline, value: event.hostName),
+            if (event.guestSpeaker != null && event.guestSpeaker!.isNotEmpty)
+              _InfoRow(
+                icon: Icons.mic_none_outlined,
+                value: event.guestSpeaker!,
+              ),
+            if (event.isOnline)
+              if (event.streamLink != null && event.streamLink!.isNotEmpty)
+                _InfoRow(icon: Icons.link, value: event.streamLink!)
+              else
+                const _InfoRow(icon: Icons.link, value: 'Online event')
+            else if (event.location != null && event.location!.isNotEmpty)
+              _InfoRow(icon: Icons.location_on_outlined, value: event.location!),
+            _InfoRow(
+              icon: Icons.event_seat_outlined,
+              value: '${event.slotsTotal} slots',
+            ),
+            _InfoRow(
+              icon: Icons.groups_outlined,
+              value: event.isOpenToGuests ? 'Open to guests' : 'Students only',
             ),
             const SizedBox(height: 24),
             Row(
