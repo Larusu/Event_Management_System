@@ -204,6 +204,9 @@ FIREBASE_SERVICE_ACCOUNT_KEY=
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_CLIENT_ID=
 FIREBASE_WEB_API_KEY=
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 ```
  
 ### Security Notes
@@ -212,6 +215,44 @@ FIREBASE_WEB_API_KEY=
 - ✓ `.env.example` is committed as a reference template — keep it empty, never fill in real values
 - ✓ Each developer generates their **own** service account key rather than sharing one
 - ✓ Production uses Cloud Run environment variables, not a `.env` file
+
+---
+
+## Cloudinary Setup
+
+The backend handles all image storage through [Cloudinary](https://cloudinary.com) — the Flutter app never uploads to Cloudinary directly. Uploads and deletes are signed server-side, so the backend needs the **API Secret** (not just the public key).
+
+### Getting Access
+
+The project uses a single shared Cloudinary product environment. Ask Jeff for access to the Cloudinary account (or the credentials directly) rather than creating a personal account.
+
+1. Log in at the [Cloudinary Console](https://console.cloudinary.com).
+2. On the dashboard home, find the **Product Environment Credentials** panel (also under **Settings → API Keys**).
+3. Copy the three values below. The API Secret is hidden by default — click to reveal it.
+
+### Adding to Your `.env`
+
+Fill in the same `backend/.env` you created for Firebase:
+
+| `.env` variable | Cloudinary field |
+|---|---|
+| `CLOUDINARY_CLOUD_NAME` | Cloud name |
+| `CLOUDINARY_API_KEY` | API Key |
+| `CLOUDINARY_API_SECRET` | API Secret |
+
+```env
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=123456789012345
+CLOUDINARY_API_SECRET=your-api-secret
+```
+
+> Cloudinary also shows a combined `CLOUDINARY_URL` in the form `cloudinary://<API_KEY>:<API_SECRET>@<CLOUD_NAME>`. Stick with the three separate variables above for consistency with the rest of the config.
+
+### Security Notes
+
+- ✓ `CLOUDINARY_API_SECRET` is a **secret** — treat it like a password, server-side only
+- ✓ Never expose the API Secret to the Flutter app or any client code
+- ✓ Same rules as Firebase: real values live in `.env` (gitignored), the template stays empty, prod reads from Cloud Run env vars
 
 ---
 
