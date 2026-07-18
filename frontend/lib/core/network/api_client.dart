@@ -14,7 +14,7 @@ import 'api_exception.dart';
 /// Responsibilities:
 /// - Prefix requests with [apiBaseUrl] and set the JSON content type.
 /// - Optionally attach a fresh Firebase ID token as a Bearer header. The token
-///   is fetched per-request (never cached) per the documentation note in 1.5.3.
+///   is fetched per-request (never cached).
 /// - Decode the standardized `{ success, message, code }` envelope and throw an
 ///   [ApiException] on transport errors, non-2xx status, or `success == false`.
 class ApiClient {

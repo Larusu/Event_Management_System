@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../features/auth/presentation/widgets/app_button.dart';
 import '../../features/events/providers/calendar_provider.dart';
 
 class Header extends StatefulWidget {
@@ -56,8 +57,7 @@ class _HeaderState extends State<Header> {
     // On the calendar page the CalendarProvider is the single source of truth
     // for the selected view and focused date, so the Header and the calendar
     // body can never drift apart. Other pages keep the Header's own state.
-    final calendar =
-        isCalendarPage ? context.watch<CalendarProvider>() : null;
+    final calendar = isCalendarPage ? context.watch<CalendarProvider>() : null;
     final effectiveView =
         isCalendarPage ? calendar!.viewMode.label : selectedValue;
     final effectiveFocused =
@@ -312,7 +312,8 @@ class _HeaderState extends State<Header> {
                     isMonthView: effectiveView == "Month",
                     dates: effectiveView == "Month" ? monthDates : weekDates,
                     selectedDate: effectiveFocused,
-                    hasEvents: effectiveView == "Week"
+                    hasEvents: (effectiveView == "Week" ||
+                            effectiveView == "Day")
                         ? (date) => calendar!.eventsOn(date).isNotEmpty
                         : null,
                     onDateSelected: calendar!.goToDate,
@@ -365,12 +366,13 @@ class _EventsListHeaderState extends State<EventsListHeader> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Wrap(
-                    spacing: 5,
+                    spacing: 10,
+                    runSpacing: 10,
                     children: filters.map((filter) {
                       final isSelected = tempSelected.contains(filter);
 
                       return ChoiceChip(
-                        label: Text(filter),
+                        label: Text(filter.toLowerCase()),
                         selected: isSelected,
                         selectedColor: Theme.of(context).primaryColor,
                         labelStyle: TextStyle(
@@ -388,21 +390,28 @@ class _EventsListHeaderState extends State<EventsListHeader> {
                       );
                     }).toList(),
                   ),
+                  SizedBox(
+                    height: 15,
+                  ),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context, tempSelected);
-                        },
-                        child: const Text('Apply'),
+                      Expanded(
+                        child: AppButton(
+                          label: 'Apply',
+                          onPressed: () {
+                            Navigator.pop(context, tempSelected);
+                          },
+                        ),
                       ),
-                      ElevatedButton(
-                        onPressed: () {
-                          tempSelected.clear();
-                          Navigator.pop(context, tempSelected);
-                        },
-                        child: const Text('Clear'),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: AppButton(
+                          label: 'Clear',
+                          onPressed: () {
+                            tempSelected.clear();
+                            Navigator.pop(context, tempSelected);
+                          },
+                        ),
                       ),
                     ],
                   ),
@@ -478,7 +487,8 @@ class CalendarHeader extends StatefulWidget {
   final DateTime selectedDate;
   final bool isMonthView;
 
-  /// When non-null, cells whose date returns true get an event dot (Week view).
+  /// When non-null, cells whose date returns true get an event dot (Day + Week
+  /// views; both load the whole focused week, so per-day dots have data).
   final bool Function(DateTime)? hasEvents;
 
   /// Called when a strip cell is tapped.
@@ -503,7 +513,7 @@ class CalendarHeader extends StatefulWidget {
 }
 
 class _CalendarHeaderState extends State<CalendarHeader> {
-  static const Color _eventDotColor = Color(0xFF4C7F9F); // Figma --sec
+  static const Color _eventDotColor = Color(0xFF4C7F9F);
 
   final ScrollController _scrollController = ScrollController();
 

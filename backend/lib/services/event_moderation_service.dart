@@ -8,7 +8,7 @@ import 'package:backend/utils/response_helper.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 
-/// Review-queue and status-moderation logic (Feature 4, Dev C).
+/// Review-queue and status-moderation logic.
 ///
 /// Kept in a dedicated service so edit/delete work in
 /// [FirebaseEventService] can merge independently.

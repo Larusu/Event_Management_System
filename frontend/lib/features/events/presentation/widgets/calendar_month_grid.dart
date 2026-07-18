@@ -5,8 +5,7 @@ import '../../providers/calendar_provider.dart';
 
 /// The Month view: a 7-column square grid for the focused month. Days with at
 /// least one event get a dot; today is highlighted; tapping a day drills into
-/// the Day view. (The Figma has no month design, so this is a clean functional
-/// grid consistent with the app's tokens.)
+/// the Day view.
 class CalendarMonthGrid extends StatelessWidget {
   const CalendarMonthGrid({super.key});
 
@@ -20,7 +19,7 @@ class CalendarMonthGrid extends StatelessWidget {
     'Sat',
   ];
 
-  static const Color _eventDotColor = Color(0xFF4C7F9F); // Figma --sec
+  static const Color _eventDotColor = Color(0xFF4C7F9F);
 
   @override
   Widget build(BuildContext context) {

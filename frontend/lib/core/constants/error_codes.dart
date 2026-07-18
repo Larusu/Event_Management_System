@@ -57,7 +57,7 @@ class AuthErrorCodes {
   };
 }
 
-/// Standardized backend error codes for the events feature (Feature 3).
+/// Standardized backend error codes for the events feature.
 class EventErrorCodes {
   const EventErrorCodes._();
 

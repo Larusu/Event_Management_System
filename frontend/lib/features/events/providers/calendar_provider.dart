@@ -176,7 +176,11 @@ class CalendarProvider extends ChangeNotifier {
     final focused = _dateOnly(_focusedDate);
     switch (_viewMode) {
       case CalendarViewMode.day:
-        return (focused, focused);
+        // Load the focused week (not just the day) so the header strip, which
+        // spans the whole week in Day view, can show per-day event dots. The
+        // Day grid still filters to the focused day via eventsOn().
+        final start = focused.subtract(Duration(days: focused.weekday % 7));
+        return (start, start.add(const Duration(days: 6)));
       case CalendarViewMode.week:
         final start = focused.subtract(Duration(days: focused.weekday % 7));
         return (start, start.add(const Duration(days: 6)));

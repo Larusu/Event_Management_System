@@ -4,7 +4,7 @@ part 'user.g.dart';
 
 /// API-facing user representation.
 ///
-/// This model matches the locked API doc response shape exactly - it is
+/// This model matches the API response shape exactly - it is
 /// NOT a 1:1 mirror of the Firestore document. Firestore additionally
 /// tracks is_deleted, last_login_at, and updated_at, none of which are
 /// ever returned in an API response, so they don't belong here.

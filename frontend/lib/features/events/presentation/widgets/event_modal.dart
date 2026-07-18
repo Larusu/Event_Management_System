@@ -9,7 +9,7 @@ import '../screens/event_map.dart';
 
 const Color _kGrey = Color(0xFF828282);
 
-/// Entry point for the Feature 3 Event Modal (Figma node 75:59).
+/// Entry point for the Event Modal
 ///
 /// [show] fetches the event by id (via [EventDetailProvider]) and renders the
 /// loading / error / loaded states. The loaded state paints [EventModalContent],
@@ -39,7 +39,7 @@ class EventModal {
 }
 
 /// Renders the modal based on the fetch state and applies the guest-role rule
-/// for the Register button (client-side only, per doc 3.9).
+/// for the Register button (client-side only).
 class _EventModalView extends StatefulWidget {
   final String eventId;
   const _EventModalView({required this.eventId});
@@ -56,6 +56,36 @@ class _EventModalViewState extends State<_EventModalView> {
       if (!mounted) return;
       context.read<EventDetailProvider>().load(widget.eventId);
     });
+  }
+
+  void _onRegister() {
+    final provider = context.read<EventDetailProvider>();
+    final event = provider.event;
+    if (event == null) return;
+
+    showDialog(
+      context: context,
+      builder: (_) => _RegisterConfirmDialog(
+        eventTitle: event.title,
+        onConfirm: () async {
+          Navigator.pop(context);
+          final success = await provider.register(widget.eventId);
+          if (!mounted) return;
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Registered successfully!')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content:
+                    Text(provider.registrationError ?? 'Registration failed.'),
+              ),
+            );
+          }
+        },
+      ),
+    );
   }
 
   @override
@@ -104,9 +134,62 @@ class _EventModalViewState extends State<_EventModalView> {
           isOpenToGuests: event.isOpenToGuests,
           registeredCount: event.registeredCount,
           slotsRemaining: event.slotsRemaining,
+          isRegistered: event.isRegistered,
           showRegisterButton: showRegister,
+          onRegister: _onRegister,
         );
     }
+  }
+}
+
+/// Confirmation dialog shown before registering.
+class _RegisterConfirmDialog extends StatelessWidget {
+  final String eventTitle;
+  final VoidCallback onConfirm;
+
+  const _RegisterConfirmDialog({
+    required this.eventTitle,
+    required this.onConfirm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.event_available, size: 48, color: primary),
+          const SizedBox(height: 16),
+          const Text(
+            'Register for this event?',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            eventTitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: onConfirm,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primary,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Confirm'),
+        ),
+      ],
+    );
   }
 }
 
@@ -175,6 +258,7 @@ class EventModalContent extends StatelessWidget {
   final bool isOpenToGuests;
   final int registeredCount;
   final int slotsRemaining;
+  final bool isRegistered;
   final bool showRegisterButton;
   final VoidCallback? onRegister;
 
@@ -196,6 +280,7 @@ class EventModalContent extends StatelessWidget {
     required this.isOpenToGuests,
     required this.registeredCount,
     required this.slotsRemaining,
+    this.isRegistered = false,
     this.showRegisterButton = true,
     this.onRegister,
   });
@@ -341,13 +426,21 @@ class EventModalContent extends StatelessWidget {
               ),        
         const SizedBox(height: 12),
 
-        // Host / guest speaker + register button
+        // Host / guest speaker + info chip
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: _hostInfo()),
             const SizedBox(width: 12),
-            if (showRegisterButton) _registerColumn(context, primary),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _guestBadge(primary),
+                const SizedBox(height: 6),
+                _infoChip(primary),
+              ],
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -388,15 +481,12 @@ class EventModalContent extends StatelessWidget {
         ],
         const SizedBox(height: 16),
 
-        // Contact details + info box
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _contactInfo()),
-            const SizedBox(width: 12),
-            _infoBox(primary),
-          ],
-        ),
+        // Contact details
+        _contactInfo(),
+        const SizedBox(height: 16),
+
+        // Register button
+        if (showRegisterButton) _registerButton(primary),
         const SizedBox(height: 16),
 
         // Footer
@@ -460,40 +550,25 @@ class EventModalContent extends StatelessWidget {
     );
   }
 
-  Widget _registerColumn(BuildContext context, Color primary) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          _guestBadgeLabel,
-          style: const TextStyle(fontSize: 9, color: _kGrey),
-        ),
-        const SizedBox(height: 4),
-        Material(
-          color: primary,
+  Widget _registerButton(Color primary) {
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: isRegistered ? Colors.grey : primary,
+        borderRadius: BorderRadius.circular(15),
+        child: InkWell(
           borderRadius: BorderRadius.circular(15),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(15),
-            onTap: () {
-              if (onRegister != null) {
-                onRegister!();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Coming soon')),
-                );
-              }
-            },
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              child: Text(
-                'Register Now!',
-                style: TextStyle(fontSize: 13, color: Colors.white),
-              ),
+          onTap: isRegistered ? null : onRegister,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Text(
+              isRegistered ? 'Registered \u2713' : 'Register Now!',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, color: Colors.white),
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -526,41 +601,44 @@ class EventModalContent extends StatelessWidget {
     );
   }
 
-  Widget _infoBox(Color primary) {
-    return Container(
-      width: 137,
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-      decoration: BoxDecoration(
-        color: primary,
-        borderRadius: BorderRadius.circular(15),
+  Widget _guestBadge(Color primary) {
+    final color = isOpenToGuests ? primary : _kGrey;
+    final label = isOpenToGuests ? 'Open to guests!!' : 'Students only!!';
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 10,
+        color: color,
+        fontWeight: FontWeight.w600,
       ),
-      child: Column(
+    );
+  }
+
+  Widget _infoChip(Color primary) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: primary),
+      ),
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Icon(Icons.people, size: 14, color: primary),
+          const SizedBox(width: 4),
           Text(
-            _guestBadgeLabel,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: Colors.white),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '$registeredCount registered participants',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 9, color: Colors.white),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '$slotsRemaining slots left!',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 9, color: Colors.white),
+            '$registeredCount / ${registeredCount + slotsRemaining}',
+            style: TextStyle(
+              fontSize: 11,
+              color: primary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
   }
-
-  String get _guestBadgeLabel =>
-      isOpenToGuests ? 'Open to guests!!' : 'Available to students only!!';
 
   String _formatDate(String iso) {
     try {

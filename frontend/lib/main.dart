@@ -6,7 +6,6 @@ import 'package:campus_event_app/features/auth/presentation/screens/sign_up_scre
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
 import 'package:campus_event_app/features/events/presentation/screens/events_screen.dart';
 import 'package:campus_event_app/features/events/providers/event_dashboard_provider.dart';
-import 'package:campus_event_app/features/events/providers/event_detail_provider.dart';
 import 'package:campus_event_app/features/events/providers/event_list_provider.dart';
 import 'package:campus_event_app/features/profile/presentation/screens/settings_screen.dart';
 import 'package:campus_event_app/firebase_options.dart';
@@ -38,7 +37,6 @@ class MyApp extends StatelessWidget {
           provider.initialize();
           return provider;
         }),
-        ChangeNotifierProvider(create: (_) => EventDetailProvider()),
         ChangeNotifierProvider(create: (_) => EventListProvider()),
         ChangeNotifierProvider(create: (_) => EventDashboardProvider()),
       ],

@@ -47,25 +47,29 @@ class ApiRoutes {
   /// Single-event detail (Feature 3): `/events/{eventId}`.
   static String eventById(String eventId) => '/events/$eventId';
 
-  /// Featured events (Feature 3): `/events/featured?limit=N`.
+  /// Featured events: `/events/featured?limit=N`.
   static String eventsFeatured({int limit = 3}) =>
       '/events/featured?limit=$limit';
 
-  /// Registered events (Feature 3): `/events/registered`.
+  /// Registered events: `/events/registered`.
   static const String eventsRegistered = '/events/registered';
 
-  /// Next registered event (Feature 3): `/events/next-registered`.
+  /// Next registered event: `/events/next-registered`.
   static const String eventsNextRegistered = '/events/next-registered';
+
+  /// All unique tags: `/events/tags`.
+  static const String eventsTags = '/events/tags';
+
+  /// Register for an event: `/events/{eventId}/register`.
+  static String eventRegister(String eventId) => '/events/$eventId/register';
 
   /// Events list with optional query/cursor/tags.
   static String eventsList(
       {String? q, List<String>? tags, String? cursor, int? limit}) {
     final params = <String, String>{};
     if (q != null && q.isNotEmpty) params['q'] = q;
-    if (tags != null) {
-      for (final tag in tags) {
-        params['tag'] = Uri.encodeComponent(tag);
-      }
+    if (tags != null && tags.isNotEmpty) {
+      params['tags'] = Uri.encodeComponent(tags.join(','));
     }
     if (cursor != null) params['cursor'] = cursor;
     if (limit != null) params['limit'] = limit.toString();
