@@ -296,8 +296,8 @@ backend/
 │   │   ├── _middleware.dart         # auth middleware for /events/*
 │   │   ├── index.dart               # GET /events              (feed / filter / search / paginate)
 │   │   ├── featured.dart            # GET /events/featured     (soonest N upcoming)
-│   │   ├── registered.dart          # GET /events/registered   (stub until Registration)
-│   │   ├── next-registered.dart     # GET /events/next-registered (stub until Registration)
+│   │   ├── registered.dart          # GET /events/registered   (my upcoming registrations)
+│   │   ├── next-registered.dart     # GET /events/next-registered (soonest registered)
 │   │   ├── pending.dart             # GET /events/pending      (faculty review queue)
 │   │   └── [eventId]/
 │   │       ├── index.dart           # GET /events/{eventId}
@@ -327,6 +327,7 @@ backend/
 │   │   ├── auth_service.dart
 │   │   ├── event_service.dart
 │   │   ├── event_moderation_service.dart
+│   │   ├── registration_list_service.dart
 │   │   ├── firebase_auth_service.dart
 │   │   └── firebase_event_service.dart
 │   └── utils/

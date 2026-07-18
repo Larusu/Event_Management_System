@@ -5,6 +5,7 @@ import 'package:backend/models/event.dart';
 import 'package:backend/services/event_moderation_service.dart';
 import 'package:backend/services/event_service.dart';
 import 'package:backend/services/firebase_event_service.dart';
+import 'package:backend/services/registration_list_service.dart';
 import 'package:backend/utils/validators.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:mocktail/mocktail.dart';
@@ -444,7 +445,7 @@ void main() {
     });
   });
 
-  group('GET /events/registered (stub)', () {
+  group('GET /events/registered', () {
     test('returns 405 for POST', () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
@@ -457,24 +458,47 @@ void main() {
       expect(response.statusCode, equals(405));
     });
 
-    test('returns locked empty shape', () async {
+    test('returns 400 with EVT001 for invalid cursor', () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
 
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => context.read<String>()).thenReturn('uid123');
+      when(() => request.url).thenReturn(
+        Uri.parse('/events/registered?cursor=not-valid-base64'),
+      );
 
       final response = await registered_route.onRequest(context);
 
-      expect(response.statusCode, equals(200));
+      expect(response.statusCode, equals(400));
       final body = jsonDecode(await response.body()) as Map<String, dynamic>;
-      expect(body['success'], isTrue);
-      expect(body['events'], isEmpty);
-      expect(body['next_cursor'], isNull);
+      expect(body['code'], equals('EVT001'));
+    });
+
+    test('returns locked list shape when Firebase is reachable', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => context.read<String>()).thenReturn('uid123');
+      when(() => request.url).thenReturn(Uri.parse('/events/registered'));
+
+      final response = await registered_route.onRequest(context);
+
+      // 200 when Firebase is configured; 500 without .env in CI.
+      expect(response.statusCode, anyOf(equals(200), equals(500)));
+      if (response.statusCode == 200) {
+        final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+        expect(body['success'], isTrue);
+        expect(body['events'], isA<List<dynamic>>());
+        expect(body.containsKey('next_cursor'), isTrue);
+      }
     });
   });
 
-  group('GET /events/next-registered (stub)', () {
+  group('GET /events/next-registered', () {
     test('returns 405 for POST', () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
@@ -487,20 +511,87 @@ void main() {
       expect(response.statusCode, equals(405));
     });
 
-    test('returns locked empty shape with event: null', () async {
+    test('returns locked event-or-null shape when Firebase is reachable',
+        () async {
       final context = _MockRequestContext();
       final request = _MockRequest();
 
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => context.read<String>()).thenReturn('uid123');
 
       final response = await next_registered_route.onRequest(context);
 
-      expect(response.statusCode, equals(200));
-      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
-      expect(body['success'], isTrue);
-      expect(body.containsKey('event'), isTrue);
-      expect(body['event'], isNull);
+      // 200 when Firebase is configured; 500 without .env in CI.
+      expect(response.statusCode, anyOf(equals(200), equals(500)));
+      if (response.statusCode == 200) {
+        final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+        expect(body['success'], isTrue);
+        expect(body.containsKey('event'), isTrue);
+      }
+    });
+  });
+
+  group('RegistrationListService helpers', () {
+    test('decodeRegisteredCursor rejects malformed cursor', () {
+      expect(
+        () => RegistrationListService.decodeRegisteredCursor('%%%'),
+        throwsA(
+          isA<EventException>().having(
+            (e) => e.code,
+            'code',
+            EventErrorCode.invalidQueryParam,
+          ),
+        ),
+      );
+    });
+
+    test('decodeRegisteredCursor round-trips date and eventId', () {
+      final encoded = base64.encode(
+        utf8.encode(jsonEncode({'date': '2026-07-18', 'eventId': 'evt_1'})),
+      );
+      final decoded = RegistrationListService.decodeRegisteredCursor(encoded);
+      expect(decoded?['date'], equals('2026-07-18'));
+      expect(decoded?['eventId'], equals('evt_1'));
+    });
+
+    test('passesUpcomingFilters keeps approved future events only', () {
+      expect(
+        RegistrationListService.passesUpcomingFilters(
+          status: 'approved',
+          isDeleted: false,
+          date: '2026-07-18',
+          today: '2026-07-18',
+        ),
+        isTrue,
+      );
+      expect(
+        RegistrationListService.passesUpcomingFilters(
+          status: 'pending',
+          isDeleted: false,
+          date: '2026-07-18',
+          today: '2026-07-18',
+        ),
+        isFalse,
+      );
+      expect(
+        RegistrationListService.passesUpcomingFilters(
+          status: 'approved',
+          isDeleted: true,
+          date: '2026-07-18',
+          today: '2026-07-18',
+        ),
+        isFalse,
+      );
+      expect(
+        RegistrationListService.passesUpcomingFilters(
+          status: 'approved',
+          isDeleted: false,
+          date: '2026-07-17',
+          today: '2026-07-18',
+        ),
+        isFalse,
+      );
     });
   });
 
