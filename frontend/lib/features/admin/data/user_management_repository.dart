@@ -9,8 +9,9 @@ abstract class UserManagementRepository {
   /// exact [role]. Backing endpoint enforces faculty/super_admin access.
   Future<List<ManagedUser>> listUsers({String? search, String? role});
 
-  /// Promotes [targetUid] to [newRole] (`organizer` or `faculty`).
-  Future<void> promoteUser({
+  /// Changes [targetUid]'s role to [newRole] (promotion or demotion; the
+  /// backend enforces which transitions are valid).
+  Future<void> changeUserRole({
     required String targetUid,
     required String newRole,
   });
@@ -36,7 +37,7 @@ class UserManagementApiRepository implements UserManagementRepository {
   }
 
   @override
-  Future<void> promoteUser({
+  Future<void> changeUserRole({
     required String targetUid,
     required String newRole,
   }) async {

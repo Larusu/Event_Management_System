@@ -8,10 +8,10 @@ import 'package:campus_event_app/shared/widgets/role_tag.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Role promotion surface (faculty / super_admin only).
+/// Role management surface (faculty / super_admin only).
 ///
-/// Faculty sees students and can promote them to organizer. Super_admin sees
-/// students, guests, and organizers, and can promote to organizer or faculty.
+/// Shows students and organizers (the only roles with available transitions)
+/// and lets the requester promote or demote them per the locked role graph.
 class RolePromotionScreen extends StatelessWidget {
   const RolePromotionScreen({super.key});
 
@@ -26,7 +26,7 @@ class RolePromotionScreen extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(
-            'Role Promotion',
+            'Role Management',
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
@@ -71,13 +71,29 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
     });
   }
 
-  Future<void> _onPromote(ManagedUser user) async {
+  static const Map<String, int> _roleRank = {
+    Roles.guest: 0,
+    Roles.student: 1,
+    Roles.organizer: 2,
+    Roles.faculty: 3,
+    Roles.superAdmin: 4,
+  };
+
+  bool _isPromotion(String fromRole, String toRole) =>
+      (_roleRank[toRole] ?? 0) > (_roleRank[fromRole] ?? 0);
+
+  String _actionLabel(String fromRole, String toRole) =>
+      _isPromotion(fromRole, toRole)
+          ? 'Promote to ${roleLabel(toRole)}'
+          : 'Demote to ${roleLabel(toRole)}';
+
+  Future<void> _onChangeRole(ManagedUser user) async {
     final provider = context.read<RolePromotionProvider>();
     final messenger = ScaffoldMessenger.of(context);
 
-    final options = RolePromotionProvider.assignableRoles(
+    final options = RolePromotionProvider.availableRoleChanges(
       requesterRole: provider.requesterRole,
-      targetRole: user.role,
+      currentRole: user.role,
     );
     if (options.isEmpty) return;
 
@@ -94,7 +110,7 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
     if (!mounted || confirmed != true) return;
 
     final error =
-        await provider.promote(targetUid: user.uid, newRole: targetRole);
+        await provider.changeRole(targetUid: user.uid, newRole: targetRole);
     if (!mounted) return;
     messenger.showSnackBar(
       SnackBar(
@@ -117,14 +133,16 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Text(
-                  'Promote ${user.name} to…',
+                  "Change ${user.name}'s role",
                   style: Theme.of(sheetContext).textTheme.titleMedium,
                 ),
               ),
               for (final role in options)
                 ListTile(
-                  leading: const Icon(Icons.arrow_upward),
-                  title: Text(roleLabel(role)),
+                  leading: Icon(_isPromotion(user.role, role)
+                      ? Icons.arrow_upward
+                      : Icons.arrow_downward),
+                  title: Text(_actionLabel(user.role, role)),
                   onTap: () => Navigator.pop(sheetContext, role),
                 ),
               const SizedBox(height: 8),
@@ -136,14 +154,15 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
   }
 
   Future<bool?> _confirm(ManagedUser user, String targetRole) {
+    final promoting = _isPromotion(user.role, targetRole);
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Confirm promotion'),
+          title: Text(promoting ? 'Confirm promotion' : 'Confirm demotion'),
           content: Text(
-            'Promote ${user.name} (${roleLabel(user.role)}) to '
-            '${roleLabel(targetRole)}?',
+            '${promoting ? 'Promote' : 'Demote'} ${user.name} '
+            '(${roleLabel(user.role)}) to ${roleLabel(targetRole)}?',
           ),
           actions: [
             TextButton(
@@ -151,8 +170,12 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
               child: const Text('Cancel'),
             ),
             FilledButton(
+              style: promoting
+                  ? null
+                  : FilledButton.styleFrom(
+                      backgroundColor: Colors.orange.shade800),
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Promote'),
+              child: Text(promoting ? 'Promote' : 'Demote'),
             ),
           ],
         );
@@ -169,7 +192,7 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(
-          'Role Promotion',
+          'Role Management',
           style: Theme.of(context).textTheme.titleMedium,
         ),
       ),
@@ -239,7 +262,7 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
             itemCount: users.length,
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, index) =>
-                _UserCard(user: users[index], onPromote: _onPromote),
+                _UserCard(user: users[index], onManage: _onChangeRole),
           ),
         );
     }
@@ -248,9 +271,9 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
 
 class _UserCard extends StatelessWidget {
   final ManagedUser user;
-  final Future<void> Function(ManagedUser user) onPromote;
+  final Future<void> Function(ManagedUser user) onManage;
 
-  const _UserCard({required this.user, required this.onPromote});
+  const _UserCard({required this.user, required this.onManage});
 
   @override
   Widget build(BuildContext context) {
@@ -285,8 +308,8 @@ class _UserCard extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             FilledButton.tonal(
-              onPressed: () => onPromote(user),
-              child: const Text('Promote'),
+              onPressed: () => onManage(user),
+              child: const Text('Change role'),
             ),
           ],
         ),

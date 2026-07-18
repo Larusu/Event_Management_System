@@ -31,35 +31,43 @@ class RolePromotionProvider extends ChangeNotifier {
   List<ManagedUser> get users => _users;
   String? get errorMessage => _errorMessage;
 
-  /// Roles a [requesterRole] can assign to a user currently holding
-  /// [targetRole]. Faculty can only create organizers; super_admin can create
-  /// organizers or faculty (and can only promote an existing organizer up to
-  /// faculty).
-  static List<String> assignableRoles({
+  /// Locked role transition graph (mirrors the backend). Keyed by the target's
+  /// current role -> the assignable new role -> the requester roles allowed to
+  /// perform it. Promotion and demotion share this one table.
+  ///
+  ///   student   -> organizer            (faculty, super_admin)
+  ///   organizer -> faculty              (super_admin only)
+  ///   organizer -> student  (demote)    (faculty, super_admin)
+  ///   guest / faculty / super_admin     -> terminal (no transitions)
+  static const Map<String, Map<String, Set<String>>> _transitions = {
+    Roles.student: {
+      Roles.organizer: {Roles.faculty, Roles.superAdmin},
+    },
+    Roles.organizer: {
+      Roles.faculty: {Roles.superAdmin},
+      Roles.student: {Roles.faculty, Roles.superAdmin},
+    },
+  };
+
+  /// The new roles a [requesterRole] may assign to a user currently holding
+  /// [currentRole]. Promotions are listed before demotions.
+  static List<String> availableRoleChanges({
     required String requesterRole,
-    required String targetRole,
+    required String currentRole,
   }) {
-    if (requesterRole == Roles.faculty) {
-      return targetRole == Roles.organizer ? const [] : const [Roles.organizer];
-    }
-    if (requesterRole == Roles.superAdmin) {
-      if (targetRole == Roles.organizer) return const [Roles.faculty];
-      return const [Roles.organizer, Roles.faculty];
-    }
-    return const [];
+    final fromCurrent = _transitions[currentRole];
+    if (fromCurrent == null) return const [];
+    final result = <String>[];
+    fromCurrent.forEach((newRole, actors) {
+      if (actors.contains(requesterRole)) result.add(newRole);
+    });
+    return result;
   }
 
-  bool _isCandidate(String role) {
-    if (requesterRole == Roles.faculty) {
-      return role == Roles.student;
-    }
-    if (requesterRole == Roles.superAdmin) {
-      return role == Roles.student ||
-          role == Roles.guest ||
-          role == Roles.organizer;
-    }
-    return false;
-  }
+  bool _isCandidate(String role) => availableRoleChanges(
+        requesterRole: requesterRole,
+        currentRole: role,
+      ).isNotEmpty;
 
   Future<void> load({String? search}) async {
     _status = RolePromotionStatus.loading;
@@ -80,17 +88,17 @@ class RolePromotionProvider extends ChangeNotifier {
     _safeNotify();
   }
 
-  /// Promotes a user and updates the local list on success. Returns `null` on
-  /// success, or a user-facing error message on failure.
-  Future<String?> promote({
+  /// Changes a user's role (promote or demote) and updates the local list on
+  /// success. Returns `null` on success, or a user-facing error message.
+  Future<String?> changeRole({
     required String targetUid,
     required String newRole,
   }) async {
     try {
-      await _repository.promoteUser(targetUid: targetUid, newRole: newRole);
-      // Reflect the change locally, dropping anyone who is no longer a
-      // candidate for this requester (e.g. a student promoted to organizer by
-      // a faculty member).
+      await _repository.changeUserRole(targetUid: targetUid, newRole: newRole);
+      // Reflect the change locally, dropping anyone who no longer has any
+      // available action for this requester (e.g. an organizer promoted to
+      // faculty, which is terminal).
       _users = _users
           .map((u) => u.uid == targetUid ? u.copyWith(role: newRole) : u)
           .where((u) => _isCandidate(u.role))

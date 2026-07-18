@@ -210,47 +210,58 @@ class FirebaseAuthService {
     };
   }
 
-  /// Promotes [targetUid] to [newRole].
+  /// Allowed role transitions keyed by the target's current role. Each entry
+  /// maps an assignable `new_role` to the set of requester roles permitted to
+  /// perform it. Anything not listed here is rejected as an invalid transition.
+  ///
+  /// Model (locked):
+  ///   student   -> organizer            (faculty, super_admin)
+  ///   organizer -> faculty              (super_admin only)
+  ///   organizer -> student  (demote)    (faculty, super_admin)
+  ///   guest / faculty / super_admin     -> terminal (no transitions)
+  static const Map<String, Map<String, Set<String>>> _roleTransitions = {
+    'student': {
+      'organizer': {'faculty', 'super_admin'},
+    },
+    'organizer': {
+      'faculty': {'super_admin'},
+      'student': {'faculty', 'super_admin'},
+    },
+  };
+
+  /// Changes [targetUid]'s role to [newRole], enforcing the locked role
+  /// transition graph (promotion and demotion share this one path).
   ///
   /// [requesterRole] is supplied by the caller from the middleware-resolved
   /// user document (see §1.9) - we deliberately do NOT re-read the requester's
   /// doc here, since the middleware already verified and resolved it.
-  static Future<void> promoteUserRole({
+  static Future<void> changeUserRole({
     required String targetUid,
     required String requesterUid,
     required String requesterRole,
     required String newRole,
   }) async {
-    const validRoles = {'organizer', 'faculty'};
+    const assignableRoles = {'student', 'organizer', 'faculty'};
 
-    // Validate newRole is a known assignable role. AUTH007
-    if (!validRoles.contains(newRole)) {
-      throw AuthException(AuthErrorCode.invalidRole, 'Invalid role specified.');
-    }
-
-    // Check permission. AUTH003
+    // Only faculty/super_admin may change roles at all. AUTH003
     if (requesterRole != 'faculty' && requesterRole != 'super_admin') {
       throw AuthException(
         AuthErrorCode.insufficientPermission,
-        'You do not have permission to assign this role.',
+        'You do not have permission to change roles.',
       );
     }
 
-    // Faculty may only assign `organizer`; assigning any other valid role is
-    // a permission failure, not an invalid-role error. AUTH003
-    if (requesterRole == 'faculty' && newRole != 'organizer') {
-      throw AuthException(
-        AuthErrorCode.insufficientPermission,
-        'You do not have permission to assign this role.',
-      );
-    }
-
-    // Self-promotion check. AUTH003
+    // Cannot change your own role, even with privilege. AUTH003
     if (targetUid == requesterUid) {
       throw AuthException(
         AuthErrorCode.insufficientPermission,
-        'Cannot promote yourself.',
+        'You cannot change your own role.',
       );
+    }
+
+    // newRole must be a known assignable role. AUTH007
+    if (!assignableRoles.contains(newRole)) {
+      throw AuthException(AuthErrorCode.invalidRole, 'Invalid role specified.');
     }
 
     final existing = await _getUserDocument(targetUid);
@@ -258,6 +269,26 @@ class FirebaseAuthService {
     // Check target exists. AUTH004
     if (existing == null) {
       throw AuthException(AuthErrorCode.userNotFound, 'Target user not found');
+    }
+
+    final currentRole = existing['role'] as String? ?? '';
+
+    // Is (currentRole -> newRole) a defined transition at all? AUTH007
+    final allowedFromCurrent = _roleTransitions[currentRole];
+    final requiredRequesterRoles = allowedFromCurrent?[newRole];
+    if (requiredRequesterRoles == null) {
+      throw AuthException(
+        AuthErrorCode.invalidRole,
+        'Cannot change a $currentRole to $newRole.',
+      );
+    }
+
+    // Does the requester have the privilege for this transition? AUTH003
+    if (!requiredRequesterRoles.contains(requesterRole)) {
+      throw AuthException(
+        AuthErrorCode.insufficientPermission,
+        'You do not have permission to assign this role.',
+      );
     }
 
     final timeNow = DateTime.now().toUtc().toIso8601String();

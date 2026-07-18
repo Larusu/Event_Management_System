@@ -53,7 +53,7 @@ class AdminLandingScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
               child: SettingsCard(
                 icon: Icons.manage_accounts_outlined,
-                label: 'Role Promotion',
+                label: 'Role Management',
                 onTap: () {
                   Navigator.push(
                     context,
