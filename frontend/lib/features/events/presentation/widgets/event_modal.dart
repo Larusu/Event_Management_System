@@ -432,7 +432,15 @@ class EventModalContent extends StatelessWidget {
           children: [
             Expanded(child: _hostInfo()),
             const SizedBox(width: 12),
-            _infoChip(primary),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _guestBadge(primary),
+                const SizedBox(height: 6),
+                _infoChip(primary),
+              ],
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -590,6 +598,19 @@ class EventModalContent extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _guestBadge(Color primary) {
+    final color = isOpenToGuests ? primary : _kGrey;
+    final label = isOpenToGuests ? 'Open to guests!!' : 'Students only!!';
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 10,
+        color: color,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 
