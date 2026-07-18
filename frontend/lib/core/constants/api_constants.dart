@@ -13,6 +13,24 @@ class ApiRoutes {
   static const String forgotPassword = '/auth/forgot-password';
   static const String usersMe = '/users/me';
 
+  /// User management (faculty/super_admin): list users with optional
+  /// `?search=` (name/email substring) and `?role=` (exact role) filters.
+  static String users({String? search, String? role}) {
+    final params = <String, String>{};
+    if (search != null && search.isNotEmpty) {
+      params['search'] = Uri.encodeComponent(search);
+    }
+    if (role != null && role.isNotEmpty) {
+      params['role'] = Uri.encodeComponent(role);
+    }
+    if (params.isEmpty) return '/users';
+    final qs = params.entries.map((e) => '${e.key}=${e.value}').join('&');
+    return '/users?$qs';
+  }
+
+  /// Role promotion (faculty/super_admin): `PATCH /users/{targetUID}/role`.
+  static String userRole(String targetUid) => '/users/$targetUid/role';
+
   /// Events feed (Feature 3).
   static const String events = '/events';
 
