@@ -78,11 +78,15 @@ class _ViewEventDetailsState extends State<_ViewEventDetails> {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.network(
-            "https://upload.wikimedia.org/wikipedia/commons/a/a3/Whitebulldog.jpg",
+          child: Container(
             width: double.infinity,
             height: 275,
-            fit: BoxFit.cover,
+            color: Colors.grey[300],
+            child: const Icon(
+              Icons.image,
+              size: 60,
+              color: Colors.grey,
+            ),
           ),
         ),
         Padding(
