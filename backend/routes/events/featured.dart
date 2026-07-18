@@ -6,7 +6,7 @@ import 'package:dart_frog/dart_frog.dart';
 /// Default featured count when no `limit` query parameter is supplied.
 const _defaultLimit = 3;
 
-/// Inclusive upper bound for `limit` (PDF 3.7 / Dev C task).
+/// Inclusive upper bound for `limit`.
 const _maxLimit = 10;
 
 /// Inclusive lower bound for `limit` when the param is present.
@@ -29,7 +29,7 @@ Future<Response> onRequest(RequestContext context) async {
 
     final events = await EventService.fetchFeatured(limit: limit);
 
-    // Featured card shape (doc 3.5.3) — description included; no slots fields.
+    // Featured card shape — description included; no slots fields.
     final responseEvents = events.map((event) {
       return {
         'event_id': event.eventId,

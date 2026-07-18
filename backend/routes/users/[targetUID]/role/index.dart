@@ -25,7 +25,7 @@ Future<Response> onRequest(RequestContext context, String targetUid) async {
         'new_role is required.');
     }
 
-    await FirebaseAuthService.promoteUserRole(
+    await FirebaseAuthService.changeUserRole(
       targetUid: targetUid,
       requesterUid: requesterUid,
       requesterRole: requesterRole,

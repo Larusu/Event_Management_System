@@ -32,6 +32,7 @@ class _EventsScreenState extends State<EventsScreen> {
       if (listProvider.status == EventListStatus.idle) {
         listProvider.load();
       }
+      listProvider.loadTags();
       if (dashProvider.featuredStatus == EventListStatus.idle) {
         dashProvider.loadFeatured();
       }
@@ -104,13 +105,7 @@ class _EventsScreenState extends State<EventsScreen> {
               header: 'Events \nList',
               views: const [],
               page: "events",
-              filters: const [
-                'Students Only',
-                'Wellness',
-                'Technology',
-                'Open to All',
-                'Social',
-              ],
+              filters: context.watch<EventListProvider>().tags,
               showSearch: true,
               searchController: _searchController,
               onSearchChanged: _onSearchChanged,

@@ -18,6 +18,8 @@ abstract class EventRepository {
   Future<List<Event>> getFeaturedEvents({int limit = 3});
   Future<List<Event>> getRegisteredEvents();
   Future<Event?> getNextRegisteredEvent();
+  Future<List<String>> getTags();
+  Future<Map<String, dynamic>> registerForEvent(String eventId);
 }
 
 /// Talks to the real Dart Frog backend.
@@ -89,6 +91,23 @@ class EventApiRepository implements EventRepository {
     }
     return Event.fromJson(json);
   }
+
+  @override
+  Future<List<String>> getTags() async {
+    final response = await _api.get(ApiRoutes.eventsTags);
+    final json = response.data['tags'];
+    if (json is! List) return const [];
+    return json.map((e) => e.toString()).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> registerForEvent(String eventId) async {
+    final response = await _api.post(
+      ApiRoutes.eventRegister(eventId),
+      {},
+    );
+    return response.data;
+  }
 }
 
 /// Helper to build the events list query path.
@@ -103,10 +122,8 @@ class ApiEventsListHelper {
   }) {
     final params = <String, String>{};
     if (query != null && query.isNotEmpty) params['q'] = query;
-    if (tags != null) {
-      for (final tag in tags) {
-        params['tag'] = Uri.encodeComponent(tag);
-      }
+    if (tags != null && tags.isNotEmpty) {
+      params['tags'] = Uri.encodeComponent(tags.join(','));
     }
     if (cursor != null) params['cursor'] = cursor;
     if (limit != null) params['limit'] = limit.toString();

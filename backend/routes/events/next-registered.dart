@@ -1,13 +1,14 @@
+import 'package:backend/constants/event_error_codes.dart';
+import 'package:backend/services/event_service.dart';
+import 'package:backend/services/registration_list_service.dart';
+import 'package:backend/utils/response_helper.dart';
 import 'package:dart_frog/dart_frog.dart';
 
 /// GET /events/next-registered
 ///
-/// Stub until the registrations relationship exists (Registration feature).
-/// Locks the response shape so the Dashboard "Next Registered Event" card
-/// can build against it now.
-///
-/// Real implementation later: return the single soonest upcoming registered
-/// event with full detail, or `event: null` when none.
+/// Returns the single soonest upcoming event the authenticated user is
+/// registered for, or `event: null` (Feature 5 §5.5.4). Replaces the Feature 3
+/// stub; standardized on the singular `event` key.
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method != HttpMethod.get) {
     return Response.json(
@@ -16,12 +17,29 @@ Future<Response> onRequest(RequestContext context) async {
     );
   }
 
-  // Honest empty result — frontend shows empty/encouraging UI.
-  // Auth (AUTH001 / AUTH006) is enforced by routes/events/_middleware.dart.
-  return Response.json(
-    body: {
-      'success': true,
-      'event': null,
-    },
-  );
+  try {
+    final uid = context.read<String>();
+    final event = await RegistrationListService.fetchNextRegistered(uid: uid);
+
+    // Locked Feature 3 / 5.5.4 shape — no extra message field.
+    return Response.json(
+      body: {
+        'success': true,
+        'event': event,
+      },
+    );
+  } on EventException catch (e) {
+    return ResponseHelper.errorFromException(e);
+  } catch (e, stack) {
+    // ignore: avoid_print
+    print('${EventErrorCode.internalError} next-registered: $e\n$stack');
+    return Response.json(
+      statusCode: 500,
+      body: {
+        'success': false,
+        'code': EventErrorCode.internalError,
+        'message': 'Internal server error',
+      },
+    );
+  }
 }

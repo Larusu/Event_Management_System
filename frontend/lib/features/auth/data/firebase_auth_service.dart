@@ -5,7 +5,7 @@ import '../../../core/network/api_exception.dart';
 /// Wraps the Firebase Client SDK calls needed to turn the backend-issued custom
 /// token into a real session.
 ///
-/// Flow (sections 1.5.1 / 1.5.2): the backend returns a `custom_token`, the app
+/// Flow: the backend returns a `custom_token`, the app
 /// exchanges it via [signInWithCustomToken], and subsequent authenticated
 /// requests read a fresh ID token via [currentIdToken].
 class FirebaseAuthService {

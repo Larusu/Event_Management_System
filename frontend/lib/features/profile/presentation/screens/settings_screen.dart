@@ -4,6 +4,7 @@ import 'package:campus_event_app/features/profile/presentation/widgets/profile_a
 import 'package:campus_event_app/features/profile/presentation/widgets/settings_card.dart';
 import 'package:campus_event_app/shared/widgets/header.dart';
 import 'package:campus_event_app/shared/widgets/header_delegate.dart';
+import 'package:campus_event_app/shared/widgets/role_tag.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -17,8 +18,9 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
-    final userName =
-        context.watch<AuthProvider>().currentUser?.name ?? 'Account';
+    final currentUser = context.watch<AuthProvider>().currentUser;
+    final userName = currentUser?.name ?? 'Account';
+    final userRole = currentUser?.role;
 
     return SafeArea(
       child: CustomScrollView(
@@ -37,8 +39,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 30),
-              child: const Center(
-                child: ProfileAvatar(),
+              child: Center(
+                child: Column(
+                  children: [
+                    const ProfileAvatar(),
+                    if (userRole != null) ...[
+                      const SizedBox(height: 12),
+                      RoleTag(role: userRole),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),

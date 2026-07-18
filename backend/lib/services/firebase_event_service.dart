@@ -29,6 +29,142 @@ class FirebaseEventService {
     return _toEvent(eventId, doc);
   }
 
+  /// Returns the raw Firestore document for [eventId], or null if missing.
+  ///
+  /// Unlike [getEventById], this does not filter by approval status — used by
+  /// moderation and write endpoints.
+  static Future<Map<String, dynamic>?> getEventDocument(String eventId) async {
+    return _getEventDocument(eventId);
+  }
+
+  /// Patches specific fields on `events/{eventId}` via the Firestore REST API.
+  static Future<void> patchEvent(
+    String eventId,
+    Map<String, dynamic> fields,
+  ) async {
+    final client = await _firestoreClient();
+    final projectId = _firestoreProjectId();
+
+    final uri = Uri.parse(
+      'https://firestore.googleapis.com/v1/projects/$projectId'
+      '/databases/(default)/documents/events/$eventId',
+    );
+
+    final fieldPaths = fields.keys.map((k) => 'updateMask.fieldPaths=$k').join('&');
+    final patchUri = Uri.parse('$uri?$fieldPaths');
+
+    final encodedFields = <String, dynamic>{};
+    for (final entry in fields.entries) {
+      final value = entry.value;
+      if (value == null) {
+        encodedFields[entry.key] = {'nullValue': null};
+      } else if (value is bool) {
+        encodedFields[entry.key] = {'booleanValue': value};
+      } else if (value is int) {
+        encodedFields[entry.key] = {'integerValue': value.toString()};
+      } else if (value is String) {
+        encodedFields[entry.key] = entry.key.endsWith('_at')
+            ? {'timestampValue': value}
+            : {'stringValue': value};
+      } else {
+        throw ArgumentError(
+          'Unsupported field type for ${entry.key}: ${value.runtimeType}',
+        );
+      }
+    }
+
+    final response = await client.patch(
+      patchUri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'fields': encodedFields}),
+    );
+
+    if (response.statusCode != 200) {
+      throw StateError(
+        'Firestore patch failed for events/$eventId: '
+        '${response.statusCode} ${response.body}',
+      );
+    }
+  }
+
+  /// Updates an event with the given fields.
+  static Future<void> updateEvent(
+    String eventId,
+    Map<String, dynamic> updates,
+  ) async {
+    final client = await _firestoreClient();
+    final projectId = _firestoreProjectId();
+
+    final timeNow = DateTime.now().toUtc().toIso8601String();
+    final updatesWithTimestamp = {
+      ...updates,
+      'updated_at': timeNow,
+    };
+
+    final baseUri = Uri.parse(
+      'https://firestore.googleapis.com/v1/projects/$projectId'
+      '/databases/(default)/documents/events/$eventId',
+    );
+    final fieldPaths = updatesWithTimestamp.keys
+        .map((k) => 'updateMask.fieldPaths=$k')
+        .join('&');
+    final patchUri = Uri.parse('$baseUri?$fieldPaths');
+
+    final response = await client.patch(
+      patchUri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'fields': _encodeFirestoreFields(updatesWithTimestamp),
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw StateError(
+        'Firestore update failed for events/$eventId: '
+        '${response.statusCode} ${response.body}',
+      );
+    }
+  }
+
+  /// Soft deletes an event by setting is_deleted=true and updated_at.
+  static Future<void> softDeleteEvent(String eventId) async {
+    final timeNow = DateTime.now().toUtc().toIso8601String();
+    await updateEvent(eventId, {'is_deleted': true, 'updated_at': timeNow});
+  }
+
+  static Map<String, dynamic> _encodeFirestoreFields(
+    Map<String, dynamic> fields,
+  ) {
+    final result = <String, dynamic>{};
+
+    for (final entry in fields.entries) {
+      final key = entry.key;
+      final value = entry.value;
+
+      if (value == null) {
+        result[key] = {'nullValue': null};
+      } else if (value is String) {
+        result[key] = {'stringValue': value};
+      } else if (value is bool) {
+        result[key] = {'booleanValue': value};
+      } else if (value is int) {
+        result[key] = {'integerValue': value.toString()};
+      } else if (value is double) {
+        result[key] = {'doubleValue': value};
+      } else if (value is List<String>) {
+        result[key] = {
+          'arrayValue': {
+            'values': value.map((v) => {'stringValue': v}).toList(),
+          },
+        };
+      } else {
+        result[key] = {'stringValue': value.toString()};
+      }
+    }
+
+    return result;
+  }
+
   /// Whether an event document should be returned to clients.
   ///
   /// Exposed for unit testing — routes never call this directly.
@@ -252,6 +388,10 @@ class FirebaseEventService {
       'status': stringField('status'),
       'organizer_uid': stringField('organizer_uid'),
       'is_deleted': boolField('is_deleted'),
+      'created_at': stringField('created_at'),
+      'rejection_reason': stringField('rejection_reason'),
+      'reviewed_by': stringField('reviewed_by'),
+      'reviewed_at': stringField('reviewed_at'),
     };
   }
 

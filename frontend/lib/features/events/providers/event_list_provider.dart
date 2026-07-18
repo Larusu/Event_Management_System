@@ -21,12 +21,14 @@ class EventListProvider extends ChangeNotifier {
   bool _isDisposed = false;
   String? _currentQuery;
   List<String>? _currentTags;
+  List<String> _tags = [];
 
   EventListStatus get status => _status;
   List<Event> get events => _events;
   String? get errorMessage => _errorMessage;
   bool get isLoadingMore => _isLoadingMore;
   bool get hasMore => _nextCursor != null;
+  List<String> get tags => _tags;
 
   Future<void> load({
     String? query,
@@ -94,6 +96,15 @@ class EventListProvider extends ChangeNotifier {
       if (a[i] != b[i]) return false;
     }
     return true;
+  }
+
+  Future<void> loadTags() async {
+    try {
+      _tags = await _repository.getTags();
+      _safeNotify();
+    } catch (_) {
+      // Silently fail — tags stay empty.
+    }
   }
 
   void _safeNotify() {

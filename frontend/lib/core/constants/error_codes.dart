@@ -11,8 +11,17 @@ class AuthErrorCodes {
   /// Email already exists (HTTP 409).
   static const String emailExists = 'AUTH002';
 
+  /// Insufficient permission for the requested action (HTTP 403).
+  static const String insufficientPermission = 'AUTH003';
+
+  /// Target user not found (HTTP 404).
+  static const String userNotFound = 'AUTH004';
+
   /// Validation failed — missing/invalid fields (HTTP 400).
   static const String validationFailed = 'AUTH005';
+
+  /// Invalid/unassignable role specified (HTTP 400).
+  static const String invalidRole = 'AUTH007';
 
   /// Account is deactivated (HTTP 403).
   static const String accountDeactivated = 'AUTH006';
@@ -34,7 +43,11 @@ class AuthErrorCodes {
   static const Map<String, String> defaultMessages = {
     invalidToken: 'Your session has expired. Please sign in again.',
     emailExists: 'An account with this email already exists.',
+    insufficientPermission:
+        'You do not have permission to perform this action.',
+    userNotFound: 'That user could not be found.',
     validationFailed: 'Invalid input. Please check your details.',
+    invalidRole: 'That role cannot be assigned.',
     accountDeactivated: 'This account has been deactivated.',
     invalidCredentials: 'Invalid email or password.',
     internalError: 'Something went wrong. Please try again.',
@@ -44,7 +57,7 @@ class AuthErrorCodes {
   };
 }
 
-/// Standardized backend error codes for the events feature (Feature 3).
+/// Standardized backend error codes for the events feature.
 class EventErrorCodes {
   const EventErrorCodes._();
 
@@ -54,10 +67,18 @@ class EventErrorCodes {
   /// Event not found, deleted, or not approved (HTTP 404).
   static const String notFound = 'EVT002';
 
+  /// Forbidden — not the owner, or role below the required minimum (HTTP 403).
+  static const String permissionDenied = 'EVT004';
+
+  /// Invalid status transition for the requested action (HTTP 409).
+  static const String invalidStatusTransition = 'EVT005';
+
   /// Default user-facing messages keyed by code, used as a fallback when the
   /// backend response does not carry a `message`.
   static const Map<String, String> defaultMessages = {
     invalidQuery: 'Invalid request. Please try again.',
     notFound: 'Event not found.',
+    permissionDenied: 'You do not have permission to moderate events.',
+    invalidStatusTransition: 'That action is not allowed for this event.',
   };
 }

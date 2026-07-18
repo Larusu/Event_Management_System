@@ -10,7 +10,7 @@ import 'firebase_auth_service.dart';
 /// The single point that talks to the backend auth endpoints, per the
 /// architecture convention (API calls only live in `data/`).
 ///
-/// Currently implements Sign In (1.5.1) and Registration (1.5.2). After a
+/// Currently implements Sign In and Registration. After a
 /// successful response it exchanges the returned `custom_token` for a real
 /// Firebase session so the user is immediately authenticated.
 class AuthRepository {
