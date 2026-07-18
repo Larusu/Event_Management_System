@@ -132,39 +132,6 @@ class FirebaseEventService {
     await updateEvent(eventId, {'is_deleted': true, 'updated_at': timeNow});
   }
 
-  static Map<String, dynamic> _encodeFirestoreFields(
-    Map<String, dynamic> fields,
-  ) {
-    final result = <String, dynamic>{};
-
-    for (final entry in fields.entries) {
-      final key = entry.key;
-      final value = entry.value;
-
-      if (value == null) {
-        result[key] = {'nullValue': null};
-      } else if (value is String) {
-        result[key] = {'stringValue': value};
-      } else if (value is bool) {
-        result[key] = {'booleanValue': value};
-      } else if (value is int) {
-        result[key] = {'integerValue': value.toString()};
-      } else if (value is double) {
-        result[key] = {'doubleValue': value};
-      } else if (value is List<String>) {
-        result[key] = {
-          'arrayValue': {
-            'values': value.map((v) => {'stringValue': v}).toList(),
-          },
-        };
-      } else {
-        result[key] = {'stringValue': value.toString()};
-      }
-    }
-
-    return result;
-  }
-
   /// Whether an event document should be returned to clients.
   ///
   /// Exposed for unit testing — routes never call this directly.
