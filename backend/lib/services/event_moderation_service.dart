@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:backend/constants/event_error_codes.dart';
 import 'package:backend/firebase_config.dart';
+import 'package:backend/services/firebase_auth_service.dart';
 import 'package:backend/services/firebase_event_service.dart';
 import 'package:backend/utils/response_helper.dart';
 import 'package:googleapis_auth/auth_io.dart';
@@ -68,11 +69,49 @@ class EventModerationService {
       }
     }
 
+    await _attachOrganizerInfo(matched);
+
     final nextCursor = matched.length == limit ? lastMatched : null;
     return PendingEventPage(events: matched, nextCursor: nextCursor);
   }
 
-  /// Applies approve / reject / reopen per the transition table.
+  /// Resolves each event's `organizer_uid` into `organizer_name` /
+  /// `organizer_email` for display. Cached per page so multiple events by the
+  /// same organizer only cost one user lookup; a missing/deleted organizer
+  /// falls back to empty strings rather than failing the whole queue.
+  static Future<void> _attachOrganizerInfo(
+    List<Map<String, dynamic>> events,
+  ) async {
+    final cache = <String, Map<String, String>>{};
+
+    for (final event in events) {
+      final organizerUid = event['organizer_uid'] as String? ?? '';
+      if (organizerUid.isEmpty) {
+        event['organizer_name'] = '';
+        event['organizer_email'] = '';
+        continue;
+      }
+
+      var info = cache[organizerUid];
+      if (info == null) {
+        try {
+          final doc = await FirebaseAuthService.getUserByUid(organizerUid);
+          info = {
+            'name': doc['name'] as String? ?? '',
+            'email': doc['email'] as String? ?? '',
+          };
+        } catch (_) {
+          info = {'name': '', 'email': ''};
+        }
+        cache[organizerUid] = info;
+      }
+
+      event['organizer_name'] = info['name'];
+      event['organizer_email'] = info['email'];
+    }
+  }
+
+  /// Applies approve / reject / reopen per the 4.8 transition table.
   ///
   /// Returns the moderation summary fields for the API response.
   static Future<Map<String, dynamic>> changeStatus({
@@ -236,6 +275,13 @@ class EventModerationService {
         'date': parsed['date'] as String? ?? '',
         'start_time': parsed['start_time'] as String? ?? '',
         'end_time': parsed['end_time'] as String? ?? '',
+        'event_mode': parsed['event_mode'] as String? ?? '',
+        'location': parsed['location'] as String?,
+        'stream_link': parsed['stream_link'] as String?,
+        'host_name': parsed['host_name'] as String? ?? '',
+        'guest_speaker': parsed['guest_speaker'] as String?,
+        'is_open_to_guests': parsed['is_open_to_guests'] as bool? ?? false,
+        'slots_total': parsed['slots_total'] as int? ?? 0,
         'organizer_uid': parsed['organizer_uid'] as String? ?? '',
         'created_at': createdAt,
       });
@@ -294,12 +340,26 @@ class EventModerationService {
     bool? boolField(String key) =>
         (fields[key] as Map<String, dynamic>?)?['booleanValue'] as bool?;
 
+    // Firestore REST returns integers as a string under `integerValue`.
+    int? intField(String key) {
+      final raw = (fields[key] as Map<String, dynamic>?)?['integerValue'];
+      if (raw == null) return null;
+      return int.tryParse(raw.toString());
+    }
+
     return {
       'title': stringField('title'),
       'cover_image_url': stringField('cover_image_url'),
       'date': stringField('date'),
       'start_time': stringField('start_time'),
       'end_time': stringField('end_time'),
+      'event_mode': stringField('event_mode'),
+      'location': stringField('location'),
+      'stream_link': stringField('stream_link'),
+      'host_name': stringField('host_name'),
+      'guest_speaker': stringField('guest_speaker'),
+      'is_open_to_guests': boolField('is_open_to_guests'),
+      'slots_total': intField('slots_total'),
       'organizer_uid': stringField('organizer_uid'),
       'created_at': stringField('created_at'),
       'status': stringField('status'),

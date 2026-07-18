@@ -49,8 +49,7 @@ class FirebaseEventService {
       '/databases/(default)/documents/events/$eventId',
     );
 
-    final fieldPaths =
-        fields.keys.map((k) => 'updateMask.fieldPaths=$k').join('&');
+    final fieldPaths = fields.keys.map((k) => 'updateMask.fieldPaths=$k').join('&');
     final patchUri = Uri.parse('$uri?$fieldPaths');
 
     final encodedFields = <String, dynamic>{};
@@ -276,7 +275,6 @@ class FirebaseEventService {
       'organizer_uid': stringField('organizer_uid'),
       'is_deleted': boolField('is_deleted'),
       'created_at': stringField('created_at'),
-      'updated_at': stringField('updated_at'),
       'rejection_reason': stringField('rejection_reason'),
       'reviewed_by': stringField('reviewed_by'),
       'reviewed_at': stringField('reviewed_at'),

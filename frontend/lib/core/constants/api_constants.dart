@@ -13,10 +13,38 @@ class ApiRoutes {
   static const String forgotPassword = '/auth/forgot-password';
   static const String usersMe = '/users/me';
 
-  /// Events feed.
+  /// User management (faculty/super_admin): list users with optional
+  /// `?search=` (name/email substring) and `?role=` (exact role) filters.
+  static String users({String? search, String? role}) {
+    final params = <String, String>{};
+    if (search != null && search.isNotEmpty) {
+      params['search'] = Uri.encodeComponent(search);
+    }
+    if (role != null && role.isNotEmpty) {
+      params['role'] = Uri.encodeComponent(role);
+    }
+    if (params.isEmpty) return '/users';
+    final qs = params.entries.map((e) => '${e.key}=${e.value}').join('&');
+    return '/users?$qs';
+  }
+
+  /// Role promotion (faculty/super_admin): `PATCH /users/{targetUID}/role`.
+  static String userRole(String targetUid) => '/users/$targetUid/role';
+
+  /// Events feed (Feature 3).
   static const String events = '/events';
 
-  /// Single-event detail: `/events/{eventId}`.
+  /// Pending events review queue (Feature 4, faculty/super_admin):
+  /// `GET /events/pending?cursor=`.
+  static String eventsPending({String? cursor}) {
+    if (cursor == null || cursor.isEmpty) return '/events/pending';
+    return '/events/pending?cursor=${Uri.encodeComponent(cursor)}';
+  }
+
+  /// Event moderation (Feature 4): `PATCH /events/{eventId}/status`.
+  static String eventStatus(String eventId) => '/events/$eventId/status';
+
+  /// Single-event detail (Feature 3): `/events/{eventId}`.
   static String eventById(String eventId) => '/events/$eventId';
 
   /// Featured events: `/events/featured?limit=N`.

@@ -210,47 +210,58 @@ class FirebaseAuthService {
     };
   }
 
-  /// Promotes [targetUid] to [newRole].
+  /// Allowed role transitions keyed by the target's current role. Each entry
+  /// maps an assignable `new_role` to the set of requester roles permitted to
+  /// perform it. Anything not listed here is rejected as an invalid transition.
+  ///
+  /// Model (locked):
+  ///   student   -> organizer            (faculty, super_admin)
+  ///   organizer -> faculty              (super_admin only)
+  ///   organizer -> student  (demote)    (faculty, super_admin)
+  ///   guest / faculty / super_admin     -> terminal (no transitions)
+  static const Map<String, Map<String, Set<String>>> _roleTransitions = {
+    'student': {
+      'organizer': {'faculty', 'super_admin'},
+    },
+    'organizer': {
+      'faculty': {'super_admin'},
+      'student': {'faculty', 'super_admin'},
+    },
+  };
+
+  /// Changes [targetUid]'s role to [newRole], enforcing the locked role
+  /// transition graph (promotion and demotion share this one path).
   ///
   /// [requesterRole] is supplied by the caller from the middleware-resolved
   /// user document - we deliberately do NOT re-read the requester's
   /// doc here, since the middleware already verified and resolved it.
-  static Future<void> promoteUserRole({
+  static Future<void> changeUserRole({
     required String targetUid,
     required String requesterUid,
     required String requesterRole,
     required String newRole,
   }) async {
-    const validRoles = {'organizer', 'faculty'};
+    const assignableRoles = {'student', 'organizer', 'faculty'};
 
-    // Validate newRole is a known assignable role. AUTH007
-    if (!validRoles.contains(newRole)) {
-      throw AuthException(AuthErrorCode.invalidRole, 'Invalid role specified.');
-    }
-
-    // Check permission. AUTH003
+    // Only faculty/super_admin may change roles at all. AUTH003
     if (requesterRole != 'faculty' && requesterRole != 'super_admin') {
       throw AuthException(
         AuthErrorCode.insufficientPermission,
-        'You do not have permission to assign this role.',
+        'You do not have permission to change roles.',
       );
     }
 
-    // Faculty may only assign `organizer`; assigning any other valid role is
-    // a permission failure, not an invalid-role error. AUTH003
-    if (requesterRole == 'faculty' && newRole != 'organizer') {
-      throw AuthException(
-        AuthErrorCode.insufficientPermission,
-        'You do not have permission to assign this role.',
-      );
-    }
-
-    // Self-promotion check. AUTH003
+    // Cannot change your own role, even with privilege. AUTH003
     if (targetUid == requesterUid) {
       throw AuthException(
         AuthErrorCode.insufficientPermission,
-        'Cannot promote yourself.',
+        'You cannot change your own role.',
       );
+    }
+
+    // newRole must be a known assignable role. AUTH007
+    if (!assignableRoles.contains(newRole)) {
+      throw AuthException(AuthErrorCode.invalidRole, 'Invalid role specified.');
     }
 
     final existing = await _getUserDocument(targetUid);
@@ -260,11 +271,138 @@ class FirebaseAuthService {
       throw AuthException(AuthErrorCode.userNotFound, 'Target user not found');
     }
 
+    final currentRole = existing['role'] as String? ?? '';
+
+    // Is (currentRole -> newRole) a defined transition at all? AUTH007
+    final allowedFromCurrent = _roleTransitions[currentRole];
+    final requiredRequesterRoles = allowedFromCurrent?[newRole];
+    if (requiredRequesterRoles == null) {
+      throw AuthException(
+        AuthErrorCode.invalidRole,
+        'Cannot change a $currentRole to $newRole.',
+      );
+    }
+
+    // Does the requester have the privilege for this transition? AUTH003
+    if (!requiredRequesterRoles.contains(requesterRole)) {
+      throw AuthException(
+        AuthErrorCode.insufficientPermission,
+        'You do not have permission to assign this role.',
+      );
+    }
+
     final timeNow = DateTime.now().toUtc().toIso8601String();
     await _patchUserDocument(targetUid, {
       'role': newRole,
       'updated_at': timeNow,
     });
+  }
+
+  /// Returns all active (non-deleted) users, for the faculty/super_admin
+  /// user-management screen.
+  ///
+  /// Firestore can't do substring search or case-insensitive matching, and
+  /// it would need a *composite index* to combine an equality filter with an
+  /// orderBy or a second equality. To stay index-free (the same choice we
+  /// made for the events feed), we ask Firestore for only the one thing it
+  /// indexes for free — `is_deleted == false` — and then do the [search],
+  /// [roleFilter], and sorting ourselves in Dart. At ~500 users this is
+  /// perfectly fine.
+  static Future<List<Map<String, dynamic>>> listUsers({
+    String? search,
+    String? roleFilter,
+  }) async {
+    final client = await _firestoreClient();
+    final projectId = _firestoreProjectId();
+
+    final uri = Uri.parse( 
+      'https://firestore.googleapis.com/v1/projects/$projectId'
+      '/databases/(default)/documents:runQuery',
+    );
+
+    // Single-field equality filter only -> no composite index needed
+    final response = await client.post( 
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'structuredQuery': {
+          'from': [
+            {'collectionId': 'users'},
+          ],
+          'where': {
+            'fieldFilter': {
+              'field': {'fieldPath': 'is_deleted'},
+              'op': 'EQUAL',
+              'value': {'booleanValue': false},
+            },
+          },
+        },
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw StateError( 
+        'Firestore query failed for ListUsers: '
+        '${response.statusCode} ${response.body}',
+      );
+    }
+
+    final decoded = jsonDecode(response.body) as List<dynamic>;
+    final normalizedSearch = search?.trim().toLowerCase();
+    final normalizedRole = roleFilter?.trim();
+
+    final users = <Map<String, dynamic>>[];
+    for(final entry in decoded){
+      final row = entry as Map<String, dynamic>;
+      final document = row['document'] as Map<String, dynamic>?;
+      
+      if (document == null) {
+        // a row with no 'document' key (bare readTime) means no match
+        continue;
+      }
+
+      final fields = document['fields'] as Map<String, dynamic>? ?? {};
+      // Document 'name looks like ".../documents/users/{uid}'
+      final resourceName = document['name'] as String? ?? '';
+      final uid = resourceName.split('/').last;
+
+      String? stringField(String key) =>
+        (fields[key] as Map<String, dynamic>?)?['stringValue'] as String?;
+
+      final name = stringField('name') ?? '';
+      final email = stringField('email') ?? '';
+      final role = stringField('role') ?? 'guest';
+
+      // Optional role filter (done in Dart to avoid a composite index)
+      if (normalizedRole != null &&
+          normalizedRole.isNotEmpty && 
+          role != normalizedRole) {
+        continue;
+      }
+
+      // Optional case-insensitive substring search on name + email
+      if (normalizedSearch != null && normalizedSearch.isNotEmpty) {
+        final haystack = '$name $email'.toLowerCase();
+        if(!haystack.contains(normalizedSearch)) continue;
+      }
+
+      users.add({
+        'uid': uid,
+        'name': name,
+        'email': email,
+        'contact': stringField('contact') ?? '',
+        'role': role,
+      });
+    }
+
+    // Sort by name in Dart (alphabetical, case-insensitive)
+    users.sort(
+      (a, b) => (a['name'] as String)
+        .toLowerCase()
+        .compareTo((b['name'] as String).toLowerCase()),
+    );
+
+    return users;
   }
 
   /// Soft-deletes the user by setting `is_deleted` to true and bumping
