@@ -23,6 +23,7 @@ class Event {
   final bool isOpenToGuests;
   final int registeredCount;
   final int slotsRemaining;
+  final bool isRegistered;
 
   const Event({
     required this.eventId,
@@ -42,6 +43,7 @@ class Event {
     required this.isOpenToGuests,
     required this.registeredCount,
     required this.slotsRemaining,
+    this.isRegistered = false,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) => Event(
@@ -62,6 +64,7 @@ class Event {
         isOpenToGuests: json['is_open_to_guests'] as bool? ?? false,
         registeredCount: (json['registered_count'] as num?)?.toInt() ?? 0,
         slotsRemaining: (json['slots_remaining'] as num?)?.toInt() ?? 0,
+        isRegistered: json['is_registered'] as bool? ?? false,
       );
 
   static List<String> _stringList(dynamic value) {

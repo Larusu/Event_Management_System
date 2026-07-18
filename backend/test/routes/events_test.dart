@@ -2,14 +2,21 @@ import 'dart:convert';
 
 import 'package:backend/constants/event_error_codes.dart';
 import 'package:backend/models/event.dart';
+import 'package:backend/services/event_moderation_service.dart';
 import 'package:backend/services/event_service.dart';
 import 'package:backend/services/firebase_event_service.dart';
+import 'package:backend/utils/validators.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import '../../routes/events/[eventId]/index.dart' as event_detail_route;
+import '../../routes/events/[eventId]/status/index.dart' as event_status_route;
+import '../../routes/events/featured.dart' as featured_route;
 import '../../routes/events/index.dart' as events_route;
+import '../../routes/events/next-registered.dart' as next_registered_route;
+import '../../routes/events/pending.dart' as pending_route;
+import '../../routes/events/registered.dart' as registered_route;
 
 class _MockRequestContext extends Mock implements RequestContext {}
 
@@ -315,11 +322,439 @@ void main() {
       expect(body['success'], isFalse);
       expect(body['message'], contains('Method not allowed'));
     });
+
+    test('returns 405 for PUT', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.put);
+
+      final response =
+          await event_detail_route.onRequest(context, 'evt_abc123');
+
+      expect(response.statusCode, equals(405));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['success'], isFalse);
+    });
   });
 
   group('EventErrorCode', () {
     test('EVT002 maps to HTTP 404', () {
       expect(EventErrorCode.statusFor[EventErrorCode.notFound], equals(404));
+    });
+
+    test('EVT003 maps to HTTP 400', () {
+      expect(EventErrorCode.statusFor[EventErrorCode.isOpenToGuestsLocked],
+          equals(400));
+    });
+
+    test('EVT004 maps to HTTP 403', () {
+      expect(EventErrorCode.statusFor[EventErrorCode.permissionDenied],
+          equals(403));
+    });
+
+    test('EVT007 maps to HTTP 400', () {
+      expect(EventErrorCode.statusFor[EventErrorCode.validationError],
+          equals(400));
+    });
+  });
+
+  group('GET /events/featured', () {
+    test('returns 405 for POST', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.post);
+
+      final response = await featured_route.onRequest(context);
+
+      expect(response.statusCode, equals(405));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['success'], isFalse);
+      expect(body['message'], contains('Method not allowed'));
+    });
+
+    test('returns 400 with EVT001 for non-integer limit', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => request.url).thenReturn(
+        Uri.parse('/events/featured?limit=abc'),
+      );
+
+      final response = await featured_route.onRequest(context);
+
+      expect(response.statusCode, equals(400));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['code'], equals('EVT001'));
+    });
+
+    test('returns 400 with EVT001 for limit below 3', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => request.url).thenReturn(
+        Uri.parse('/events/featured?limit=2'),
+      );
+
+      final response = await featured_route.onRequest(context);
+
+      expect(response.statusCode, equals(400));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['code'], equals('EVT001'));
+    });
+
+    test('returns 400 with EVT001 for limit above 10', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => request.url).thenReturn(
+        Uri.parse('/events/featured?limit=11'),
+      );
+
+      final response = await featured_route.onRequest(context);
+
+      expect(response.statusCode, equals(400));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['code'], equals('EVT001'));
+    });
+
+    test('accepts limit=3 without EVT001 (may hit Firestore)', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => request.url).thenReturn(
+        Uri.parse('/events/featured?limit=3'),
+      );
+
+      final response = await featured_route.onRequest(context);
+
+      // 200 when Firebase is configured; 500 without .env in CI.
+      expect(response.statusCode, anyOf(equals(200), equals(500)));
+    });
+  });
+
+  group('GET /events/registered (stub)', () {
+    test('returns 405 for POST', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.post);
+
+      final response = await registered_route.onRequest(context);
+
+      expect(response.statusCode, equals(405));
+    });
+
+    test('returns locked empty shape', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+
+      final response = await registered_route.onRequest(context);
+
+      expect(response.statusCode, equals(200));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['success'], isTrue);
+      expect(body['events'], isEmpty);
+      expect(body['next_cursor'], isNull);
+    });
+  });
+
+  group('GET /events/next-registered (stub)', () {
+    test('returns 405 for POST', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.post);
+
+      final response = await next_registered_route.onRequest(context);
+
+      expect(response.statusCode, equals(405));
+    });
+
+    test('returns locked empty shape with event: null', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+
+      final response = await next_registered_route.onRequest(context);
+
+      expect(response.statusCode, equals(200));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['success'], isTrue);
+      expect(body.containsKey('event'), isTrue);
+      expect(body['event'], isNull);
+    });
+  });
+
+  group('EventValidationService', () {
+    test('returns null for valid date in future', () {
+      final today = DateTime.now();
+      final futureDate = DateTime(today.year, today.month, today.day + 7);
+      final dateStr = '${futureDate.year}-${futureDate.month.toString().padLeft(2, '0')}-${futureDate.day.toString().padLeft(2, '0')}';
+
+      final result = EventValidationService.validateEventPatch(
+        {'date': dateStr},
+        {},
+      );
+
+      expect(result, isNull);
+    });
+
+    test('returns error for date in past', () {
+      final result = EventValidationService.validateEventPatch(
+        {'date': '2020-01-01'},
+        {},
+      );
+
+      expect(result, contains('past'));
+    });
+
+    test('accepts valid date format', () {
+      final result = EventValidationService.validateEventPatch(
+        {'date': '2099-12-31'},
+        {},
+      );
+
+      expect(result, isNull);
+    });
+
+    test('returns error for invalid date format', () {
+      final result = EventValidationService.validateEventPatch(
+        {'date': '01/01/2024'},
+        {},
+      );
+
+      expect(result, contains('Invalid date format'));
+    });
+
+    test('online event with stream_link passes validation', () {
+      final result = EventValidationService.validateEventPatch(
+        {'event_mode': 'online', 'stream_link': 'https://zoom.us/j/123'},
+        {},
+      );
+
+      expect(result, isNull);
+    });
+
+    test('online event without stream_link fails validation', () {
+      final result = EventValidationService.validateEventPatch(
+        {'event_mode': 'online'},
+        {},
+      );
+
+      expect(result, contains('Stream link is required'));
+    });
+
+    test('offline event with location passes validation', () {
+      final result = EventValidationService.validateEventPatch(
+        {'event_mode': 'offline', 'location': 'Main Hall'},
+        {},
+      );
+
+      expect(result, isNull);
+    });
+
+    test('offline event without location fails validation', () {
+      final result = EventValidationService.validateEventPatch(
+        {'event_mode': 'offline'},
+        {},
+      );
+
+      expect(result, contains('Location is required'));
+    });
+
+    test('returns null when no validation fields provided', () {
+      final result = EventValidationService.validateEventPatch(
+        {'description': 'New description'},
+        {},
+      );
+
+      expect(result, isNull);
+    });
+  });
+
+  group('EventModerationService transitions', () {
+    test('approve only from pending', () {
+      expect(
+        EventModerationService.resolveTransition('pending', 'approve'),
+        equals('approved'),
+      );
+      expect(
+        EventModerationService.resolveTransition('rejected', 'approve'),
+        isNull,
+      );
+    });
+
+    test('reject only from pending', () {
+      expect(
+        EventModerationService.resolveTransition('pending', 'reject'),
+        equals('rejected'),
+      );
+      expect(
+        EventModerationService.resolveTransition('approved', 'reject'),
+        isNull,
+      );
+    });
+
+    test('reopen only from rejected', () {
+      expect(
+        EventModerationService.resolveTransition('rejected', 'reopen'),
+        equals('pending'),
+      );
+      expect(
+        EventModerationService.resolveTransition('pending', 'reopen'),
+        isNull,
+      );
+    });
+
+    test('canModerate allows faculty and super_admin only', () {
+      expect(EventModerationService.canModerate('faculty'), isTrue);
+      expect(EventModerationService.canModerate('super_admin'), isTrue);
+      expect(EventModerationService.canModerate('organizer'), isFalse);
+      expect(EventModerationService.canModerate('student'), isFalse);
+    });
+  });
+
+  group('GET /events/pending', () {
+    test('returns 405 for POST', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.post);
+
+      final response = await pending_route.onRequest(context);
+
+      expect(response.statusCode, equals(405));
+    });
+
+    test('returns 403 EVT004 for organizer role', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => request.url).thenReturn(Uri.parse('/events/pending'));
+      when(() => context.read<Map<String, dynamic>>()).thenReturn(
+        {'role': 'organizer'},
+      );
+
+      final response = await pending_route.onRequest(context);
+
+      expect(response.statusCode, equals(403));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['code'], equals('EVT004'));
+    });
+
+    test('returns 400 EVT001 for invalid cursor', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => request.url).thenReturn(
+        Uri.parse('/events/pending?cursor=not-valid-base64'),
+      );
+      when(() => context.read<Map<String, dynamic>>()).thenReturn(
+        {'role': 'faculty'},
+      );
+
+      final response = await pending_route.onRequest(context);
+
+      expect(response.statusCode, equals(400));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['code'], equals('EVT001'));
+    });
+  });
+
+  group('PATCH /events/{eventId}/status', () {
+    test('returns 405 for GET', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+
+      final response =
+          await event_status_route.onRequest(context, 'evt_abc123');
+
+      expect(response.statusCode, equals(405));
+    });
+
+    test('returns 403 EVT004 for student role', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.patch);
+      when(() => context.read<String>()).thenReturn('uid123');
+      when(() => context.read<Map<String, dynamic>>()).thenReturn(
+        {'role': 'student'},
+      );
+      when(request.body).thenAnswer(
+        (_) async => jsonEncode({'action': 'approve'}),
+      );
+
+      final response =
+          await event_status_route.onRequest(context, 'evt_abc123');
+
+      expect(response.statusCode, equals(403));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['code'], equals('EVT004'));
+    });
+
+    test('returns 400 when action is missing', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.patch);
+      when(() => context.read<String>()).thenReturn('faculty_uid');
+      when(() => context.read<Map<String, dynamic>>()).thenReturn(
+        {'role': 'faculty'},
+      );
+      when(request.body).thenAnswer((_) async => jsonEncode({}));
+
+      final response =
+          await event_status_route.onRequest(context, 'evt_abc123');
+
+      expect(response.statusCode, equals(400));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['code'], equals('EVT001'));
+    });
+  });
+
+  group('EventErrorCode moderation', () {
+    test('EVT004 maps to HTTP 403', () {
+      expect(
+        EventErrorCode.statusFor[EventErrorCode.permissionDenied],
+        equals(403),
+      );
+    });
+
+    test('EVT005 maps to HTTP 409', () {
+      expect(
+        EventErrorCode.statusFor[EventErrorCode.invalidStatusTransition],
+        equals(409),
+      );
     });
   });
 }

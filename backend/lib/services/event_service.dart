@@ -28,8 +28,10 @@ class EventService {
       'type': 'service_account',
       'project_id': projectId,
       'private_key_id': envMap['FIREBASE_PRIVATE_KEY_ID'],
-      'private_key':
-          envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(r'\n', '\n'),
+      'private_key': envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(
+        r'\n',
+        '\n',
+      ),
       'client_email': envMap['FIREBASE_CLIENT_EMAIL'],
       'client_id': envMap['FIREBASE_CLIENT_ID'],
     });
@@ -120,6 +122,93 @@ class EventService {
     // Stopping because the collection ran out means this is the last page.
     final nextCursor = matched.length == limit ? lastMatched : null;
     return EventPage(events: matched, nextCursor: nextCursor);
+  }
+
+  /// Fetches the soonest [limit] upcoming approved events (Featured).
+  ///
+  /// Filters `status == approved`, `is_deleted == false`, and `date >= today`
+  /// (YYYY-MM-DD, UTC calendar date). Sorted by date ascending — this is the
+  /// entire "featured" rule; no popularity weighting.
+  ///
+  /// [limit] must already be validated by the route (default 3, max 10).
+  static Future<List<Event>> fetchFeatured({int limit = 3}) async {
+    final today = _todayUtcDateString();
+    final matched = <Event>[];
+    Map<String, String>? batchStartAfter;
+    var exhausted = false;
+
+    while (matched.length < limit && !exhausted) {
+      final batch = await _fetchBatch(startAfter: batchStartAfter);
+
+      if (batch.docCount < _batchSize) {
+        exhausted = true;
+      }
+      if (batch.lastDoc != null) {
+        batchStartAfter = batch.lastDoc;
+      }
+
+      for (final event in batch.events) {
+        if (!_passesFeaturedFilters(event, today: today)) {
+          continue;
+        }
+        matched.add(event);
+        if (matched.length == limit) {
+          break;
+        }
+      }
+    }
+
+    return matched;
+  }
+
+  /// Returns all unique tags from approved, non-deleted events.
+  ///
+  /// Uses the same batch-scanning approach as [fetchEvents] but only
+  /// collects tags, stopping early once the collection is exhausted.
+  static Future<List<String>> fetchTags() async {
+    var batchStartAfter = <String, String>{};
+    var exhausted = false;
+    final allTags = <String>{};
+
+    while (!exhausted) {
+      final batch = await _fetchBatch(
+        startAfter: batchStartAfter.isNotEmpty ? batchStartAfter : null,
+      );
+
+      if (batch.docCount < _batchSize) {
+        exhausted = true;
+      }
+      if (batch.lastDoc != null) {
+        batchStartAfter = batch.lastDoc!;
+      }
+
+      for (final event in batch.events) {
+        if (_passesFilters(event)) {
+          allTags.addAll(event.tags);
+        }
+      }
+    }
+
+    final sorted = allTags.toList()..sort();
+    return sorted;
+  }
+
+  /// UTC calendar date as `YYYY-MM-DD` — used for featured `date >= today`.
+  static String _todayUtcDateString() {
+    final now = DateTime.now().toUtc();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  /// Featured filter: approved, not deleted, and on/after [today].
+  static bool _passesFeaturedFilters(Event event, {required String today}) {
+    if (!_passesFilters(event)) {
+      return false;
+    }
+    // ISO date strings compare lexicographically in chronological order.
+    return event.date.compareTo(today) >= 0;
   }
 
   /// Decodes and validates the incoming opaque [cursor].
@@ -278,7 +367,8 @@ class EventService {
     required String date,
     required String eventId,
   }) {
-    final docPath = 'projects/$projectId/databases/(default)'
+    final docPath =
+        'projects/$projectId/databases/(default)'
         '/documents/events/$eventId';
     return {
       'values': [
