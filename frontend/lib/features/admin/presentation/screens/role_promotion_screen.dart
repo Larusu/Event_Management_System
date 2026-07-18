@@ -138,12 +138,22 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
                 ),
               ),
               for (final role in options)
-                ListTile(
-                  leading: Icon(_isPromotion(user.role, role)
-                      ? Icons.arrow_upward
-                      : Icons.arrow_downward),
-                  title: Text(_actionLabel(user.role, role)),
-                  onTap: () => Navigator.pop(sheetContext, role),
+                Builder(
+                  builder: (_) {
+                    final promoting = _isPromotion(user.role, role);
+                    final color = promoting ? null : Colors.red.shade700;
+                    return ListTile(
+                      leading: Icon(
+                        promoting ? Icons.arrow_upward : Icons.arrow_downward,
+                        color: color,
+                      ),
+                      title: Text(
+                        _actionLabel(user.role, role),
+                        style: color == null ? null : TextStyle(color: color),
+                      ),
+                      onTap: () => Navigator.pop(sheetContext, role),
+                    );
+                  },
                 ),
               const SizedBox(height: 8),
             ],
@@ -173,7 +183,7 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
               style: promoting
                   ? null
                   : FilledButton.styleFrom(
-                      backgroundColor: Colors.orange.shade800),
+                      backgroundColor: Colors.red.shade700),
               onPressed: () => Navigator.pop(dialogContext, true),
               child: Text(promoting ? 'Promote' : 'Demote'),
             ),
@@ -307,7 +317,7 @@ class _UserCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            FilledButton.tonal(
+            FilledButton(
               onPressed: () => onManage(user),
               child: const Text('Change role'),
             ),
