@@ -32,11 +32,15 @@ class _CreateEventModalState extends State<_CreateEventModal> {
             Center(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(25.0),
-                child: Image.network(
-                  "https://dogtime.com/wp-content/uploads/sites/12/2011/01/GettyImages-sb10066858aa-001-e1693353192358.jpg",
+                child: Container(
                   width: 150,
                   height: 150,
-                  fit: BoxFit.cover,
+                  color: Colors.grey[300],
+                  child: const Icon(
+                    Icons.image,
+                    size: 60,
+                    color: Colors.grey,
+                  ),
                 ),
               ),
             ),

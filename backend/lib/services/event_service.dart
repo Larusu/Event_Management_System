@@ -273,12 +273,6 @@ class EventService {
     );
 
     if (response.statusCode != 200) {
-      // ignore: avoid_print
-      print('Firestore query failed: ${response.statusCode}');
-      // ignore: avoid_print
-      print('Query: ${jsonEncode(structuredQuery)}');
-      // ignore: avoid_print
-      print('Response: ${response.body}');
       throw StateError(
         'Firestore query failed: ${response.statusCode} ${response.body}',
       );
