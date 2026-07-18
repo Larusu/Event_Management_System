@@ -1,3 +1,4 @@
+import 'package:campus_event_app/features/admin/presentation/screens/admin_landing_screen.dart';
 import 'package:campus_event_app/features/events/presentation/screens/create_event.dart';
 import 'package:campus_event_app/features/events/presentation/screens/events_screen.dart';
 import 'package:flutter/material.dart';
@@ -19,36 +20,46 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _selectedPageIndex = 1;
 
-  final List<Widget> _pages = const [
-    CalendarPage(),
-    DashboardPage(),
-    EventsScreen(),
-    SettingsScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final isGuest =
-        context.watch<AuthProvider>().currentUser?.role == Roles.guest;
+    final role = context.watch<AuthProvider>().currentUser?.role;
+    final isGuest = role == Roles.guest;
+    final isAdmin = role == Roles.faculty || role == Roles.superAdmin;
+
+    // The admin tab is appended last so the fixed indices 0-3 (and the
+    // Events FAB check below) stay stable for every role.
+    final pages = <Widget>[
+      const CalendarPage(),
+      const DashboardPage(),
+      const EventsScreen(),
+      const SettingsScreen(),
+      if (isAdmin) const AdminLandingScreen(),
+    ];
+
+    // Guard against a role change (e.g. demotion) leaving the admin tab
+    // selected after it disappears from the shell.
+    final safeIndex =
+        _selectedPageIndex < pages.length ? _selectedPageIndex : 1;
 
     return Scaffold(
       bottomNavigationBar: NavBar(
-        selectedPageIndex: _selectedPageIndex,
+        selectedPageIndex: safeIndex,
+        isAdmin: isAdmin,
         onPageSelected: (index) {
           setState(() {
             _selectedPageIndex = index;
           });
         },
       ),
-      floatingActionButton: _selectedPageIndex == 2 && !isGuest
+      floatingActionButton: safeIndex == 2 && !isGuest
           ? FloatingActionButton(
               onPressed: () => createNewEvent(context),
               child: const Icon(Icons.add),
             )
           : null,
       body: IndexedStack(
-        index: _selectedPageIndex,
-        children: _pages,
+        index: safeIndex,
+        children: pages,
       ),
     );
   }
