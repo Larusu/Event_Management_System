@@ -423,7 +423,7 @@ class EventModalContent extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
+              ),        
         const SizedBox(height: 12),
 
         // Host / guest speaker + info chip

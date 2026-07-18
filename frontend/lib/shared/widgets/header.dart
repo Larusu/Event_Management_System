@@ -312,7 +312,8 @@ class _HeaderState extends State<Header> {
                     isMonthView: effectiveView == "Month",
                     dates: effectiveView == "Month" ? monthDates : weekDates,
                     selectedDate: effectiveFocused,
-                    hasEvents: effectiveView == "Week"
+                    hasEvents: (effectiveView == "Week" ||
+                            effectiveView == "Day")
                         ? (date) => calendar!.eventsOn(date).isNotEmpty
                         : null,
                     onDateSelected: calendar!.goToDate,
@@ -486,7 +487,8 @@ class CalendarHeader extends StatefulWidget {
   final DateTime selectedDate;
   final bool isMonthView;
 
-  /// When non-null, cells whose date returns true get an event dot (Week view).
+  /// When non-null, cells whose date returns true get an event dot (Day + Week
+  /// views; both load the whole focused week, so per-day dots have data).
   final bool Function(DateTime)? hasEvents;
 
   /// Called when a strip cell is tapped.
