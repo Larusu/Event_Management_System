@@ -34,6 +34,16 @@ class ApiRoutes {
   /// Events feed (Feature 3).
   static const String events = '/events';
 
+  /// Pending events review queue (Feature 4, faculty/super_admin):
+  /// `GET /events/pending?cursor=`.
+  static String eventsPending({String? cursor}) {
+    if (cursor == null || cursor.isEmpty) return '/events/pending';
+    return '/events/pending?cursor=${Uri.encodeComponent(cursor)}';
+  }
+
+  /// Event moderation (Feature 4): `PATCH /events/{eventId}/status`.
+  static String eventStatus(String eventId) => '/events/$eventId/status';
+
   /// Single-event detail (Feature 3): `/events/{eventId}`.
   static String eventById(String eventId) => '/events/$eventId';
 

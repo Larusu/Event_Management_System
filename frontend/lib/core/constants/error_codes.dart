@@ -67,10 +67,18 @@ class EventErrorCodes {
   /// Event not found, deleted, or not approved (HTTP 404).
   static const String notFound = 'EVT002';
 
+  /// Forbidden — not the owner, or role below the required minimum (HTTP 403).
+  static const String permissionDenied = 'EVT004';
+
+  /// Invalid status transition for the requested action (HTTP 409).
+  static const String invalidStatusTransition = 'EVT005';
+
   /// Default user-facing messages keyed by code, used as a fallback when the
   /// backend response does not carry a `message`.
   static const Map<String, String> defaultMessages = {
     invalidQuery: 'Invalid request. Please try again.',
     notFound: 'Event not found.',
+    permissionDenied: 'You do not have permission to moderate events.',
+    invalidStatusTransition: 'That action is not allowed for this event.',
   };
 }
