@@ -1,6 +1,6 @@
 /// Authenticated user profile as returned by the backend auth endpoints.
 ///
-/// Mirrors the Firestore `users/` document shape (section 1.4). `createdAt` and
+/// Mirrors the Firestore `users/` document shape. `createdAt` and
 /// `lastLoginAt` are only present on some responses (e.g. registration), so
 /// they are optional here.
 class User {

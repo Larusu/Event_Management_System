@@ -213,7 +213,7 @@ class FirebaseAuthService {
   /// Promotes [targetUid] to [newRole].
   ///
   /// [requesterRole] is supplied by the caller from the middleware-resolved
-  /// user document (see §1.9) - we deliberately do NOT re-read the requester's
+  /// user document - we deliberately do NOT re-read the requester's
   /// doc here, since the middleware already verified and resolved it.
   static Future<void> promoteUserRole({
     required String targetUid,

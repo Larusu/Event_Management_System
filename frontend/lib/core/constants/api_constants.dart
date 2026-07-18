@@ -13,23 +13,23 @@ class ApiRoutes {
   static const String forgotPassword = '/auth/forgot-password';
   static const String usersMe = '/users/me';
 
-  /// Events feed (Feature 3).
+  /// Events feed.
   static const String events = '/events';
 
-  /// Single-event detail (Feature 3): `/events/{eventId}`.
+  /// Single-event detail: `/events/{eventId}`.
   static String eventById(String eventId) => '/events/$eventId';
 
-  /// Featured events (Feature 3): `/events/featured?limit=N`.
+  /// Featured events: `/events/featured?limit=N`.
   static String eventsFeatured({int limit = 3}) =>
       '/events/featured?limit=$limit';
 
-  /// Registered events (Feature 3): `/events/registered`.
+  /// Registered events: `/events/registered`.
   static const String eventsRegistered = '/events/registered';
 
-  /// Next registered event (Feature 3): `/events/next-registered`.
+  /// Next registered event: `/events/next-registered`.
   static const String eventsNextRegistered = '/events/next-registered';
 
-  /// All unique tags (Feature 3): `/events/tags`.
+  /// All unique tags: `/events/tags`.
   static const String eventsTags = '/events/tags';
 
   /// Register for an event: `/events/{eventId}/register`.

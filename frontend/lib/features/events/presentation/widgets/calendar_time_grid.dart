@@ -6,7 +6,7 @@ import '../../providers/calendar_provider.dart';
 import 'calendar_events.dart';
 import 'event_modal.dart';
 
-/// The Day / Week time-grid body (Figma "Calendar Element", node 56:249).
+/// The Day / Week time-grid body.
 ///
 /// A vertical timeline: hours run top-to-bottom, days run left-to-right, and
 /// each event is a block whose vertical position and height come from its
@@ -17,7 +17,7 @@ class CalendarTimeGrid extends StatelessWidget {
 
   static const int _startHour = 0; // 12:00 AM
   static const int _endHour = 24; // 12:00 AM next day (full 24h day)
-  static const double _hourHeight = 74; // px per hour (from the Figma spacing)
+  static const double _hourHeight = 74; // px per hour
   static const double _allDayHeight = 40; // top "All Day" band
   static const double _gutterWidth = 66; // left time-label column
   static const double _eventInset = 2; // gap around each block

@@ -52,7 +52,7 @@ Future<Response> _patchProfile(RequestContext context) async {
     );
   }
 
-  // DOC RULE: Never accept or process an email field
+  // Never accept or process an email field
   if (jsonBody.containsKey('email')) {
     return ResponseHelper.error(
       AuthException(
@@ -82,7 +82,7 @@ Future<Response> _patchProfile(RequestContext context) async {
   final hasNewPassword =
       request.newPassword != null && request.newPassword!.trim().isNotEmpty;
 
-  // DOC RULE: Reject with AUTH005 if name, contact, and new_password are all
+  // Reject with AUTH005 if name, contact, and new_password are all
   // absent
   if (!hasName && !hasContact && !hasNewPassword) {
     return ResponseHelper.error(
@@ -93,7 +93,7 @@ Future<Response> _patchProfile(RequestContext context) async {
     );
   }
 
-  // DOC RULE: Validate individual fields using existing validators
+  // Validate individual fields using existing validators
   if (hasName) {
     final err = AuthValidationService.validateName(request.name!, 'Name');
     if (err != null) return _validationError(err);
@@ -110,7 +110,7 @@ Future<Response> _patchProfile(RequestContext context) async {
   }
 
   try {
-    // Pass to the service layer (Dev A + Dev B seam)
+    // Pass to the service layer
     final updatedUser = await FirebaseAuthService.updateOwnProfile(
       uid: uid,
       email: email,

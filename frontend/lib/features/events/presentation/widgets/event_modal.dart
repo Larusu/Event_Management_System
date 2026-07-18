@@ -9,7 +9,7 @@ import '../screens/event_map.dart';
 
 const Color _kGrey = Color(0xFF828282);
 
-/// Entry point for the Feature 3 Event Modal (Figma node 75:59).
+/// Entry point for the Event Modal
 ///
 /// [show] fetches the event by id (via [EventDetailProvider]) and renders the
 /// loading / error / loaded states. The loaded state paints [EventModalContent],
@@ -39,7 +39,7 @@ class EventModal {
 }
 
 /// Renders the modal based on the fetch state and applies the guest-role rule
-/// for the Register button (client-side only, per doc 3.9).
+/// for the Register button (client-side only).
 class _EventModalView extends StatefulWidget {
   final String eventId;
   const _EventModalView({required this.eventId});

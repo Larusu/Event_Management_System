@@ -1,8 +1,8 @@
 import "package:flutter/material.dart";
 import 'package:intl/intl.dart';
 
-/// A single event block as drawn inside the calendar time-grid (Figma nodes
-/// 56:257 / 56:261). It is a pure visual: the time-grid positions and sizes it
+/// A single event block as drawn inside the calendar time-grid
+/// It is a pure visual: the time-grid positions and sizes it
 /// via a [Positioned], so this widget just fills the space it is given.
 class CalendarEvent extends StatelessWidget {
   final String title;
@@ -18,7 +18,7 @@ class CalendarEvent extends StatelessWidget {
     this.onTap,
   });
 
-  static const Color _blockColor = Color(0xFF4C7F9F); // Figma --sec
+  static const Color _blockColor = Color(0xFF4C7F9F);
 
   String _formatTime(String hhmm) {
     try {

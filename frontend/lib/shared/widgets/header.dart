@@ -513,7 +513,7 @@ class CalendarHeader extends StatefulWidget {
 }
 
 class _CalendarHeaderState extends State<CalendarHeader> {
-  static const Color _eventDotColor = Color(0xFF4C7F9F); // Figma --sec
+  static const Color _eventDotColor = Color(0xFF4C7F9F);
 
   final ScrollController _scrollController = ScrollController();
 

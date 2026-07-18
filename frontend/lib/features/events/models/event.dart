@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
 
-/// Single-event detail as returned by `GET /events/{eventId}` (doc 3.5.2).
+/// Single-event detail as returned by `GET /events/{eventId}`.
 ///
 /// Scoped to the fields the Event Modal displays. Internal fields such as
 /// `status`, `organizer_uid`, and `is_deleted` are intentionally never exposed

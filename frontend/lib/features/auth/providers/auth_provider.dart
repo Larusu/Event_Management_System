@@ -83,8 +83,8 @@ class AuthProvider extends ChangeNotifier {
   /// Deliberately does NOT go through [_run]: a failed update (e.g. AUTH010
   /// wrong current_password) is an expected form error, not a session failure,
   /// so [_status] must stay [AuthStatus.authenticated] and the current session
-  /// must be preserved. On success only name/contact are updated locally, per
-  /// the Feature 2 doc — no forced sign-out after a password change.
+  /// must be preserved. On success only name/contact are updated locally —
+  /// no forced sign-out after a password change.
   Future<bool> updateProfile({
     required String currentPassword,
     required String name,
