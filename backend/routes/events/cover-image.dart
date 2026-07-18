@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:backend/constants/event_error_codes.dart';
 import 'package:backend/services/cloudinary_service.dart';
@@ -44,11 +43,15 @@ Future<Response> onRequest(RequestContext context) async {
       );
     }
 
-    // --- Read body bytes ---
-    // dart_frog's body() returns a latin1-encoded string, so
-    // converting back to bytes with latin1 preserves all byte values.
-    final bodyString = await context.request.body();
-    final bodyBytes = latin1.encode(bodyString);
+    // --- Read raw body bytes ---
+    // Read the body as a byte stream. We must NOT use request.body(),
+    // which decodes the body as a UTF-8 string; binary image data is not
+    // valid UTF-8 and throws a FormatException before we ever reach
+    // Cloudinary.
+    final bodyBytes = await context.request.bytes().fold<List<int>>(
+          <int>[],
+          (prev, chunk) => prev..addAll(chunk),
+        );
 
     // --- Parse multipart ---
     final transformer = MimeMultipartTransformer(boundary);
@@ -117,11 +120,14 @@ Future<Response> onRequest(RequestContext context) async {
     );
   } on AuthException catch (e) {
     return ResponseHelper.error(e);
-  } catch (e) {
+  } catch (e, stack) {
+    // Only genuine Cloudinary failures are thrown as AuthException with
+    // EVT006 above. Anything reaching here is an unexpected server error,
+    // so report EVT008 instead of blaming Cloudinary.
     return ResponseHelper.error(
       AuthException(
-        EventErrorCode.cloudinaryError,
-        'Image upload failed. Please try again.',
+        EventErrorCode.internalError,
+        'Internal server error',
       ),
     );
   }

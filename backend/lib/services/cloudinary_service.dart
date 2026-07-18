@@ -50,6 +50,15 @@ class CloudinaryService {
         await http.Response.fromStream(streamedResponse);
 
     if (response.statusCode != 200) {
+      // Surface Cloudinary's real reason (e.g. "Invalid Signature",
+      // "Invalid api_key", "Stale request") in the server logs so upload
+      // failures can be diagnosed instead of being an opaque EVT006.
+      // ignore: avoid_print
+      print(
+        '${EventErrorCode.cloudinaryError} Cloudinary upload rejected '
+        '(HTTP ${response.statusCode}) for cloud '
+        '"${CloudinaryConfig.cloudName}": ${response.body}',
+      );
       throw AuthException(
         EventErrorCode.cloudinaryError,
         'Image upload failed. Please try again.',
