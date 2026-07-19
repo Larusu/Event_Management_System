@@ -44,6 +44,9 @@ class _FakeHttpClient extends http.BaseClient {
       );
     }
     if (request.method == 'POST') {
+      if (uri.path.endsWith(':beginTransaction')) {
+        return _transactionResponse();
+      }
       final bytes = utf8.encode(_postResponse.body);
       return http.StreamedResponse(
         Stream.value(bytes),
@@ -82,6 +85,9 @@ class _AbortThenOkFakeClient extends http.BaseClient {
       );
     }
     if (request.method == 'POST') {
+      if (uri.path.endsWith(':beginTransaction')) {
+        return _transactionResponse();
+      }
       _postCount++;
       if (_postCount == 1) {
         final body = jsonEncode({'error': {'message': 'ABORTED'}});
@@ -99,6 +105,13 @@ class _AbortThenOkFakeClient extends http.BaseClient {
     }
     throw StateError('${request.method} not supported in tests');
   }
+}
+
+/// Firestore's `:beginTransaction` returns an opaque transaction token that
+/// the service passes to every read and to the final `:commit`.
+http.StreamedResponse _transactionResponse() {
+  final bytes = utf8.encode(jsonEncode({'transaction': 'dHhuLXRva2Vu'}));
+  return http.StreamedResponse(Stream.value(bytes), 200);
 }
 
 const _eventId = 'evt_test123';
@@ -245,6 +258,8 @@ void main() {
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
       when(() => context.read<String>()).thenReturn(_uid);
+      when(() => context.read<Map<String, dynamic>>())
+          .thenReturn(<String, dynamic>{'role': 'student'});
       when(() => request.body())
           .thenAnswer((_) async => jsonEncode({'foo': 'bar'}));
 
@@ -268,6 +283,8 @@ void main() {
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
       when(() => context.read<String>()).thenReturn(_uid);
+      when(() => context.read<Map<String, dynamic>>())
+          .thenReturn(<String, dynamic>{'role': 'student'});
       when(() => request.body()).thenAnswer((_) async => '');
 
       final response = await register_route.onRequest(context, _eventId);
@@ -293,6 +310,8 @@ void main() {
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
       when(() => context.read<String>()).thenReturn(_uid);
+      when(() => context.read<Map<String, dynamic>>())
+          .thenReturn(<String, dynamic>{'role': 'student'});
       when(() => request.body()).thenAnswer((_) async => '');
 
       final response = await register_route.onRequest(context, _eventId);
@@ -318,6 +337,8 @@ void main() {
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
       when(() => context.read<String>()).thenReturn(_uid);
+      when(() => context.read<Map<String, dynamic>>())
+          .thenReturn(<String, dynamic>{'role': 'student'});
       when(() => request.body()).thenAnswer((_) async => '');
 
       final response = await register_route.onRequest(context, _eventId);
@@ -343,6 +364,8 @@ void main() {
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
       when(() => context.read<String>()).thenReturn(_uid);
+      when(() => context.read<Map<String, dynamic>>())
+          .thenReturn(<String, dynamic>{'role': 'student'});
       when(() => request.body()).thenAnswer((_) async => '');
 
       final response = await register_route.onRequest(context, _eventId);
@@ -368,6 +391,8 @@ void main() {
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
       when(() => context.read<String>()).thenReturn(_uid);
+      when(() => context.read<Map<String, dynamic>>())
+          .thenReturn(<String, dynamic>{'role': 'guest'});
       when(() => request.body()).thenAnswer((_) async => '');
 
       final response = await register_route.onRequest(context, _eventId);
@@ -375,6 +400,35 @@ void main() {
       expect(response.statusCode, equals(403));
       final body = jsonDecode(await response.body()) as Map<String, dynamic>;
       expect(body['code'], equals(EventErrorCode.guestRegistrationLocked));
+    });
+
+    test('allows a student to register when not open to guests', () async {
+      final client = _FakeHttpClient(
+        eventResponse: http.Response(
+          _eventFieldsJson(isOpenToGuests: false),
+          200,
+        ),
+        regResponse: http.Response('{}', 404),
+        postResponse: http.Response('{}', 200),
+      );
+
+      RegistrationService.overrideHttpClient = client;
+
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.post);
+      when(() => context.read<String>()).thenReturn(_uid);
+      when(() => context.read<Map<String, dynamic>>())
+          .thenReturn(<String, dynamic>{'role': 'student'});
+      when(() => request.body()).thenAnswer((_) async => '');
+
+      final response = await register_route.onRequest(context, _eventId);
+
+      expect(response.statusCode, equals(201));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['success'], isTrue);
     });
 
     test('returns EVT010 when event is full', () async {
@@ -393,6 +447,8 @@ void main() {
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
       when(() => context.read<String>()).thenReturn(_uid);
+      when(() => context.read<Map<String, dynamic>>())
+          .thenReturn(<String, dynamic>{'role': 'student'});
       when(() => request.body()).thenAnswer((_) async => '');
 
       final response = await register_route.onRequest(context, _eventId);
@@ -419,6 +475,8 @@ void main() {
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
       when(() => context.read<String>()).thenReturn(_uid);
+      when(() => context.read<Map<String, dynamic>>())
+          .thenReturn(<String, dynamic>{'role': 'student'});
       when(() => request.body()).thenAnswer((_) async => '');
 
       final response = await register_route.onRequest(context, _eventId);
@@ -443,6 +501,8 @@ void main() {
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
       when(() => context.read<String>()).thenReturn(_uid);
+      when(() => context.read<Map<String, dynamic>>())
+          .thenReturn(<String, dynamic>{'role': 'student'});
       when(() => request.body()).thenAnswer((_) async => '');
 
       final response = await register_route.onRequest(context, _eventId);
@@ -468,6 +528,8 @@ void main() {
       when(() => context.request).thenReturn(request);
       when(() => request.method).thenReturn(HttpMethod.post);
       when(() => context.read<String>()).thenReturn(_uid);
+      when(() => context.read<Map<String, dynamic>>())
+          .thenReturn(<String, dynamic>{'role': 'student'});
       when(() => request.body()).thenAnswer((_) async => '');
 
       final response = await register_route.onRequest(context, _eventId);
@@ -602,7 +664,8 @@ void main() {
       final client = _AbortThenOkFakeClient();
       RegistrationService.overrideHttpClient = client;
 
-      final result = await RegistrationService.register(_eventId, _uid);
+      final result =
+          await RegistrationService.register(_eventId, _uid, 'student');
 
       expect(result, equals('${_uid}_$_eventId'));
     });
@@ -620,7 +683,7 @@ void main() {
       RegistrationService.overrideHttpClient = client;
 
       expect(
-        () => RegistrationService.register(_eventId, _uid),
+        () => RegistrationService.register(_eventId, _uid, 'student'),
         throwsA(
           isA<EventException>().having(
             (e) => e.code,

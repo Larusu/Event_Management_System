@@ -23,6 +23,8 @@ Future<Response> onRequest(RequestContext context, String eventId) async {
 
 Future<Response> _handlePost(RequestContext context, String eventId) async {
   final uid = context.read<String>();
+  final userDoc = context.read<Map<String, dynamic>>();
+  final role = userDoc['role'] as String? ?? '';
 
   try {
     final bodyString = await context.request.body();
@@ -35,7 +37,7 @@ Future<Response> _handlePost(RequestContext context, String eventId) async {
       );
     }
 
-    await RegistrationService.register(eventId, uid);
+    await RegistrationService.register(eventId, uid, role);
 
     return Response.json(
       statusCode: 201,

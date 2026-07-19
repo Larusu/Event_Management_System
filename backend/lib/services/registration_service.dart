@@ -61,6 +61,110 @@ class RegistrationService {
     return projectId;
   }
 
+  /// Firestore REST base for the `(default)` database of the project.
+  static String _documentsBase(String projectId) =>
+      'https://firestore.googleapis.com/v1/projects/$projectId'
+      '/databases/(default)/documents';
+
+  /// Opens a read-write transaction and returns its opaque token.
+  ///
+  /// The token must be passed to every read (as the `transaction` query
+  /// parameter) and to the final `commit` so Firestore can enforce
+  /// optimistic concurrency and abort on conflicting writes.
+  static Future<String> _beginTransaction(
+    http.Client client,
+    String projectId,
+  ) async {
+    final uri = Uri.parse('${_documentsBase(projectId)}:beginTransaction');
+    final response = await client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'options': {'readWrite': <String, dynamic>{}},
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw StateError(
+        'Firestore beginTransaction failed: '
+        '${response.statusCode} ${response.body}',
+      );
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final token = decoded['transaction'] as String?;
+    if (token == null || token.isEmpty) {
+      throw StateError('Firestore beginTransaction returned no token.');
+    }
+    return token;
+  }
+
+  /// Commits [writes] atomically as part of [transaction].
+  ///
+  /// Throws `StateError('ABORTED')` when Firestore reports a conflict so the
+  /// caller can retry the whole transaction.
+  static Future<void> _commit(
+    http.Client client,
+    String projectId,
+    List<Map<String, dynamic>> writes,
+    String transaction,
+  ) async {
+    final uri = Uri.parse('${_documentsBase(projectId)}:commit');
+    final response = await client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'writes': writes,
+        'transaction': transaction,
+      }),
+    );
+
+    if (response.statusCode == 409 ||
+        (response.statusCode == 400 && response.body.contains('ABORTED'))) {
+      throw StateError('ABORTED');
+    }
+
+    if (response.statusCode != 200) {
+      throw StateError(
+        'Firestore transaction commit failed: '
+        '${response.statusCode} ${response.body}',
+      );
+    }
+  }
+
+  /// Reads the document at [path] inside [transaction]. Returns `null` when
+  /// the document does not exist.
+  static Future<Map<String, dynamic>?> _readDoc(
+    http.Client client,
+    String projectId,
+    String path,
+    String transaction,
+  ) async {
+    final uri = Uri.parse(
+      '${_documentsBase(projectId)}/$path'
+      '?transaction=${Uri.encodeQueryComponent(transaction)}',
+    );
+
+    final response = await client.get(uri);
+
+    if (response.statusCode == 404) {
+      return null;
+    }
+    if (response.statusCode != 200) {
+      throw StateError(
+        'Firestore read failed for $path: '
+        '${response.statusCode} ${response.body}',
+      );
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final fields = decoded['fields'] as Map<String, dynamic>? ?? {};
+    if (path.startsWith('events/')) {
+      return _decodeEventFields(fields);
+    }
+    return _decodeFirestoreFields(fields, docId: path.split('/').last);
+  }
+
   static String _registrationDocId(String uid, String eventId) =>
       '${uid}_$eventId';
 
@@ -159,7 +263,7 @@ class RegistrationService {
   /// All reads and writes happen inside a single Firestore transaction.
   /// On `ABORTED`, retries once. On second failure, throws
   /// [EventException] with [EventErrorCode.internalError].
-  static Future<String> register(String eventId, String uid) async {
+  static Future<String> register(String eventId, String uid, String role) async{
     final client = await _firestoreClient();
     final projectId = _firestoreProjectId();
     final now = DateTime.now().toUtc().toIso8601String();
@@ -170,74 +274,10 @@ class RegistrationService {
     final regPath =
         'projects/$projectId/databases/(default)/documents/registrations/$regDocId';
 
-    Future<void> commit(List<Map<String, dynamic>> writes) async {
-      final uri = Uri.parse(
-        'https://firestore.googleapis.com/v1/projects/$projectId'
-        '/databases/(default)/documents:runTransaction',
-      );
-
-      final body = {
-        'transaction': {
-          'writes': writes,
-        },
-      };
-
-      final response = await client.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
-
-      if (response.statusCode == 409 ||
-          (response.statusCode == 400 &&
-              response.body.contains('ABORTED'))) {
-        throw StateError('ABORTED');
-      }
-
-      if (response.statusCode != 200) {
-        throw StateError(
-          'Firestore transaction commit failed: '
-          '${response.statusCode} ${response.body}',
-        );
-      }
-    }
-
-    Future<Map<String, dynamic>?> readDoc(String path) async {
-      final uri = Uri.parse(
-        'https://firestore.googleapis.com/v1/projects/$projectId'
-        '/databases/(default)/documents/$path',
-      );
-
-      final response = await client.get(uri);
-
-      if (response.statusCode == 404) {
-        return null;
-      }
-      if (response.statusCode != 200) {
-        throw StateError(
-          'Firestore read failed for $path: '
-          '${response.statusCode} ${response.body}',
-        );
-      }
-
-      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-      final fields = decoded['fields'] as Map<String, dynamic>? ?? {};
-      if (path.startsWith('events/')) {
-        return _decodeEventFields(fields);
-      }
-      return _decodeFirestoreFields(fields, docId: path.split('/').last);
-    }
-
-    Future<Map<String, dynamic>?> getEventDoc() async {
-      return readDoc('events/$eventId');
-    }
-
-    Future<Map<String, dynamic>?> getRegDoc() async {
-      return readDoc('registrations/$regDocId');
-    }
-
     Future<Map<String, dynamic>> attempt() async {
-      final eventDoc = await getEventDoc();
+      final transaction = await _beginTransaction(client, projectId);
+      final eventDoc =
+          await _readDoc(client, projectId, 'events/$eventId', transaction);
 
       if (eventDoc == null) {
         throw EventException(EventErrorCode.notFound, 'Event not found.');
@@ -263,7 +303,7 @@ class RegistrationService {
       }
 
       final isOpenToGuests = eventDoc['is_open_to_guests'] as bool? ?? false;
-      if (!isOpenToGuests) {
+      if (role == 'guest' && !isOpenToGuests) {
         throw EventException(
           EventErrorCode.guestRegistrationLocked,
           'Event is not open to guests.',
@@ -279,7 +319,12 @@ class RegistrationService {
         );
       }
 
-      final regDoc = await getRegDoc();
+      final regDoc = await _readDoc(
+        client,
+        projectId,
+        'registrations/$regDocId',
+        transaction,
+      );
 
       if (regDoc != null && !(regDoc['is_cancelled'] as bool? ?? false)) {
         throw EventException(
@@ -299,10 +344,13 @@ class RegistrationService {
               'reactivated_at': {'stringValue': now},
             },
           },
+          'updateMask': {
+            'fieldPaths': ['is_cancelled', 'reactivated_at'],
+          },
         });
       } else {
         writes.add({
-          'create': {
+          'update': {
             'name': regPath,
             'fields': _encodeFirestoreFields({
               'user_uid': uid,
@@ -311,6 +359,7 @@ class RegistrationService {
               'created_at': now,
             }),
           },
+          'currentDocument': {'exists': false},
         });
       }
 
@@ -321,11 +370,11 @@ class RegistrationService {
           'fields': {
             'registered_count': {'integerValue': newCount.toString()},
           },
-          'updateMask': {'fieldPaths': ['registered_count']},
         },
+        'updateMask': {'fieldPaths': ['registered_count']},
       });
 
-      await commit(writes);
+      await _commit(client, projectId, writes, transaction);
       return {'registrationId': regDocId};
     }
 
@@ -371,74 +420,14 @@ class RegistrationService {
     final regPath =
         'projects/$projectId/databases/(default)/documents/registrations/$regDocId';
 
-    Future<void> commit(List<Map<String, dynamic>> writes) async {
-      final uri = Uri.parse(
-        'https://firestore.googleapis.com/v1/projects/$projectId'
-        '/databases/(default)/documents:runTransaction',
-      );
-
-      final body = {
-        'transaction': {
-          'writes': writes,
-        },
-      };
-
-      final response = await client.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
-
-      if (response.statusCode == 409 ||
-          (response.statusCode == 400 &&
-              response.body.contains('ABORTED'))) {
-        throw StateError('ABORTED');
-      }
-
-      if (response.statusCode != 200) {
-        throw StateError(
-          'Firestore transaction commit failed: '
-          '${response.statusCode} ${response.body}',
-        );
-      }
-    }
-
-    Future<Map<String, dynamic>?> readDoc(String path) async {
-      final uri = Uri.parse(
-        'https://firestore.googleapis.com/v1/projects/$projectId'
-        '/databases/(default)/documents/$path',
-      );
-
-      final response = await client.get(uri);
-
-      if (response.statusCode == 404) {
-        return null;
-      }
-      if (response.statusCode != 200) {
-        throw StateError(
-          'Firestore read failed for $path: '
-          '${response.statusCode} ${response.body}',
-        );
-      }
-
-      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-      final fields = decoded['fields'] as Map<String, dynamic>? ?? {};
-      if (path.startsWith('events/')) {
-        return _decodeEventFields(fields);
-      }
-      return _decodeFirestoreFields(fields, docId: path.split('/').last);
-    }
-
-    Future<Map<String, dynamic>?> getEventDoc() async {
-      return readDoc('events/$eventId');
-    }
-
-    Future<Map<String, dynamic>?> getRegDoc() async {
-      return readDoc('registrations/$regDocId');
-    }
-
     Future<void> attempt() async {
-      final regDoc = await getRegDoc();
+      final transaction = await _beginTransaction(client, projectId);
+      final regDoc = await _readDoc(
+        client,
+        projectId,
+        'registrations/$regDocId',
+        transaction,
+      );
 
       if (regDoc == null) {
         throw EventException(
@@ -455,7 +444,8 @@ class RegistrationService {
         );
       }
 
-      final eventDoc = await getEventDoc();
+      final eventDoc =
+          await _readDoc(client, projectId, 'events/$eventId', transaction);
       final currentCount =
           eventDoc != null ? (eventDoc['registered_count'] as int? ?? 0) : 0;
       final newCount = currentCount > 0 ? currentCount - 1 : 0;
@@ -468,7 +458,9 @@ class RegistrationService {
               'is_cancelled': {'booleanValue': true},
               'cancelled_at': {'stringValue': now},
             },
-            'updateMask': {'fieldPaths': ['is_cancelled', 'cancelled_at']},
+          },
+          'updateMask': {
+            'fieldPaths': ['is_cancelled', 'cancelled_at'],
           },
         },
         {
@@ -477,12 +469,12 @@ class RegistrationService {
             'fields': {
               'registered_count': {'integerValue': newCount.toString()},
             },
-            'updateMask': {'fieldPaths': ['registered_count']},
           },
+          'updateMask': {'fieldPaths': ['registered_count']},
         },
       ];
 
-      await commit(writes);
+      await _commit(client, projectId, writes, transaction);
     }
 
     try {
