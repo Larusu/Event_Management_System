@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:backend/constants/event_error_codes.dart';
+import 'package:backend/constants/event_exception.dart';
 import 'package:backend/firebase_config.dart';
 import 'package:backend/models/event.dart';
 import 'package:backend/utils/response_helper.dart';
@@ -510,10 +511,4 @@ class _EventBatch {
   /// Sort position `{date, eventId}` of the last raw document seen (used to
   /// advance the scan cursor).
   final Map<String, String>? lastDoc;
-}
-
-/// Exception thrown when event operations fail.
-class EventException extends AppException {
-  /// Creates an [EventException] with an error [code] and [message].
-  EventException(super.code, super.message);
 }

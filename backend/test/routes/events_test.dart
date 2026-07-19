@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:backend/constants/event_error_codes.dart';
+import 'package:backend/constants/event_exception.dart';
 import 'package:backend/models/event.dart';
 import 'package:backend/services/event_moderation_service.dart';
 import 'package:backend/services/event_service.dart';
