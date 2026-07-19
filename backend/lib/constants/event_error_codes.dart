@@ -17,8 +17,9 @@ class EventErrorCode {
   static const String validationFailed = 'EVT003';
 
   /// is_open_to_guests locked at creation. Also returned when
-  /// is_open_to_guests is present in a PATCH body. Shares EVT003 with
-  /// [validationFailed] since both are validation failures. (400)
+  /// is_open_to_guests is present in a PATCH body. (400)
+  ///
+  /// Shares the EVT003 code with [validationFailed]; both resolve to 400.
   static const String isOpenToGuestsLocked = 'EVT003';
 
   /// Forbidden — not the owner, or role below the required minimum. (403)
@@ -40,6 +41,18 @@ class EventErrorCode {
   /// An unexpected server-side error occurred. (500)
   static const String internalError = 'EVT008';
 
+  /// The user already has an active registration for this event. (409)
+  static const String alreadyRegistered = 'EVT009';
+
+  /// The event has no available slots (registered_count >= slots_total). (409)
+  static const String slotsFull = 'EVT010';
+
+  /// Event is not open to guests for registration. (403)
+  static const String guestRegistrationLocked = 'EVT011';
+
+  /// No active registration found to cancel. (404)
+  static const String noActiveRegistration = 'EVT012';
+
   /// The authentication token is missing, expired, or invalid. (401)
   static const String invalidToken = 'AUTH001';
 
@@ -58,5 +71,9 @@ class EventErrorCode {
     dateInPast: 400,
     invalidToken: 401,
     internalError: 500,
+    alreadyRegistered: 409,
+    slotsFull: 409,
+    guestRegistrationLocked: 403,
+    noActiveRegistration: 404,
   };
 }
