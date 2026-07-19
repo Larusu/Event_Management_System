@@ -8,9 +8,13 @@ import 'package:dart_frog/dart_frog.dart';
 
 /// GET /events/registered
 ///
-/// Returns the authenticated user's active registrations for events dated
-/// today or later, soonest first (Feature 5 §5.5.3). Replaces the Feature 3
-/// stub; response shape unchanged.
+/// Returns the authenticated user's active registrations (Feature 5 §5.5.3).
+/// The optional `?filter=` query param selects which slice:
+/// - `upcoming` (default): events dated today or later, soonest first.
+/// - `past`: events dated before today, most recent first (history view).
+///
+/// Any other value returns EVT001. Replaces the Feature 3 stub; response shape
+/// unchanged.
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method != HttpMethod.get) {
     return Response.json(
@@ -22,10 +26,12 @@ Future<Response> onRequest(RequestContext context) async {
   try {
     final uid = context.read<String>();
     final cursor = context.request.url.queryParameters['cursor'];
+    final filter = _parseFilter(context.request.url.queryParameters['filter']);
 
     final page = await RegistrationListService.fetchRegistered(
       uid: uid,
       cursor: cursor,
+      filter: filter,
     );
 
     String? nextCursor;
@@ -55,4 +61,21 @@ Future<Response> onRequest(RequestContext context) async {
       },
     );
   }
+}
+
+/// Maps the `?filter=` query param to a [RegisteredFilter].
+///
+/// `null`/empty defaults to [RegisteredFilter.upcoming]; unknown values throw
+/// [EventException] with EVT001 (handled as a 400 by [onRequest]).
+RegisteredFilter _parseFilter(String? raw) {
+  if (raw == null || raw.isEmpty || raw == 'upcoming') {
+    return RegisteredFilter.upcoming;
+  }
+  if (raw == 'past') {
+    return RegisteredFilter.past;
+  }
+  throw EventException(
+    EventErrorCode.invalidQueryParam,
+    'Invalid filter. Expected "upcoming" or "past".',
+  );
 }

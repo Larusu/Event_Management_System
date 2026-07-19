@@ -536,6 +536,67 @@ void main() {
         expect(body.containsKey('next_cursor'), isTrue);
       }
     });
+
+    test('accepts filter=upcoming with the locked list shape', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => context.read<String>()).thenReturn('uid123');
+      when(() => request.url)
+          .thenReturn(Uri.parse('/events/registered?filter=upcoming'));
+
+      final response = await registered_route.onRequest(context);
+
+      // 200 when Firebase is configured; 500 without .env in CI.
+      expect(response.statusCode, anyOf(equals(200), equals(500)));
+      if (response.statusCode == 200) {
+        final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+        expect(body['success'], isTrue);
+        expect(body['events'], isA<List<dynamic>>());
+        expect(body.containsKey('next_cursor'), isTrue);
+      }
+    });
+
+    test('accepts filter=past with the locked list shape', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => context.read<String>()).thenReturn('uid123');
+      when(() => request.url)
+          .thenReturn(Uri.parse('/events/registered?filter=past'));
+
+      final response = await registered_route.onRequest(context);
+
+      // 200 when Firebase is configured; 500 without .env in CI.
+      expect(response.statusCode, anyOf(equals(200), equals(500)));
+      if (response.statusCode == 200) {
+        final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+        expect(body['success'], isTrue);
+        expect(body['events'], isA<List<dynamic>>());
+        expect(body.containsKey('next_cursor'), isTrue);
+      }
+    });
+
+    test('returns 400 with EVT001 for an invalid filter value', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => context.read<String>()).thenReturn('uid123');
+      when(() => request.url)
+          .thenReturn(Uri.parse('/events/registered?filter=bogus'));
+
+      final response = await registered_route.onRequest(context);
+
+      expect(response.statusCode, equals(400));
+      final body = jsonDecode(await response.body()) as Map<String, dynamic>;
+      expect(body['code'], equals('EVT001'));
+    });
   });
 
   group('GET /events/next-registered', () {
@@ -627,6 +688,49 @@ void main() {
         RegistrationListService.passesUpcomingFilters(
           status: 'approved',
           isDeleted: false,
+          date: '2026-07-17',
+          today: '2026-07-18',
+        ),
+        isFalse,
+      );
+    });
+
+    test('passesPastFilters keeps approved past events only', () {
+      // Approved, non-deleted, dated before today -> kept.
+      expect(
+        RegistrationListService.passesPastFilters(
+          status: 'approved',
+          isDeleted: false,
+          date: '2026-07-17',
+          today: '2026-07-18',
+        ),
+        isTrue,
+      );
+      // Today or later is upcoming, not past -> dropped.
+      expect(
+        RegistrationListService.passesPastFilters(
+          status: 'approved',
+          isDeleted: false,
+          date: '2026-07-18',
+          today: '2026-07-18',
+        ),
+        isFalse,
+      );
+      // Not approved -> dropped.
+      expect(
+        RegistrationListService.passesPastFilters(
+          status: 'pending',
+          isDeleted: false,
+          date: '2026-07-17',
+          today: '2026-07-18',
+        ),
+        isFalse,
+      );
+      // Deleted -> dropped.
+      expect(
+        RegistrationListService.passesPastFilters(
+          status: 'approved',
+          isDeleted: true,
           date: '2026-07-17',
           today: '2026-07-18',
         ),
