@@ -13,6 +13,51 @@ import 'package:http/http.dart' as http;
 /// On failure, every method throws [AuthException] — callers (routes)
 /// catch this one type and hand it to [ResponseHelper.error].
 class FirebaseEventService {
+  /// Whether [uid] has an active (non-cancelled) registration for [eventId].
+  ///
+  /// Reads `registrations/{uid}_{eventId}` from Firestore. Returns `false`
+  /// on any error so the caller never breaks — the detail endpoint treats
+  /// a missing or corrupt registration document the same as "not registered".
+  static Future<bool> isRegisteredForEvent(
+    String uid,
+    String eventId,
+  ) async {
+    try {
+      final client = await _firestoreClient();
+      final projectId = _firestoreProjectId();
+
+      final docId = '${uid}_$eventId';
+      final uri = Uri.parse(
+        'https://firestore.googleapis.com/v1/projects/$projectId'
+        '/databases/(default)/documents/registrations/$docId',
+      );
+
+      final response = await client.get(uri);
+
+      if (response.statusCode == 404) {
+        return false;
+      }
+      if (response.statusCode != 200) {
+        return false;
+      }
+
+      final decoded =
+          jsonDecode(response.body) as Map<String, dynamic>;
+      final fields =
+          decoded['fields'] as Map<String, dynamic>? ?? {};
+
+      final isCancelled =
+          (fields['is_cancelled'] as Map<String, dynamic>?)
+                  ?['booleanValue']
+              as bool? ??
+          false;
+
+      return !isCancelled;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Returns full detail for a single approved, non-deleted event.
   ///
   /// Throws [AuthException] with EVT002 when the event does not exist,

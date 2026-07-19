@@ -32,10 +32,17 @@ Future<Response> _handleGet(RequestContext context, String eventId) async {
   try {
     final event = await FirebaseEventService.getEventById(eventId);
 
+    final uid = context.read<String>();
+    final isRegistered =
+        await FirebaseEventService.isRegisteredForEvent(uid, eventId);
+
     return Response.json(
       body: {
         'success': true,
-        'events': event.toJson(),
+        'events': {
+          ...event.toJson(),
+          'is_registered': isRegistered,
+        },
       },
     );
   } on AuthException catch (e) {
