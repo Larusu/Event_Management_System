@@ -650,12 +650,27 @@ final GlobalKey _selectedKey = GlobalKey();
 
 void _scrollToSelected() {
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (_selectedKey.currentContext != null) {
-      Scrollable.ensureVisible(
-        _selectedKey.currentContext!,
-        duration: const Duration(milliseconds: 500),
-        alignment: 0.5, // center the focused cell
-      );
+    final context = _selectedKey.currentContext;
+    if (context == null) return;
+
+    // Bail if the target (or its scroll viewport) isn't laid out yet. This
+    // happens when the calendar strip is built offstage inside MainShell's
+    // IndexedStack: calling ensureVisible then throws "RenderBox was not laid
+    // out". The auto-center is best-effort, so skipping it is safe.
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return;
+
+    final position = Scrollable.maybeOf(context)?.position;
+    if (position == null ||
+        !position.hasViewportDimension ||
+        !position.hasContentDimensions) {
+      return;
     }
+
+    Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 500),
+      alignment: 0.5, // center the focused cell
+    );
   });
 }

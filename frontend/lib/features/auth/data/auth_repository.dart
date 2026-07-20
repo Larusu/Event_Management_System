@@ -48,7 +48,11 @@ class AuthRepository {
       'contact': contact,
       'password': password,
     });
-    return _establishSession(response);
+    // Deliberately do NOT establish a Firebase session here: the user signs in
+    // manually after registering (see SignUpScreen -> '/sign-in'). Signing in
+    // and back out would fire stray authStateChanges events that can race with
+    // the subsequent sign-in and sign the user out. We only need the profile.
+    return _parseUser(response);
   }
 
   Future<void> forgotPassword(String email) async {
@@ -79,11 +83,7 @@ class AuthRepository {
 
   Future<User> fetchCurrentUser() async {
     final response = await _api.get(ApiRoutes.usersMe);
-    final userJson = response.data['user'];
-    if (userJson is! Map<String, dynamic>) {
-      throw const ApiException('Something went wrong. Please try again.');
-    }
-    return User.fromJson(userJson);
+    return _parseUser(response);
   }
 
   bool get hasSession => _firebase.currentUser != null;
@@ -101,7 +101,11 @@ class AuthRepository {
       );
     }
     await _firebase.signInWithCustomToken(customToken);
+    return _parseUser(response);
+  }
 
+  /// Parses the `user` object from an auth response envelope.
+  User _parseUser(ApiResponse response) {
     final userJson = response.data['user'];
     if (userJson is! Map<String, dynamic>) {
       throw const ApiException(

@@ -24,6 +24,13 @@ class AuthProvider extends ChangeNotifier {
   String? _errorMessage;
   String? _errorCode;
 
+  // True while an interactive sign-in/register is in progress. During that
+  // window the auth-state stream must not spawn its own _loadCurrentUser():
+  // signInWithCustomToken (and the sign-out inside register) fire the stream,
+  // and a stray profile load can resolve after a successful sign-in and sign
+  // the user back out. _run/_runRegister own _currentUser/_status themselves.
+  bool _isAuthenticating = false;
+
   AuthStatus get status => _status;
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -40,8 +47,15 @@ class AuthProvider extends ChangeNotifier {
     // Drive all auth state off the stream. On cold start it fires once with the
     // restored session (or null); on sign-in/out it fires again. No synchronous
     // hasSession check, so persisted sessions restore reliably on a real device.
-    _authSubscription = _repository.firebaseAuthState.listen((fbUser) {
-      if (fbUser == null) {
+    _authSubscription = _repository.firebaseAuthState.listen((_) {
+      // Let the interactive sign-in/register flow manage state; ignore the
+      // stream events it triggers to avoid a race that can sign the user out.
+      if (_isAuthenticating) return;
+
+      // Act on the LIVE session rather than the event payload: Firebase
+      // delivers authStateChanges asynchronously, so a delayed/stale event
+      // (e.g. an old sign-out) must not override the current session.
+      if (!_repository.hasSession) {
         _currentUser = null;
         _status = AuthStatus.unauthenticated;
         _errorMessage = null;
@@ -162,6 +176,7 @@ class AuthProvider extends ChangeNotifier {
   /// user, and maps [ApiException] into [errorMessage]. Returns `true` on
   /// success so screens can react (e.g. navigate).
   Future<bool> _run(Future<User> Function() action) async {
+    _isAuthenticating = true;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -182,20 +197,23 @@ class AuthProvider extends ChangeNotifier {
       return false;
     } finally {
       _isLoading = false;
+      _isAuthenticating = false;
       notifyListeners();
     }
   }
 
-  /// Runner for registration: on success, signs out the Firebase session so the
-  /// user must sign in manually (status stays [AuthStatus.unauthenticated]).
+  /// Runner for registration: registration never establishes a session (see
+  /// [AuthRepository.register]), so the user stays signed out and must sign in
+  /// manually (status stays [AuthStatus.unauthenticated]).
   Future<bool> _runRegister(Future<User> Function() action) async {
+    _isAuthenticating = true;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _currentUser = await action();
-      await _repository.signOut();
+      // Registration returns the created profile but does not sign in.
+      await action();
       _currentUser = null;
       _status = AuthStatus.unauthenticated;
       return true;
@@ -209,6 +227,7 @@ class AuthProvider extends ChangeNotifier {
       return false;
     } finally {
       _isLoading = false;
+      _isAuthenticating = false;
       notifyListeners();
     }
   }
