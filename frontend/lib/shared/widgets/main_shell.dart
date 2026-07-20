@@ -26,10 +26,12 @@ class MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final role = context.watch<AuthProvider>().currentUser?.role;
-    final isGuest = role == Roles.guest;
-    final showCreatedEvents = role == Roles.organizer ||
+    // Only organizers and up may create events (and therefore see the Created
+    // Events tab and the create-event FAB); students and guests cannot.
+    final canManageEvents = role == Roles.organizer ||
         role == Roles.faculty ||
         role == Roles.superAdmin;
+    final showCreatedEvents = canManageEvents;
 
     // Branch indices that have a navbar tab, in display order. Created Events
     // is only present for organizers and up.
@@ -62,7 +64,7 @@ class MainShell extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: currentBranch == _eventsBranch && !isGuest
+      floatingActionButton: currentBranch == _eventsBranch && canManageEvents
           ? FloatingActionButton(
               onPressed: () => createNewEvent(context),
               child: const Icon(Icons.add),
