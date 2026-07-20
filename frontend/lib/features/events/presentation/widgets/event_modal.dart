@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../core/constants/roles.dart';
 import '../../../../shared/widgets/app_dialog.dart';
+
+import '../../../../core/constants/roles.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../providers/event_dashboard_provider.dart';
 import '../../providers/event_detail_provider.dart';
@@ -96,14 +97,17 @@ class _EventModalViewState extends State<_EventModalView> {
       final dashboard = context.read<EventDashboardProvider>();
       dashboard.loadRegistered();
       dashboard.loadNextRegistered();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registered successfully!')),
+      await AppDialog.info(
+        context: context,
+        icon: Icons.check_circle,
+        message: 'Registered successfully!',
       );
+      if (mounted) Navigator.of(context).pop();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(provider.registrationError ?? 'Registration failed.'),
-        ),
+      AppDialog.info(
+        context: context,
+        title: 'Registration Failed',
+        message: provider.registrationError ?? 'Registration failed.',
       );
     }
   }

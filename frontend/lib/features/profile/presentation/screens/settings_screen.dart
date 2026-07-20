@@ -151,8 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 elevation: 2,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
-                color: const Color.fromARGB(255, 255, 17, 0)
-                    .withValues(alpha: 0.3),
+                color: Colors.red,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () async {
@@ -174,14 +173,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         horizontal: 16, vertical: 14),
                     child: Row(
                       children: [
-                        Icon(Icons.logout,
-                            size: 22, color: Colors.red.shade700),
+                        Icon(
+                          Icons.logout,
+                          size: 22,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 16),
                         Text(
                           'Sign out',
                           style: TextStyle(
                             fontSize: 15,
-                            color: Colors.red.shade700,
+                            color: Colors.white,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
