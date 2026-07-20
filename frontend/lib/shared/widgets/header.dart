@@ -16,6 +16,7 @@ class Header extends StatefulWidget {
   final ValueChanged<List<String>>? onFiltersChanged;
   final String searchHintText;
   final String? headerSubtitle;
+  final VoidCallback? onBack;
 
   const Header({
     super.key,
@@ -29,6 +30,7 @@ class Header extends StatefulWidget {
     this.onFiltersChanged,
     this.searchHintText = 'Search events...',
     this.headerSubtitle,
+    this.onBack,
   });
 
   @override
@@ -138,7 +140,7 @@ class _HeaderState extends State<Header> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.2),
@@ -151,6 +153,12 @@ class _HeaderState extends State<Header> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
+            if (widget.onBack != null)
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: widget.onBack,
+              ),
+            if (widget.onBack != null) const SizedBox(width: 30),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -159,7 +167,7 @@ class _HeaderState extends State<Header> {
                       ? DateFormat('MMMM yyyy').format(effectiveFocused)
                       : widget.header,
                   style: TextStyle(
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -176,7 +184,7 @@ class _HeaderState extends State<Header> {
                         vertical: 8,
                       ),
                       side: BorderSide(
-                        color: Colors.grey.shade400,
+                        color: Theme.of(context).colorScheme.outline,
                       ),
                       shape: const StadiumBorder(),
                     ),
@@ -263,7 +271,7 @@ class _HeaderState extends State<Header> {
                     ),
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: Colors.grey.shade400,
+                        color: Theme.of(context).colorScheme.outline,
                       ),
                       borderRadius: BorderRadius.circular(50),
                     ),
@@ -273,7 +281,7 @@ class _HeaderState extends State<Header> {
           if (showEventsHeader) ...[
             const SizedBox(height: 2),
             Divider(
-              color: Colors.grey[300],
+              color: Theme.of(context).dividerColor,
               thickness: 1,
             ),
             const SizedBox(height: 2),
@@ -312,10 +320,10 @@ class _HeaderState extends State<Header> {
                     isMonthView: effectiveView == "Month",
                     dates: effectiveView == "Month" ? monthDates : weekDates,
                     selectedDate: effectiveFocused,
-                    hasEvents: (effectiveView == "Week" ||
-                            effectiveView == "Day")
-                        ? (date) => calendar!.eventsOn(date).isNotEmpty
-                        : null,
+                    hasEvents:
+                        (effectiveView == "Week" || effectiveView == "Day")
+                            ? (date) => calendar!.eventsOn(date).isNotEmpty
+                            : null,
                     onDateSelected: calendar!.goToDate,
                     onPrevious: previousPeriod,
                     onNext: nextPeriod,
@@ -376,7 +384,9 @@ class _EventsListHeaderState extends State<EventsListHeader> {
                         selected: isSelected,
                         selectedColor: Theme.of(context).primaryColor,
                         labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black,
+                          color: isSelected
+                              ? Colors.white
+                              : Theme.of(context).colorScheme.onSurface,
                         ),
                         onSelected: (selected) {
                           setModalState(() {

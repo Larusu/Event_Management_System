@@ -119,8 +119,8 @@ class _CreateEventModalState extends State<_CreateEventModal> {
   Future<void> _pickTime({required bool isStart}) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime:
-          (isStart ? _startTime : _endTime) ?? const TimeOfDay(hour: 9, minute: 0),
+      initialTime: (isStart ? _startTime : _endTime) ??
+          const TimeOfDay(hour: 9, minute: 0),
     );
     if (picked == null) return;
     setState(() {
@@ -132,19 +132,15 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     });
   }
 
-  String _formatDate(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-'
+  String _formatDate(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 
   String _formatTime(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
-  List<String> _splitCsv(String raw) => raw
-      .split(',')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
+  List<String> _splitCsv(String raw) =>
+      raw.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
   int _minutesOf(TimeOfDay t) => t.hour * 60 + t.minute;
 
@@ -380,15 +376,21 @@ class _CreateEventModalState extends State<_CreateEventModal> {
         child: Container(
           width: 150,
           height: 150,
-          color: Colors.grey[300],
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: _imageBytes != null
               ? Image.memory(_imageBytes!, fit: BoxFit.cover)
-              : const Column(
+              : Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
-                    SizedBox(height: 6),
-                    Text("Add cover", style: TextStyle(color: Colors.grey)),
+                    Icon(Icons.add_a_photo,
+                        size: 48,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    const SizedBox(height: 6),
+                    Text("Add cover",
+                        style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant)),
                   ],
                 ),
         ),
@@ -495,9 +497,8 @@ class _CreateEventModalState extends State<_CreateEventModal> {
       inputFormatters: inputFormatters,
       validator: validator ??
           (required
-              ? (value) => (value == null || value.trim().isEmpty)
-                  ? 'Required'
-                  : null
+              ? (value) =>
+                  (value == null || value.trim().isEmpty) ? 'Required' : null
               : null),
       decoration: InputDecoration(
         labelText: label,

@@ -24,10 +24,14 @@ class SettingsCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Icon(icon, size: 22, color: Colors.grey.shade700),
+              Icon(icon,
+                  size: 22,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
               const SizedBox(width: 16),
               Text(label,
-                  style: const TextStyle(fontSize: 15, color: Colors.black87)),
+                  style: TextStyle(
+                      fontSize: 15,
+                      color: Theme.of(context).colorScheme.onSurface)),
             ],
           ),
         ),

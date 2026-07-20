@@ -2,6 +2,7 @@ import 'package:campus_event_app/core/constants/roles.dart';
 import 'package:campus_event_app/features/admin/presentation/screens/admin_landing_screen.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
 import 'package:campus_event_app/features/profile/presentation/screens/edit_profile_screen.dart';
+import 'package:campus_event_app/features/profile/presentation/screens/theme_settings_screen.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/settings_card.dart';
 import 'package:campus_event_app/shared/widgets/header.dart';
@@ -23,8 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final currentUser = context.watch<AuthProvider>().currentUser;
     final userName = currentUser?.name ?? 'Account';
     final userRole = currentUser?.role;
-    final isAdmin =
-        userRole == Roles.faculty || userRole == Roles.superAdmin;
+    final isAdmin = userRole == Roles.faculty || userRole == Roles.superAdmin;
 
     return SafeArea(
       child: CustomScrollView(
@@ -68,7 +68,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                 child: SettingsCard(
                   icon: Icons.admin_panel_settings_outlined,
                   label: 'Admin Panel',
@@ -123,6 +124,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: SettingsCard(
                 icon: Icons.water_drop_outlined,
                 label: 'Choose theme',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const ThemeSettingsScreen()),
+                  );
+                },
               ),
             ),
           ),
@@ -151,13 +159,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 elevation: 2,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
-                color: Colors.red.shade50,
+                color: Colors.red.withValues(alpha: 0.1),
                 child: InkWell(
-                  onTap: () {
-                    context.read<AuthProvider>().signOut();
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  },
                   borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    showDialog<bool>(
+                      context: context,
+                      builder: (dialogContext) {
+                        return AlertDialog(
+                          title: const Text('Sign out'),
+                          content:
+                              const Text('Are you sure you want to sign out?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.red.shade700,
+                              ),
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, true),
+                              child: const Text('Sign out'),
+                            ),
+                          ],
+                        );
+                      },
+                    ).then((confirmed) {
+                      if (confirmed == true) {
+                        context.read<AuthProvider>().signOut();
+                        Navigator.of(context)
+                            .popUntil((route) => route.isFirst);
+                      }
+                    });
+                  },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
@@ -169,9 +206,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Text(
                           'Sign out',
                           style: TextStyle(
-                              fontSize: 15,
-                              color: Colors.red.shade700,
-                              fontWeight: FontWeight.w500),
+                            fontSize: 15,
+                            color: Colors.red.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),

@@ -28,6 +28,7 @@ class AdminLandingScreen extends StatelessWidget {
                 views: const [],
                 page: 'settings',
                 headerSubtitle: userName,
+                onBack: () => Navigator.pop(context),
               ),
             ),
           ),

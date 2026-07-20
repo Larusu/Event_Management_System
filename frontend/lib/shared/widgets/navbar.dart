@@ -12,12 +12,12 @@ class NavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
-        backgroundColor: const Color(0xFF00364D),
+        backgroundColor: Theme.of(context).colorScheme.primary,
         currentIndex: selectedPageIndex,
         onTap: onPageSelected,
         type: BottomNavigationBarType.fixed,
-        unselectedItemColor: Colors.white,
-        selectedItemColor: Colors.white,
+        unselectedItemColor: Theme.of(context).colorScheme.onPrimary,
+        selectedItemColor: Theme.of(context).colorScheme.onPrimary,
         showUnselectedLabels: false,
         showSelectedLabels: false,
         items: [

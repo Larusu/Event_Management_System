@@ -55,7 +55,7 @@ class _MapDialog extends StatelessWidget {
         height: dialogHeight,
         width: size.width * 0.85,
         child: Material(
-          color: const Color(0xFFEEF2F4),
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
           clipBehavior: Clip.antiAlias,
           child: Stack(
@@ -100,7 +100,7 @@ class _MapDialog extends StatelessWidget {
                 top: 8,
                 right: 8,
                 child: Material(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   shape: const CircleBorder(),
                   elevation: 2,
                   child: InkWell(

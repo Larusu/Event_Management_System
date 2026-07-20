@@ -1,8 +1,9 @@
 import 'package:campus_event_app/core/theme/app_theme.dart';
-import 'package:campus_event_app/features/auth/presentation/screens/auth_gate.dart';
+import 'package:campus_event_app/core/theme/theme_provider.dart';
 import 'package:campus_event_app/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:campus_event_app/features/auth/presentation/screens/sign_in_screen.dart';
 import 'package:campus_event_app/features/auth/presentation/screens/sign_up_screen.dart';
+import 'package:campus_event_app/features/auth/presentation/screens/splash_screen.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
 import 'package:campus_event_app/features/events/presentation/screens/events_screen.dart';
 import 'package:campus_event_app/features/events/providers/event_dashboard_provider.dart';
@@ -32,6 +33,7 @@ class MyApp extends StatelessWidget {
     // to this MultiProvider rather than creating a second registration point.
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()..loadThemeMode()),
         ChangeNotifierProvider(create: (_) {
           final provider = AuthProvider();
           provider.initialize();
@@ -40,18 +42,22 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => EventListProvider()),
         ChangeNotifierProvider(create: (_) => EventDashboardProvider()),
       ],
-      child: MaterialApp(
-        title: 'Campus Event App',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        home: AuthGate(),
-        routes: {
-          '/sign-in': (context) => const SignInScreen(),
-          '/sign-up': (context) => const SignUpScreen(),
-          '/forgot-password': (context) => const ForgotPasswordScreen(),
-          '/events': (context) => const EventsScreen(),
-          '/settings': (context) => const SettingsScreen(),
-        },
+      child: Builder(
+        builder: (context) => MaterialApp(
+          title: 'Campus Event App',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: context.watch<ThemeProvider>().themeMode,
+          home: const SplashScreen(),
+          routes: {
+            '/sign-in': (context) => const SignInScreen(),
+            '/sign-up': (context) => const SignUpScreen(),
+            '/forgot-password': (context) => const ForgotPasswordScreen(),
+            '/events': (context) => const EventsScreen(),
+            '/settings': (context) => const SettingsScreen(),
+          },
+        ),
       ),
     );
   }

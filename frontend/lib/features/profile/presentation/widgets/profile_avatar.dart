@@ -20,7 +20,7 @@ class ProfileAvatar extends StatelessWidget {
           ? Icon(
               Icons.person_outline,
               size: radius * 1.2,
-              color: Colors.grey.shade600,
+              color: Theme.of(context).colorScheme.onSurface,
             )
           : null,
     );

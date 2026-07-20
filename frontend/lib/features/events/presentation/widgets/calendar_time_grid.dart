@@ -23,8 +23,6 @@ class CalendarTimeGrid extends StatelessWidget {
   static const double _eventInset = 2; // gap around each block
   static const double _minEventHeight = 22; // keep short events tappable
 
-  static const Color _lineColor = Color(0x22000000);
-
   int get _hourCount => _endHour - _startHour;
   double get _totalHeight => _allDayHeight + _hourCount * _hourHeight;
 
@@ -44,9 +42,9 @@ class CalendarTimeGrid extends StatelessWidget {
 
             return Stack(
               children: [
-                ..._hourLines(),
-                ..._columnDividers(days.length, columnWidth),
-                ..._timeLabels(),
+                ..._hourLines(context),
+                ..._columnDividers(context, days.length, columnWidth),
+                ..._timeLabels(context),
                 _allDayLabel(),
                 ..._eventBlocks(context, calendar, days, columnWidth),
               ],
@@ -68,39 +66,51 @@ class CalendarTimeGrid extends StatelessWidget {
     return [focused];
   }
 
-  List<Widget> _hourLines() => [
-        for (int i = 0; i <= _hourCount; i++)
-          Positioned(
-            top: _allDayHeight + i * _hourHeight,
-            left: 0,
-            right: 0,
-            child: Container(height: 1, color: _lineColor),
-          ),
-      ];
+  List<Widget> _hourLines(BuildContext context) {
+    final lineColor =
+        Theme.of(context).colorScheme.outline.withValues(alpha: 0.13);
+    return [
+      for (int i = 0; i <= _hourCount; i++)
+        Positioned(
+          top: _allDayHeight + i * _hourHeight,
+          left: 0,
+          right: 0,
+          child: Container(height: 1, color: lineColor),
+        ),
+    ];
+  }
 
-  List<Widget> _columnDividers(int count, double columnWidth) => [
-        for (int i = 0; i <= count; i++)
-          Positioned(
-            top: 0,
-            bottom: 0,
-            left: _gutterWidth + i * columnWidth,
-            child: Container(width: 1, color: _lineColor),
-          ),
-      ];
+  List<Widget> _columnDividers(
+      BuildContext context, int count, double columnWidth) {
+    final lineColor =
+        Theme.of(context).colorScheme.outline.withValues(alpha: 0.13);
+    return [
+      for (int i = 0; i <= count; i++)
+        Positioned(
+          top: 0,
+          bottom: 0,
+          left: _gutterWidth + i * columnWidth,
+          child: Container(width: 1, color: lineColor),
+        ),
+    ];
+  }
 
-  List<Widget> _timeLabels() => [
-        for (int h = _startHour; h <= _endHour; h++)
-          Positioned(
-            top: _allDayHeight + (h - _startHour) * _hourHeight - 8,
-            left: 0,
-            width: _gutterWidth - 6,
-            child: Text(
-              _formatHour(h),
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11, color: Colors.black),
-            ),
+  List<Widget> _timeLabels(BuildContext context) {
+    final textColor = Theme.of(context).colorScheme.onSurfaceVariant;
+    return [
+      for (int h = _startHour; h <= _endHour; h++)
+        Positioned(
+          top: _allDayHeight + (h - _startHour) * _hourHeight - 8,
+          left: 0,
+          width: _gutterWidth - 6,
+          child: Text(
+            _formatHour(h),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11, color: textColor),
           ),
-      ];
+        ),
+    ];
+  }
 
   Widget _allDayLabel() => const Positioned(
         top: 0,

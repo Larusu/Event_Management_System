@@ -50,7 +50,7 @@ class ModalContainer {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
                 BoxShadow(blurRadius: 15, color: Colors.black26),
@@ -112,8 +112,8 @@ class _DraggableContent extends StatelessWidget {
       expand: false,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
             boxShadow: [BoxShadow(blurRadius: 10, color: Colors.black12)],
           ),
@@ -139,7 +139,7 @@ class _DraggableContent extends StatelessWidget {
                       width: 40,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: Colors.grey,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),

@@ -43,6 +43,7 @@ dependencies:
   provider: ^6.1.5+1
   flutter_svg: ^2.0.10
   flutter_riverpod: ^2.6.1
+  shared_preferences: ^2.2.3
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +70,7 @@ flutter:
 
   assets:
     - assets/maps/
+    - assets/images/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

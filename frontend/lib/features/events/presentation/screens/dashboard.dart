@@ -148,14 +148,14 @@ class _DashboardPageState extends State<DashboardPage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Padding(
+            child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               child: Center(
                 child: Text(
                   "No upcoming registered events yet.\nBrowse events to find something to join!",
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 14,
                   ),
                 ),
@@ -202,12 +202,13 @@ class _DashboardPageState extends State<DashboardPage> {
         final featured = provider.featuredEvents;
 
         if (featured.isEmpty) {
-          return const SizedBox(
+          return SizedBox(
             height: 250,
             child: Center(
               child: Text(
                 "No featured events right now.",
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
           );
@@ -269,12 +270,13 @@ class _DashboardPageState extends State<DashboardPage> {
         final registered = provider.registeredEvents;
 
         if (registered.isEmpty) {
-          return const Center(
+          return Center(
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
               child: Text(
                 "You haven't registered for any events yet.",
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
           );

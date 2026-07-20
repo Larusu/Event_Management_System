@@ -30,10 +30,11 @@ class RolePromotionScreen extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
-        body: const Center(
+        body: Center(
           child: Text(
             'You do not have access to this page.',
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         ),
       );
@@ -248,8 +249,7 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
               ),
               const SizedBox(height: 12),
               ElevatedButton(
-                onPressed: () =>
-                    provider.load(search: _searchController.text),
+                onPressed: () => provider.load(search: _searchController.text),
                 child: const Text('Retry'),
               ),
             ],
@@ -258,10 +258,11 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
       case RolePromotionStatus.loaded:
         final users = provider.users;
         if (users.isEmpty) {
-          return const Center(
+          return Center(
             child: Text(
               'No users found.',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           );
         }
@@ -300,16 +301,18 @@ class _UserCard extends StatelessWidget {
                 children: [
                   Text(
                     user.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     user.email,
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 6),
                   RoleTag(role: user.role),

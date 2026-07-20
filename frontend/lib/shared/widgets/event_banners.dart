@@ -44,8 +44,8 @@ class _NextEventBannerState extends State<NextEventBanner> {
               children: [
                 Text(
                   widget.title,
-                  style: const TextStyle(
-                    color: Colors.black,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -53,8 +53,8 @@ class _NextEventBannerState extends State<NextEventBanner> {
                 const Spacer(),
                 Text(
                   '${widget.startTime} - ${widget.endTime}',
-                  style: const TextStyle(
-                    color: Colors.black,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 14,
                   ),
                 ),
@@ -63,16 +63,16 @@ class _NextEventBannerState extends State<NextEventBanner> {
             const SizedBox(height: 4),
             Text(
               '${widget.day}, ${widget.date}',
-              style: const TextStyle(
-                color: Colors.black,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 14,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               widget.location,
-              style: const TextStyle(
-                color: Colors.black,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 14,
               ),
             ),
@@ -125,8 +125,8 @@ class _UpcomingEventBannerState extends State<UpcomingEventBanner> {
               children: [
                 Text(
                   widget.title,
-                  style: const TextStyle(
-                    color: Colors.black,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -137,16 +137,16 @@ class _UpcomingEventBannerState extends State<UpcomingEventBanner> {
                   children: [
                     Text(
                       '${widget.day}, ${widget.date}',
-                      style: const TextStyle(
-                        color: Colors.black,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 14,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${widget.startTime} - ${widget.endTime}',
-                      style: const TextStyle(
-                        color: Colors.black,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 14,
                       ),
                     ),

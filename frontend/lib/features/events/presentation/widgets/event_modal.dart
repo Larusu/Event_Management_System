@@ -177,7 +177,9 @@ class _RegisterConfirmDialog extends StatelessWidget {
           Text(
             eventTitle,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -217,11 +219,11 @@ class _SheetShell extends StatelessWidget {
         return ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           child: Container(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             child: ListView(
               controller: scrollController,
               padding: EdgeInsets.zero,
-              children: [_dragHandle(), child],
+              children: [_dragHandle(context), child],
             ),
           ),
         );
@@ -231,9 +233,9 @@ class _SheetShell extends StatelessWidget {
 }
 
 /// The grey pill drag handle shown at the top of every modal state.
-Widget _dragHandle() {
+Widget _dragHandle(BuildContext context) {
   return Container(
-    color: Colors.white,
+    color: Theme.of(context).colorScheme.surface,
     padding: const EdgeInsets.symmetric(vertical: 12),
     alignment: Alignment.center,
     child: Container(
@@ -302,13 +304,13 @@ class EventModalContent extends StatelessWidget {
         return ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           child: Container(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             child: ListView(
               controller: scrollController,
               padding: EdgeInsets.zero,
               children: [
-                _dragHandle(),
-                _cover(),
+                _dragHandle(context),
+                _cover(context),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(23, 20, 23, 24),
                   child: _details(context),
@@ -321,7 +323,7 @@ class EventModalContent extends StatelessWidget {
     );
   }
 
-  Widget _cover() {
+  Widget _cover(BuildContext context) {
     return SizedBox(
       height: 300,
       width: double.infinity,
@@ -329,7 +331,7 @@ class EventModalContent extends StatelessWidget {
         coverImageUrl,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) => Container(
-          color: Colors.grey.shade200,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           alignment: Alignment.center,
           child: const Icon(Icons.image_not_supported_outlined,
               size: 48, color: _kGrey),
@@ -337,7 +339,7 @@ class EventModalContent extends StatelessWidget {
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
           return Container(
-            color: Colors.grey.shade100,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             alignment: Alignment.center,
             child: const CircularProgressIndicator(strokeWidth: 2),
           );
@@ -359,10 +361,10 @@ class EventModalContent extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
@@ -373,19 +375,19 @@ class EventModalContent extends StatelessWidget {
                 Text(
                   _formatDate(date),
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w300,
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 Text(
                   '${_formatTime(startTime)} - ${_formatTime(endTime)}',
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w300,
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -398,11 +400,11 @@ class EventModalContent extends StatelessWidget {
         eventMode == 'online'
             ? Text(
                 streamLink ?? '',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w300,
                   fontStyle: FontStyle.italic,
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               )
             : InkWell(
@@ -413,11 +415,11 @@ class EventModalContent extends StatelessWidget {
                     Flexible(
                       child: Text(
                         location ?? '',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w300,
                           fontStyle: FontStyle.italic,
-                          color: Colors.black,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -429,14 +431,14 @@ class EventModalContent extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),        
+              ),
         const SizedBox(height: 12),
 
         // Host / guest speaker + info chip
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: _hostInfo()),
+            Expanded(child: _hostInfo(context)),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -457,11 +459,11 @@ class EventModalContent extends StatelessWidget {
         // Description
         Text(
           description,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w300,
             fontStyle: FontStyle.italic,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
 
@@ -488,7 +490,7 @@ class EventModalContent extends StatelessWidget {
         const SizedBox(height: 16),
 
         // Contact details
-        _contactInfo(),
+        _contactInfo(context),
         const SizedBox(height: 16),
 
         // Register button
@@ -521,13 +523,14 @@ class EventModalContent extends StatelessWidget {
     );
   }
 
-  Widget _hostInfo() {
+  Widget _hostInfo(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         RichText(
           text: TextSpan(
-            style: const TextStyle(fontSize: 13, color: Colors.black),
+            style: TextStyle(
+                fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
             children: [
               const TextSpan(
                 text: 'Hosted by: ',
@@ -541,7 +544,8 @@ class EventModalContent extends StatelessWidget {
           const SizedBox(height: 2),
           RichText(
             text: TextSpan(
-              style: const TextStyle(fontSize: 13, color: Colors.black),
+              style: TextStyle(
+                  fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
               children: [
                 const TextSpan(
                   text: 'Guest Speaker: ',
@@ -578,27 +582,27 @@ class EventModalContent extends StatelessWidget {
     );
   }
 
-  Widget _contactInfo() {
+  Widget _contactInfo(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Contact Details:',
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 2),
         ...contactEmails.map(
           (email) => Text(
             email,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w300,
               fontStyle: FontStyle.italic,
-              color: Colors.black,
+              color: Theme.of(context).colorScheme.onSurface,
               decoration: TextDecoration.underline,
             ),
           ),
