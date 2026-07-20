@@ -294,9 +294,14 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
   }
 
   Widget _buildFilter(EventApprovalProvider provider) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: SegmentedButton<ReviewFilter>(
+        style: SegmentedButton.styleFrom(
+          selectedBackgroundColor: colorScheme.primary,
+          selectedForegroundColor: colorScheme.onPrimary,
+        ),
         segments: const [
           ButtonSegment(
             value: ReviewFilter.pending,
