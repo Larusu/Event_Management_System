@@ -27,6 +27,9 @@ const _serverOwnedFields = {
 /// Roles allowed to create events.
 const _privilegedRoles = {'organizer', 'faculty', 'super_admin'};
 
+/// Status assigned at creation for every role allowed to create an event.
+String initialEventStatus(String role) => 'pending';
+
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method == HttpMethod.get) {
     return _handleGet(context);
@@ -58,6 +61,10 @@ Future<Response> _handleGet(RequestContext context) async {
     final searchParam = query['search'];
     final cursorParam = query['cursor'];
     final limitParam = query['limit'];
+    // Opt-in filter: when `upcoming=true`, events that have already ended are
+    // excluded (used by the browse/Events List feed; the calendar omits it so
+    // it can still show past dates).
+    final upcomingOnly = query['upcoming'] == 'true';
 
     var limit = _defaultLimit;
     if (limitParam != null) {
@@ -81,6 +88,7 @@ Future<Response> _handleGet(RequestContext context) async {
       search: searchParam,
       cursor: cursorParam,
       limit: limit,
+      upcomingOnly: upcomingOnly,
     );
 
     String? nextCursor;
@@ -174,9 +182,8 @@ Future<Response> _handlePost(RequestContext context) async {
       );
     }
 
-    // --- Determine status from role ---
-    final status =
-        (role == 'organizer') ? 'pending' : 'approved';
+    // Every newly created event must be reviewed, regardless of creator role.
+    final status = initialEventStatus(role);
 
     // --- Generate event ID ---
     final title = body['title'] as String;
@@ -218,7 +225,7 @@ Future<Response> _handlePost(RequestContext context) async {
     };
 
     return ResponseHelper.success(
-      message: 'Event created.',
+      message: 'Event submitted for approval.',
       data: {'event': eventResponse},
     );
   } on AuthException catch (e) {

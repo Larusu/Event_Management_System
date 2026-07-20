@@ -89,11 +89,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 2.5),
               child: SettingsCard(
                 icon: Icons.person_outline,
                 label: 'Edit profile information',
                 onTap: () => context.push(Routes.editProfile),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 2.5, 16, 10),
+              child: SettingsCard(
+                icon: Icons.history,
+                label: 'View previous registrations',
+                onTap: () => context.push(Routes.previousRegistrations),
               ),
             ),
           ),

@@ -8,6 +8,9 @@ import "../../../../core/constants/roles.dart";
 import "../../../auth/providers/auth_provider.dart";
 import "../../../../shared/widgets/app_dialog.dart";
 import "../../../../shared/widgets/modal.dart";
+import "../../data/campus_map_data.dart";
+import "../../models/campus_map.dart";
+import '../../models/event.dart';
 import "../../providers/create_event_provider.dart";
 import "../../providers/event_dashboard_provider.dart";
 import "../../providers/event_list_provider.dart";
@@ -18,14 +21,11 @@ import "../../providers/event_list_provider.dart";
 void createNewEvent(BuildContext context) {
   final listProvider = context.read<EventListProvider>();
   final dashProvider = context.read<EventDashboardProvider>();
-  final role = context.read<AuthProvider>().currentUser?.role;
-
   ModalContainer.show(
     context: context,
     child: ChangeNotifierProvider(
       create: (_) => CreateEventProvider(),
       child: _CreateEventModal(
-        creatorRole: role,
         onCreated: () {
           listProvider.load();
           dashProvider.loadFeatured();
@@ -35,10 +35,31 @@ void createNewEvent(BuildContext context) {
   );
 }
 
-class _CreateEventModal extends StatefulWidget {
-  const _CreateEventModal({this.creatorRole, this.onCreated});
+/// Opens the event form pre-filled for an existing event.
+void editEvent(
+  BuildContext context, {
+  required Event event,
+  required VoidCallback onUpdated,
+}) {
+  ModalContainer.show(
+    context: context,
+    child: ChangeNotifierProvider(
+      create: (_) => CreateEventProvider(),
+      child: _CreateEventModal(
+        initialEvent: event,
+        onCreated: onUpdated,
+      ),
+    ),
+  );
+}
 
-  final String? creatorRole;
+class _CreateEventModal extends StatefulWidget {
+  const _CreateEventModal({
+    this.initialEvent,
+    this.onCreated,
+  });
+
+  final Event? initialEvent;
   final VoidCallback? onCreated;
 
   @override
@@ -53,7 +74,6 @@ class _CreateEventModalState extends State<_CreateEventModal> {
   final _categoryController = TextEditingController();
   final _hostController = TextEditingController();
   final _guestSpeakerController = TextEditingController();
-  final _locationController = TextEditingController();
   final _streamLinkController = TextEditingController();
   final _contactController = TextEditingController();
   final _slotsController = TextEditingController();
@@ -70,6 +90,53 @@ class _CreateEventModalState extends State<_CreateEventModal> {
   bool _allDay = false;
   bool _isOpenToGuests = false;
 
+  // Offline location is picked from the campus map registry (floor -> room) so
+  // it always resolves to a known room for the wayfinding map. The room's name
+  // is what gets stored as the free-text `location`.
+  String? _selectedFloorId;
+  String? _selectedRoomId;
+
+  bool get _isEditing => widget.initialEvent != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final event = widget.initialEvent;
+    if (event == null) return;
+    _titleController.text = event.title;
+    _descriptionController.text = event.description;
+    _categoryController.text = event.tags.join(', ');
+    _hostController.text = event.hostName;
+    _guestSpeakerController.text = event.guestSpeaker ?? '';
+    _streamLinkController.text = event.streamLink ?? '';
+    final location = event.location;
+    if (location != null && location.isNotEmpty) {
+      final room = resolveRoomFromLocation(location);
+      if (room != null) {
+        _selectedFloorId = room.floorId;
+        _selectedRoomId = room.id;
+      }
+    }
+    _contactController.text = event.contactEmails.join(', ');
+    _slotsController.text =
+        (event.registeredCount + event.slotsRemaining).toString();
+    _date = DateTime.tryParse(event.date);
+    _startTime = _parseTime(event.startTime);
+    _endTime = _parseTime(event.endTime);
+    _eventMode = event.eventMode;
+    _allDay = event.startTime == '00:00' && event.endTime == '23:59';
+    _isOpenToGuests = event.isOpenToGuests;
+  }
+
+  TimeOfDay? _parseTime(String value) {
+    final parts = value.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -77,7 +144,6 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     _categoryController.dispose();
     _hostController.dispose();
     _guestSpeakerController.dispose();
-    _locationController.dispose();
     _streamLinkController.dispose();
     _contactController.dispose();
     _slotsController.dispose();
@@ -185,8 +251,12 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     // Captured up front so the success message survives the Navigator.pop that
     // removes this widget (and its context) from the tree.
     final messenger = ScaffoldMessenger.of(context);
+    final role = context.read<AuthProvider>().currentUser?.role;
+    final autoApproves = role == Roles.faculty || role == Roles.superAdmin;
 
-    if (_imageBytes == null) {
+    // A cover image is required when creating; when editing, the existing
+    // cover is kept if no new image is picked.
+    if (_imageBytes == null && !_isEditing) {
       _showError('Please add a cover image.');
       return;
     }
@@ -227,16 +297,17 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     final slots = int.tryParse(_slotsController.text.trim()) ?? 0;
 
     final ok = await provider.submit(
-      imageBytes: _imageBytes!,
-      imageFilename: _imageName ?? 'cover.jpg',
-      imageMimeType: _imageMime ?? 'image/jpeg',
+      imageBytes: _imageBytes,
+      imageFilename: _imageName,
+      imageMimeType: _imageMime,
+      existingEvent: widget.initialEvent,
       title: _titleController.text,
       description: _descriptionController.text,
       date: _formatDate(_date!),
       startTime: _formatTime(start),
       endTime: _formatTime(end),
       eventMode: _eventMode,
-      location: _locationController.text,
+      location: _selectedRoomName() ?? '',
       streamLink: _streamLinkController.text,
       hostName: _hostController.text,
       guestSpeaker: _guestSpeakerController.text,
@@ -250,17 +321,21 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     if (ok) {
       widget.onCreated?.call();
       Navigator.pop(context);
-      final isOrganizer = widget.creatorRole == Roles.organizer;
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            isOrganizer ? 'Event submitted for approval.' : 'Event created.',
+            _isEditing
+                ? 'Event updated.'
+                : (autoApproves
+                    ? 'Event created.'
+                    : 'Event submitted for approval.'),
           ),
         ),
       );
     } else {
       _showError(
-        provider.errorMessage ?? 'Could not create the event.',
+        provider.errorMessage ??
+            'Could not ${_isEditing ? 'update' : 'create'} the event.',
       );
     }
   }
@@ -277,8 +352,8 @@ class _CreateEventModalState extends State<_CreateEventModal> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "New Event",
+            Text(
+              _isEditing ? 'Edit Event' : 'New Event',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             const SizedBox(height: 15.0),
@@ -305,13 +380,7 @@ class _CreateEventModalState extends State<_CreateEventModal> {
             if (isOnline)
               _field(_streamLinkController, "Stream Link")
             else
-              _field(
-                _locationController,
-                "Location",
-                minLines: 2,
-                maxLines: null,
-                keyboardType: TextInputType.multiline,
-              ),
+              _buildLocationSelectors(),
             const SizedBox(height: 10.0),
             _buildAllDayToggle(),
             const SizedBox(height: 10.0),
@@ -358,7 +427,9 @@ class _CreateEventModalState extends State<_CreateEventModal> {
                 ),
                 Switch.adaptive(
                   value: _isOpenToGuests,
-                  onChanged: (value) => setState(() => _isOpenToGuests = value),
+                  onChanged: _isEditing
+                      ? null
+                      : (value) => setState(() => _isOpenToGuests = value),
                 ),
               ],
             ),
@@ -381,7 +452,7 @@ class _CreateEventModalState extends State<_CreateEventModal> {
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text("Add Event"),
+                      : Text(_isEditing ? 'Save Changes' : 'Add Event'),
                 ),
               ],
             ),
@@ -403,20 +474,28 @@ class _CreateEventModalState extends State<_CreateEventModal> {
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: _imageBytes != null
               ? Image.memory(_imageBytes!, fit: BoxFit.cover)
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add_a_photo,
-                        size: 48,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant),
-                    const SizedBox(height: 6),
-                    Text("Add cover",
-                        style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant)),
-                  ],
-                ),
+              : _isEditing && widget.initialEvent!.coverImageUrl.isNotEmpty
+                  ? Image.network(
+                      widget.initialEvent!.coverImageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.broken_image_outlined, size: 48),
+                    )
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_a_photo,
+                            size: 48,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant),
+                        const SizedBox(height: 6),
+                        Text("Add cover",
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant)),
+                      ],
+                    ),
         ),
       ),
     );
@@ -437,6 +516,72 @@ class _CreateEventModalState extends State<_CreateEventModal> {
             onSelectionChanged: (selection) =>
                 setState(() => _eventMode = selection.first),
           ),
+        ),
+      ],
+    );
+  }
+
+  /// Resolves the name of the currently selected room (stored as `location`),
+  /// or null when nothing is selected.
+  String? _selectedRoomName() {
+    final floorId = _selectedFloorId;
+    final roomId = _selectedRoomId;
+    if (floorId == null || roomId == null) return null;
+    final floor = floorById(floorId);
+    if (floor == null) return null;
+    for (final room in floor.rooms) {
+      if (room.id == roomId) return room.name;
+    }
+    return null;
+  }
+
+  Widget _buildLocationSelectors() {
+    final floor =
+        _selectedFloorId == null ? null : floorById(_selectedFloorId!);
+    final rooms = floor?.rooms ?? const <MapRoom>[];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          initialValue: _selectedFloorId,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: "Location - Floor",
+            border: OutlineInputBorder(),
+            contentPadding:
+                EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+          ),
+          items: [
+            for (final f in campusMapRegistry)
+              DropdownMenuItem(value: f.id, child: Text(f.displayName)),
+          ],
+          validator: (value) =>
+              (value == null || value.isEmpty) ? 'Select a floor' : null,
+          onChanged: (value) => setState(() {
+            _selectedFloorId = value;
+            _selectedRoomId = null;
+          }),
+        ),
+        const SizedBox(height: 10.0),
+        DropdownButtonFormField<String>(
+          initialValue: _selectedRoomId,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: "Location - Room / Area",
+            border: OutlineInputBorder(),
+            contentPadding:
+                EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+          ),
+          items: [
+            for (final room in rooms)
+              DropdownMenuItem(value: room.id, child: Text(room.name)),
+          ],
+          validator: (value) =>
+              (value == null || value.isEmpty) ? 'Select a room / area' : null,
+          onChanged: floor == null
+              ? null
+              : (value) => setState(() => _selectedRoomId = value),
         ),
       ],
     );

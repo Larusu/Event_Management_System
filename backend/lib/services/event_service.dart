@@ -82,6 +82,7 @@ class EventService {
     String? search,
     String? cursor,
     int limit = 20,
+    bool upcomingOnly = false,
   }) async {
     // Validate/parse the opaque cursor first, so a malformed cursor still
     // yields EVT001 before we touch the (possibly cached) snapshot.
@@ -91,12 +92,19 @@ class EventService {
     // snapshot cache (one Firestore scan shared across requests).
     final snapshot = await _approvedSnapshot();
 
-    // Apply the tag + search filters in memory.
+    // Apply the tag + search filters in memory. When [upcomingOnly] is set,
+    // also drop events whose date + end time has already passed so a "browse
+    // upcoming" feed never surfaces finished events.
+    final nowUtc = DateTime.now().toUtc();
     final filtered = <Event>[];
     for (final event in snapshot) {
-      if (_passesFilters(event, tags: tags, search: search)) {
-        filtered.add(event);
+      if (!_passesFilters(event, tags: tags, search: search)) {
+        continue;
       }
+      if (upcomingOnly && hasEndedAt(event, nowUtc)) {
+        continue;
+      }
+      filtered.add(event);
     }
 
     // Resume strictly after the cursor's (date, eventId) position. The list
@@ -130,19 +138,19 @@ class EventService {
 
   /// Fetches the soonest [limit] upcoming approved events (Featured).
   ///
-  /// Filters `status == approved`, `is_deleted == false`, and `date >= today`
-  /// (YYYY-MM-DD, UTC calendar date). Sorted by date ascending — this is the
-  /// entire "featured" rule; no popularity weighting.
+  /// Filters `status == approved`, `is_deleted == false`, and excludes events
+  /// whose date + end time has already passed (campus-local). Sorted by date
+  /// ascending — this is the entire "featured" rule; no popularity weighting.
   ///
   /// [limit] must already be validated by the route (default 3, max 10).
   static Future<List<Event>> fetchFeatured({int limit = 3}) async {
-    final today = _todayUtcDateString();
+    final nowUtc = DateTime.now().toUtc();
     final snapshot = await _approvedSnapshot();
 
     final matched = <Event>[];
     for (final event in snapshot) {
-      // ISO date strings compare lexicographically in chronological order.
-      if (event.date.compareTo(today) < 0) {
+      // Skip events that have already finished (by end time, not just date).
+      if (hasEndedAt(event, nowUtc)) {
         continue;
       }
       matched.add(event);
@@ -247,13 +255,50 @@ class EventService {
     return event.eventId.compareTo(eventId) > 0;
   }
 
-  /// UTC calendar date as `YYYY-MM-DD` — used for featured `date >= today`.
-  static String _todayUtcDateString() {
-    final now = DateTime.now().toUtc();
-    final y = now.year.toString().padLeft(4, '0');
-    final m = now.month.toString().padLeft(2, '0');
-    final d = now.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
+  /// Campus timezone offset from UTC. The app serves a single Philippine
+  /// campus, and event `date`/`start_time`/`end_time` are stored as naive
+  /// campus-local wall-clock values, so we anchor them to this offset when
+  /// deciding whether an event has ended.
+  static const Duration _campusUtcOffset = Duration(hours: 8);
+
+  /// Whether [event] has already finished as of [nowUtc].
+  ///
+  /// Combines the event's `date` + `end_time` (interpreted as campus-local
+  /// wall clock) into a UTC instant and compares it to [nowUtc]. Events with a
+  /// missing/malformed date or end time are treated as NOT ended (kept), so a
+  /// bad record is never silently hidden. Exposed for unit testing with a
+  /// fixed clock.
+  static bool hasEndedAt(Event event, DateTime nowUtc) {
+    final endUtc = _eventEndInstant(event);
+    if (endUtc == null) return false;
+    return !endUtc.isAfter(nowUtc);
+  }
+
+  /// The UTC instant at which [event] ends, or null when it can't be parsed.
+  static DateTime? _eventEndInstant(Event event) {
+    final date = DateTime.tryParse(event.date);
+    if (date == null) return null;
+    final parts = event.endTime.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
+      return null;
+    }
+    // Treat the wall-clock time as campus-local, then shift to a UTC instant.
+    final wallAsUtc = DateTime.utc(
+      date.year,
+      date.month,
+      date.day,
+      hour,
+      minute,
+    );
+    return wallAsUtc.subtract(_campusUtcOffset);
   }
 
   /// Decodes and validates the incoming opaque [cursor].

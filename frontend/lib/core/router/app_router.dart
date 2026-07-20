@@ -10,11 +10,14 @@ import '../../features/auth/presentation/screens/sign_up_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/events/presentation/screens/calendar.dart';
+import '../../features/events/presentation/screens/created_events_screen.dart';
 import '../../features/events/presentation/screens/dashboard.dart';
 import '../../features/events/presentation/screens/events_screen.dart';
+import '../../features/events/presentation/screens/previous_registration.dart';
 import '../../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../../features/profile/presentation/screens/settings_screen.dart';
 import '../../features/profile/presentation/screens/theme_settings_screen.dart';
+import '../constants/roles.dart';
 import '../../shared/widgets/main_shell.dart';
 
 /// Central navigation paths. Use these instead of hardcoding strings at call
@@ -29,17 +32,25 @@ class Routes {
 
   // Bottom-nav shell branches.
   static const String calendar = '/calendar';
+  static const String createdEvents = '/created-events';
   static const String dashboard = '/dashboard';
   static const String events = '/events';
   static const String settings = '/settings';
 
   // Full-screen sub-screens pushed over the shell.
   static const String editProfile = '/settings/edit-profile';
+  static const String previousRegistrations = '/settings/previous-registrations';
   static const String theme = '/settings/theme';
   static const String admin = '/settings/admin';
   static const String adminApprovals = '/settings/admin/approvals';
   static const String adminRoles = '/settings/admin/roles';
 }
+
+/// Whether [role] may create events (and therefore see the Created Events tab).
+bool _canManageEvents(String? role) =>
+    role == Roles.organizer ||
+    role == Roles.faculty ||
+    role == Roles.superAdmin;
 
 /// Root navigator. Sub-screens attach to this so they render full-screen OVER
 /// the bottom navigation bar (matching the previous MaterialPageRoute pushes).
@@ -74,6 +85,12 @@ GoRouter createAppRouter(AuthProvider auth) {
 
       // Authenticated: bounce off the auth screens into the app.
       if (atAuthScreen) return Routes.dashboard;
+
+      // Role-gate the Created Events tab against deep links and role changes.
+      if (loc == Routes.createdEvents &&
+          !_canManageEvents(auth.currentUser?.role)) {
+        return Routes.dashboard;
+      }
       return null;
     },
     routes: [
@@ -105,6 +122,17 @@ GoRouter createAppRouter(AuthProvider auth) {
               ),
             ],
           ),
+          // Branch 1: Created Events. Always defined so branch indices stay
+          // fixed; MainShell + the redirect gate its visibility to organizers
+          // and up.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.createdEvents,
+                builder: (context, state) => const CreatedEventsScreen(),
+              ),
+            ],
+          ),
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -131,6 +159,12 @@ GoRouter createAppRouter(AuthProvider auth) {
                     path: 'edit-profile',
                     parentNavigatorKey: rootNavigatorKey,
                     builder: (context, state) => const EditProfileScreen(),
+                  ),
+                  GoRoute(
+                    path: 'previous-registrations',
+                    parentNavigatorKey: rootNavigatorKey,
+                    builder: (context, state) =>
+                        const PreviousRegisteredEventsScreen(),
                   ),
                   GoRoute(
                     path: 'theme',

@@ -38,9 +38,10 @@ class CreateEventProvider extends ChangeNotifier {
   /// [eventMode] must be `online` or `offline`; the matching [streamLink] /
   /// [location] is attached accordingly. [guestSpeaker] is omitted when empty.
   Future<bool> submit({
-    required List<int> imageBytes,
-    required String imageFilename,
-    required String imageMimeType,
+    List<int>? imageBytes,
+    String? imageFilename,
+    String? imageMimeType,
+    Event? existingEvent,
     required String title,
     required String description,
     required String date,
@@ -61,11 +62,14 @@ class CreateEventProvider extends ChangeNotifier {
     _safeNotify();
 
     try {
-      final coverImageUrl = await _repository.uploadCoverImage(
-        bytes: imageBytes,
-        filename: imageFilename,
-        mimeType: imageMimeType,
-      );
+      var coverImageUrl = existingEvent?.coverImageUrl ?? '';
+      if (imageBytes != null) {
+        coverImageUrl = await _repository.uploadCoverImage(
+          bytes: imageBytes,
+          filename: imageFilename ?? 'cover.jpg',
+          mimeType: imageMimeType ?? 'image/jpeg',
+        );
+      }
 
       _status = CreateEventStatus.submitting;
       _safeNotify();
@@ -81,9 +85,11 @@ class CreateEventProvider extends ChangeNotifier {
         'host_name': hostName.trim(),
         'contact_emails': contactEmails,
         'tags': tags,
-        'is_open_to_guests': isOpenToGuests,
         'slots_total': slotsTotal,
       };
+      if (existingEvent == null) {
+        body['is_open_to_guests'] = isOpenToGuests;
+      }
       if (eventMode == 'online') {
         body['stream_link'] = streamLink?.trim();
       } else {
@@ -93,7 +99,11 @@ class CreateEventProvider extends ChangeNotifier {
         body['guest_speaker'] = guestSpeaker.trim();
       }
 
-      _createdEvent = await _repository.createEvent(body);
+      if (existingEvent == null) {
+        _createdEvent = await _repository.createEvent(body);
+      } else {
+        await _repository.updateEvent(existingEvent.eventId, body);
+      }
       _status = CreateEventStatus.success;
       _safeNotify();
       return true;
