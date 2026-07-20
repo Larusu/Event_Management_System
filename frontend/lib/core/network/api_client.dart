@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import '../constants/api_constants.dart';
 import '../models/api_response.dart';
@@ -53,6 +54,38 @@ class ApiClient {
         ));
   }
 
+  /// Uploads a single file as `multipart/form-data` (used for the Cloudinary
+  /// cover-image endpoint). The file is sent under [field]; the `Content-Type`
+  /// is set per-part from [contentType], never `application/json`.
+  Future<ApiResponse> postMultipart(
+    String path, {
+    required String field,
+    required List<int> bytes,
+    required String filename,
+    required MediaType contentType,
+    bool auth = true,
+  }) {
+    return _send(() async {
+      final request = http.MultipartRequest('POST', _uri(path));
+      if (auth) {
+        final token = await _bearerToken();
+        if (token != null) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+      }
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          field,
+          bytes,
+          filename: filename,
+          contentType: contentType,
+        ),
+      );
+      final streamed = await _client.send(request);
+      return http.Response.fromStream(streamed);
+    });
+  }
+
   Uri _uri(String path) {
     final base = apiBaseUrl.endsWith('/')
         ? apiBaseUrl.substring(0, apiBaseUrl.length - 1)
@@ -63,13 +96,19 @@ class ApiClient {
   Future<Map<String, String>> _headers(bool auth) async {
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (auth) {
-      final user = FirebaseAuth.instance.currentUser;
-      final token = user == null ? null : await user.getIdToken();
+      final token = await _bearerToken();
       if (token != null) {
         headers['Authorization'] = 'Bearer $token';
       }
     }
     return headers;
+  }
+
+  /// Fetches a fresh Firebase ID token for the current user (never cached).
+  /// Returns null when there is no signed-in user.
+  Future<String?> _bearerToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+    return user == null ? null : await user.getIdToken();
   }
 
   Future<ApiResponse> _send(Future<http.Response> Function() request) async {
