@@ -161,6 +161,10 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     final provider = context.read<CreateEventProvider>();
     if (provider.isBusy) return;
 
+    // Captured up front so the success message survives the Navigator.pop that
+    // removes this widget (and its context) from the tree.
+    final messenger = ScaffoldMessenger.of(context);
+
     if (_imageBytes == null) {
       _snack('Please add a cover image.', error: true);
       return;
@@ -226,9 +230,13 @@ class _CreateEventModalState extends State<_CreateEventModal> {
       widget.onCreated?.call();
       Navigator.pop(context);
       final isOrganizer = widget.creatorRole == Roles.organizer;
-      _snack(isOrganizer
-          ? 'Event submitted for approval.'
-          : 'Event created.');
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            isOrganizer ? 'Event submitted for approval.' : 'Event created.',
+          ),
+        ),
+      );
     } else {
       _snack(
         provider.errorMessage ?? 'Could not create the event.',

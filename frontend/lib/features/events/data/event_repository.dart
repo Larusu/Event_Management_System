@@ -119,6 +119,7 @@ class EventApiRepository implements EventRepository {
     final response = await _api.post(
       ApiRoutes.eventRegister(eventId),
       {},
+      auth: true,
     );
     return response.data;
   }
