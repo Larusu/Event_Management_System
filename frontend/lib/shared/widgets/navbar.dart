@@ -4,16 +4,10 @@ class NavBar extends StatelessWidget {
   final int selectedPageIndex;
   final ValueChanged<int> onPageSelected;
 
-  /// When true, an extra faculty/super_admin-only management tab is appended
-  /// as the last item. Its index must line up with the pages list in
-  /// [MainShell].
-  final bool isAdmin;
-
   const NavBar(
       {super.key,
       required this.selectedPageIndex,
-      required this.onPageSelected,
-      this.isAdmin = false});
+      required this.onPageSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -43,11 +37,6 @@ class NavBar extends StatelessWidget {
             icon: Icon(Icons.person_outline),
             label: '',
           ),
-          if (isAdmin)
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.admin_panel_settings_outlined),
-              label: '',
-            ),
         ]);
   }
 }

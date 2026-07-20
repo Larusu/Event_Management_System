@@ -1,7 +1,4 @@
 /// Standardized backend auth error codes relevant to sign in and registration.
-///
-/// The full set (AUTH001, AUTH003, AUTH004, AUTH007, AUTH010, AUTH011) will be
-/// added once the protected/profile endpoints are implemented on the backend.
 class AuthErrorCodes {
   const AuthErrorCodes._();
 
@@ -67,18 +64,31 @@ class EventErrorCodes {
   /// Event not found, deleted, or not approved (HTTP 404).
   static const String notFound = 'EVT002';
 
+  /// Validation failed — invalid input, missing required fields, wrong types,
+  /// or a bad cover-image type/size (HTTP 400).
+  static const String validationFailed = 'EVT003';
+
   /// Forbidden — not the owner, or role below the required minimum (HTTP 403).
   static const String permissionDenied = 'EVT004';
 
   /// Invalid status transition for the requested action (HTTP 409).
   static const String invalidStatusTransition = 'EVT005';
 
+  /// Cover-image upload to Cloudinary failed (HTTP 500/502).
+  static const String cloudinaryError = 'EVT006';
+
+  /// Unexpected server-side error (HTTP 500).
+  static const String internalError = 'EVT008';
+
   /// Default user-facing messages keyed by code, used as a fallback when the
   /// backend response does not carry a `message`.
   static const Map<String, String> defaultMessages = {
     invalidQuery: 'Invalid request. Please try again.',
     notFound: 'Event not found.',
+    validationFailed: 'Please check the form and try again.',
     permissionDenied: 'You do not have permission to moderate events.',
     invalidStatusTransition: 'That action is not allowed for this event.',
+    cloudinaryError: 'Image upload failed. Please try again.',
+    internalError: 'Something went wrong. Please try again.',
   };
 }

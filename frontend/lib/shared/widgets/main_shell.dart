@@ -1,4 +1,3 @@
-import 'package:campus_event_app/features/admin/presentation/screens/admin_landing_screen.dart';
 import 'package:campus_event_app/features/events/presentation/screens/create_event.dart';
 import 'package:campus_event_app/features/events/presentation/screens/events_screen.dart';
 import 'package:flutter/material.dart';
@@ -24,16 +23,12 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final role = context.watch<AuthProvider>().currentUser?.role;
     final isGuest = role == Roles.guest;
-    final isAdmin = role == Roles.faculty || role == Roles.superAdmin;
 
-    // The admin tab is appended last so the fixed indices 0-3 (and the
-    // Events FAB check below) stay stable for every role.
     final pages = <Widget>[
       const CalendarPage(),
       const DashboardPage(),
       const EventsScreen(),
       const SettingsScreen(),
-      if (isAdmin) const AdminLandingScreen(),
     ];
 
     // Guard against a role change (e.g. demotion) leaving the admin tab
@@ -44,7 +39,6 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       bottomNavigationBar: NavBar(
         selectedPageIndex: safeIndex,
-        isAdmin: isAdmin,
         onPageSelected: (index) {
           setState(() {
             _selectedPageIndex = index;

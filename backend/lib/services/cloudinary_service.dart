@@ -33,6 +33,12 @@ class CloudinaryService {
       '${CloudinaryConfig.cloudName}/image/upload',
     );
 
+    // Cloudinary treats the `file` field as a file upload ONLY when the
+    // multipart part carries a filename; without one it parses the bytes as a
+    // string and fails with "Invalid URL for upload". The extension is
+    // cosmetic (Cloudinary sniffs the real format).
+    final extension = contentType == 'image/png' ? 'png' : 'jpg';
+
     final request = http.MultipartRequest('POST', uri)
       ..fields['api_key'] = CloudinaryConfig.apiKey
       ..fields['timestamp'] = timestamp.toString()
@@ -41,6 +47,7 @@ class CloudinaryService {
         http.MultipartFile.fromBytes(
           'file',
           imageBytes,
+          filename: 'cover.$extension',
           contentType: MediaType.parse(contentType),
         ),
       );
