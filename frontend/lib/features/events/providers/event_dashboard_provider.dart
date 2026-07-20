@@ -10,9 +10,13 @@ import 'event_list_provider.dart';
 /// Used by the dashboard screen.
 class EventDashboardProvider extends ChangeNotifier {
   final EventRepository _repository;
+  final DateTime Function() _now;
 
-  EventDashboardProvider({EventRepository? repository})
-      : _repository = repository ?? createEventRepository();
+  EventDashboardProvider({
+    EventRepository? repository,
+    DateTime Function()? now,
+  })  : _repository = repository ?? createEventRepository(),
+        _now = now ?? DateTime.now;
 
   // ── Featured events ──
   EventListStatus _featuredStatus = EventListStatus.idle;
@@ -69,7 +73,12 @@ class EventDashboardProvider extends ChangeNotifier {
     _safeNotify();
 
     try {
-      _registeredEvents = await _repository.getRegisteredEvents();
+      final registered = await _repository.getRegisteredEvents();
+      // Drop events that have already ended so only genuinely upcoming
+      // registrations are shown; the backend `registered` feed still includes
+      // same-day events whose end time has passed.
+      _registeredEvents = registered.where(_isUpcoming).toList()
+        ..sort(_bySoonestFirst);
       _registeredStatus = EventListStatus.loaded;
     } on ApiException catch (e) {
       _registeredErrorMessage = e.message;
@@ -87,7 +96,10 @@ class EventDashboardProvider extends ChangeNotifier {
     _safeNotify();
 
     try {
-      _nextRegisteredEvent = await _repository.getNextRegisteredEvent();
+      final next = await _repository.getNextRegisteredEvent();
+      // Guard against the endpoint surfacing an event that has already ended.
+      _nextRegisteredEvent =
+          (next != null && _isUpcoming(next)) ? next : null;
       _nextRegisteredStatus = EventDetailStatus.loaded;
     } on ApiException catch (e) {
       _nextRegisteredErrorMessage = e.message;
@@ -97,6 +109,39 @@ class EventDashboardProvider extends ChangeNotifier {
       _nextRegisteredStatus = EventDetailStatus.error;
     }
     _safeNotify();
+  }
+
+  /// True when [event] has not yet ended (its date + end time is in the
+  /// future relative to [_now]).
+  bool _isUpcoming(Event event) {
+    final end = _eventEnd(event);
+    return end == null || end.isAfter(_now());
+  }
+
+  int _bySoonestFirst(Event a, Event b) {
+    final aEnd = _eventEnd(a);
+    final bEnd = _eventEnd(b);
+    if (aEnd == null && bEnd == null) return 0;
+    if (aEnd == null) return 1;
+    if (bEnd == null) return -1;
+    return aEnd.compareTo(bEnd);
+  }
+
+  DateTime? _eventEnd(Event event) {
+    final date = DateTime.tryParse(event.date);
+    final parts = event.endTime.split(':');
+    if (date == null || parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
+      return null;
+    }
+    return DateTime(date.year, date.month, date.day, hour, minute);
   }
 
   void _safeNotify() {
