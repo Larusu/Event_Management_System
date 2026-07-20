@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/constants/roles.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../providers/event_dashboard_provider.dart';
 import '../../providers/event_detail_provider.dart';
 import '../screens/event_map.dart';
 
@@ -72,6 +73,11 @@ class _EventModalViewState extends State<_EventModalView> {
           final success = await provider.register(widget.eventId);
           if (!mounted) return;
           if (success) {
+            // Refresh the Dashboard's registered sections so the newly
+            // registered event shows up without an app restart.
+            final dashboard = context.read<EventDashboardProvider>();
+            dashboard.loadRegistered();
+            dashboard.loadNextRegistered();
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Registered successfully!')),
             );
