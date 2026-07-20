@@ -248,9 +248,6 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     final provider = context.read<CreateEventProvider>();
     if (provider.isBusy) return;
 
-    // Captured up front so the success message survives the Navigator.pop that
-    // removes this widget (and its context) from the tree.
-    final messenger = ScaffoldMessenger.of(context);
     final role = context.read<AuthProvider>().currentUser?.role;
     final autoApproves = role == Roles.faculty || role == Roles.superAdmin;
 
@@ -320,18 +317,16 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     if (!mounted) return;
     if (ok) {
       widget.onCreated?.call();
-      Navigator.pop(context);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            _isEditing
-                ? 'Event updated.'
-                : (autoApproves
-                    ? 'Event created.'
-                    : 'Event submitted for approval.'),
-          ),
-        ),
+      await AppDialog.info(
+        context: context,
+        title: _isEditing ? 'Event Updated' : 'Event Created',
+        message: _isEditing
+            ? 'Event updated.'
+            : (autoApproves
+                ? 'Event created.'
+                : 'Event submitted for approval.'),
       );
+      if (mounted) Navigator.pop(context);
     } else {
       _showError(
         provider.errorMessage ??
