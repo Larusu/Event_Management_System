@@ -44,6 +44,13 @@ class ApiRoutes {
     return '/events/pending?cursor=${Uri.encodeComponent(cursor)}';
   }
 
+  /// Rejected events / reopen queue (faculty/super_admin):
+  /// `GET /events/rejected?cursor=`.
+  static String eventsRejected({String? cursor}) {
+    if (cursor == null || cursor.isEmpty) return '/events/rejected';
+    return '/events/rejected?cursor=${Uri.encodeComponent(cursor)}';
+  }
+
   /// Event moderation: `PATCH /events/{eventId}/status`.
   static String eventStatus(String eventId) => '/events/$eventId/status';
 
