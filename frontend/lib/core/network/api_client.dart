@@ -31,7 +31,10 @@ class ApiClient {
     return _send(() async => _client.post(
           _uri(path),
           headers: await _headers(auth),
-          body: jsonEncode(body),
+          // An empty map means "no body". Encoding it as "{}" would break
+          // endpoints that require a truly empty body (e.g. the register route
+          // rejects any non-empty body with a validation error).
+          body: body.isEmpty ? null : jsonEncode(body),
         ));
   }
 
