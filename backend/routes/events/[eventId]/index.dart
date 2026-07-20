@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:backend/constants/error_codes.dart';
 import 'package:backend/constants/event_error_codes.dart';
+import 'package:backend/services/event_service.dart';
 import 'package:backend/services/firebase_event_service.dart';
 import 'package:backend/utils/response_helper.dart';
 import 'package:backend/utils/validators.dart';
@@ -121,6 +122,9 @@ Future<Response> _handlePatch(RequestContext context, String eventId) async {
 
     await FirebaseEventService.updateEvent(eventId, updates);
 
+    // Edits can change title/tags/visibility — refresh the cached snapshot.
+    EventService.invalidateCaches();
+
     return ResponseHelper.success(
       message: 'Event updated successfully.',
     );
@@ -166,6 +170,9 @@ Future<Response> _handleDelete(RequestContext context, String eventId) async {
     }
 
     await FirebaseEventService.softDeleteEvent(eventId);
+
+    // A deleted event must drop out of the feed / tag list right away.
+    EventService.invalidateCaches();
 
     return Response.json(
       statusCode: 200,

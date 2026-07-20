@@ -201,6 +201,10 @@ Future<Response> _handlePost(RequestContext context) async {
       eventId: eventId,
     );
 
+    // A new event can add tags / change the feed — drop the cached snapshot so
+    // it (and any new tags) surface immediately on this instance.
+    EventService.invalidateCaches();
+
     // --- Build response ---
     final eventResponse = <String, dynamic>{
       'event_id': eventId,
