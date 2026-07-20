@@ -44,7 +44,24 @@ class _RetryOnConnectionResetClient extends http.BaseClient {
       // connection per request eliminates that class of failure.
       toSend.persistentConnection = false;
       try {
-        return await _inner.send(toSend);
+        final response = await _inner.send(toSend);
+        // A cold or desynced connection to Google's front end can also come
+        // back as a *successful* HTTP response with a transient status — a
+        // spurious edge 400, or a brief 429/5xx during a cold burst. These
+        // throw no exception, so without this they'd be turned straight into
+        // an internal error by the caller. Retry once here instead. This is
+        // safe for our writes: creates use an explicit documentId (a duplicate
+        // returns 409, not a second document), so a resend never double-writes.
+        if (canRetry &&
+            attempt < maxRetries &&
+            _isTransientStatus(response.statusCode)) {
+          // Drain the body so the underlying socket is released before retry.
+          await response.stream.drain<void>();
+          attempt++;
+          await Future<void>.delayed(_backoff(attempt));
+          continue;
+        }
+        return response;
       } on http.ClientException catch (e) {
         if (!canRetry || attempt >= maxRetries || !_isTransient(e.message)) {
           rethrow;
@@ -57,6 +74,7 @@ class _RetryOnConnectionResetClient extends http.BaseClient {
         if (!canRetry || attempt >= maxRetries) rethrow;
       }
       attempt++;
+      await Future<void>.delayed(_backoff(attempt));
     }
   }
 
@@ -68,6 +86,22 @@ class _RetryOnConnectionResetClient extends http.BaseClient {
         m.contains('broken pipe') ||
         m.contains('connection attempt');
   }
+
+  /// Status codes worth one retry: the spurious GFE edge 400 seen on a cold or
+  /// desynced connection, plus the standard transient server/throttle codes.
+  static bool _isTransientStatus(int statusCode) {
+    return statusCode == 400 ||
+        statusCode == 408 ||
+        statusCode == 429 ||
+        statusCode == 500 ||
+        statusCode == 502 ||
+        statusCode == 503 ||
+        statusCode == 504;
+  }
+
+  /// Small linear backoff between retries (150ms, 300ms, ...).
+  static Duration _backoff(int attempt) =>
+      Duration(milliseconds: 150 * attempt);
 
   http.Request _copy(http.Request r) => http.Request(r.method, r.url)
     ..headers.addAll(r.headers)
