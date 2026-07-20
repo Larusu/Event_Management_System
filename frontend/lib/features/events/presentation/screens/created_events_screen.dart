@@ -8,16 +8,28 @@ import '../../providers/created_events_provider.dart';
 import 'create_event.dart';
 
 /// Lists every non-deleted event created by the signed-in user.
-class CreatedEventsScreen extends StatelessWidget {
+///
+/// Consumes the app-level [CreatedEventsProvider] (registered in `main.dart`)
+/// so the same owned-events data backs both this screen and the Event Modal's
+/// "Your own event" check. Refreshes on entry.
+class CreatedEventsScreen extends StatefulWidget {
   const CreatedEventsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => CreatedEventsProvider()..load(),
-      child: const _CreatedEventsView(),
-    );
+  State<CreatedEventsScreen> createState() => _CreatedEventsScreenState();
+}
+
+class _CreatedEventsScreenState extends State<CreatedEventsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<CreatedEventsProvider>().load();
+    });
   }
+
+  @override
+  Widget build(BuildContext context) => const _CreatedEventsView();
 }
 
 class _CreatedEventsView extends StatelessWidget {
@@ -168,6 +180,10 @@ class _CreatedEventCard extends StatelessWidget {
       _ => Colors.blueGrey,
     };
 
+    // Finished events (date + end time already past) are locked: they can no
+    // longer be edited or deleted.
+    final isFinished = event.hasEnded();
+
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -244,18 +260,34 @@ class _CreatedEventCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      if (isFinished) ...[
+                        Text(
+                          'Finished',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       IconButton(
-                        tooltip: 'Edit event',
+                        tooltip:
+                            isFinished ? 'Finished events can\'t be edited' : 'Edit event',
                         visualDensity: VisualDensity.compact,
-                        onPressed: isDeleting ? null : onEdit,
+                        onPressed: (isDeleting || isFinished) ? null : onEdit,
                         icon: const Icon(Icons.edit_outlined),
                       ),
                       IconButton(
-                        tooltip: 'Delete event',
+                        tooltip: isFinished
+                            ? 'Finished events can\'t be deleted'
+                            : 'Delete event',
                         visualDensity: VisualDensity.compact,
                         color: Colors.red.shade700,
-                        onPressed: isDeleting ? null : onDelete,
+                        onPressed:
+                            (isDeleting || isFinished) ? null : onDelete,
                         icon: isDeleting
                             ? const SizedBox(
                                 width: 18,
