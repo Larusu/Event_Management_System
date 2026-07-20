@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/header.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../models/event.dart';
@@ -111,38 +112,26 @@ class _CreatedEventsView extends StatelessWidget {
     CreatedEventsProvider provider,
     Event event,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await AppDialog.confirm(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete event?'),
-        content: Text('“${event.title}” will be permanently removed.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      icon: Icons.delete_outline,
+      title: 'Delete event?',
+      message: '"${event.title}" will be permanently removed.',
+      confirmLabel: 'Delete',
     );
-    if (confirmed != true || !context.mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    if (!confirmed || !context.mounted) return;
     final deleted = await provider.deleteEvent(event.eventId);
     if (!context.mounted) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          deleted
-              ? 'Event deleted.'
-              : provider.errorMessage ?? 'Delete failed.',
-        ),
-        backgroundColor: deleted ? null : Colors.red.shade700,
-      ),
+    AppDialog.info(
+      context: context,
+      icon: deleted ? Icons.check_circle_outline : Icons.error_outline,
+      iconColor: deleted ? null : Theme.of(context).colorScheme.error,
+      title: deleted ? 'Event Deleted' : 'Delete Failed',
+      message: deleted
+          ? 'Event deleted.'
+          : (provider.errorMessage ?? 'Delete failed.'),
     );
+    if (deleted) provider.load();
   }
 }
 

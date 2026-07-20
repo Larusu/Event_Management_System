@@ -319,7 +319,7 @@ class _CreateEventModalState extends State<_CreateEventModal> {
       widget.onCreated?.call();
       await AppDialog.info(
         context: context,
-        title: _isEditing ? 'Event Updated' : 'Event Created',
+        icon: Icons.check_circle,
         message: _isEditing
             ? 'Event updated.'
             : (autoApproves
