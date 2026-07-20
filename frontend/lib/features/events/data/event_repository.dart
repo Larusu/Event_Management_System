@@ -121,7 +121,7 @@ class ApiEventsListHelper {
     int? limit,
   }) {
     final params = <String, String>{};
-    if (query != null && query.isNotEmpty) params['q'] = query;
+    if (query != null && query.isNotEmpty) params['search'] = query;
     if (tags != null && tags.isNotEmpty) {
       params['tags'] = Uri.encodeComponent(tags.join(','));
     }

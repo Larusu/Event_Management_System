@@ -67,7 +67,7 @@ class ApiRoutes {
   static String eventsList(
       {String? q, List<String>? tags, String? cursor, int? limit}) {
     final params = <String, String>{};
-    if (q != null && q.isNotEmpty) params['q'] = q;
+    if (q != null && q.isNotEmpty) params['search'] = q;
     if (tags != null && tags.isNotEmpty) {
       params['tags'] = Uri.encodeComponent(tags.join(','));
     }
