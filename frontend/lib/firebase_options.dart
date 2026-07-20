@@ -50,20 +50,21 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAsj1sYKgEz5GGIT3BJE37cim_xrGSaois',
-    appId: '1:1076265800091:web:11ff308bf9db9d5af9913e',
-    messagingSenderId: '1076265800091',
-    projectId: 'campus-event-app-8546c',
-    authDomain: 'campus-event-app-8546c.firebaseapp.com',
-    storageBucket: 'campus-event-app-8546c.firebasestorage.app',
-    measurementId: 'G-ENWPHXJQTH',
+    apiKey: 'AIzaSyA5d74nDqhRgUHaRWvhjnssggmjQTbibh8',
+    appId: '1:754387683815:web:8c3eac958f12a936e19542',
+    messagingSenderId: '754387683815',
+    projectId: 'campus-event-9daee',
+    authDomain: 'campus-event-9daee.firebaseapp.com',
+    databaseURL: 'https://campus-event-9daee-default-rtdb.firebaseio.com',
+    storageBucket: 'campus-event-9daee.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCQ5ovfQEwTVymYJqFsnibGD9KXMF6o7Gc',
-    appId: '1:1076265800091:android:8c03538271ff1ef6f9913e',
-    messagingSenderId: '1076265800091',
-    projectId: 'campus-event-app-8546c',
-    storageBucket: 'campus-event-app-8546c.firebasestorage.app',
+    apiKey: 'AIzaSyCycjO5cAjXK5efpamhro7zZrwwF3ipxuY',
+    appId: '1:754387683815:android:25f6136dd5ca5898e19542',
+    messagingSenderId: '754387683815',
+    projectId: 'campus-event-9daee',
+    databaseURL: 'https://campus-event-9daee-default-rtdb.firebaseio.com',
+    storageBucket: 'campus-event-9daee.firebasestorage.app',
   );
 }

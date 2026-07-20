@@ -16,6 +16,7 @@ build/
 coverage/
 
 # Environment Variables & Credentials (NEVER commit sensitive data)
+env.prod.yaml
 .env
 .env.local
 .env.*.local
