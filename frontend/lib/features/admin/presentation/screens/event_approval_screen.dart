@@ -112,7 +112,6 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
 
   Future<void> _approve(PendingEvent event) async {
     final provider = context.read<EventApprovalProvider>();
-    final messenger = ScaffoldMessenger.of(context);
 
     final confirmed = await _confirm(
       title: 'Approve event',
@@ -126,17 +125,17 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
       action: 'approve',
     );
     if (!mounted) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(error ?? '"${event.title}" approved.'),
-        backgroundColor: error != null ? Colors.red.shade700 : null,
-      ),
+    AppDialog.info(
+      context: context,
+      icon: error != null ? Icons.error_outline : Icons.check_circle_outline,
+      iconColor: error != null ? Theme.of(context).colorScheme.error : null,
+      title: error != null ? 'Approval Failed' : 'Event Approved',
+      message: error ?? '"${event.title}" approved.',
     );
   }
 
   Future<void> _reject(PendingEvent event) async {
     final provider = context.read<EventApprovalProvider>();
-    final messenger = ScaffoldMessenger.of(context);
 
     final reason = await _askReason(event);
     if (!mounted || reason == null) return;
@@ -157,17 +156,17 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
       reason: reason,
     );
     if (!mounted) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(error ?? '"${event.title}" rejected.'),
-        backgroundColor: error != null ? Colors.red.shade700 : null,
-      ),
+    AppDialog.info(
+      context: context,
+      icon: error != null ? Icons.error_outline : Icons.check_circle_outline,
+      iconColor: error != null ? Theme.of(context).colorScheme.error : null,
+      title: error != null ? 'Rejection Failed' : 'Event Rejected',
+      message: error ?? '"${event.title}" rejected.',
     );
   }
 
   Future<void> _reopen(PendingEvent event) async {
     final provider = context.read<EventApprovalProvider>();
-    final messenger = ScaffoldMessenger.of(context);
 
     final confirmed = await _confirm(
       title: 'Reopen event',
@@ -182,11 +181,12 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
       action: 'reopen',
     );
     if (!mounted) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(error ?? '"${event.title}" reopened.'),
-        backgroundColor: error != null ? Colors.red.shade700 : null,
-      ),
+    AppDialog.info(
+      context: context,
+      icon: error != null ? Icons.error_outline : Icons.check_circle_outline,
+      iconColor: error != null ? Theme.of(context).colorScheme.error : null,
+      title: error != null ? 'Reopen Failed' : 'Event Reopened',
+      message: error ?? '"${event.title}" reopened.',
     );
   }
 

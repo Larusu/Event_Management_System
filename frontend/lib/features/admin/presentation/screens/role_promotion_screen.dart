@@ -91,7 +91,6 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
 
   Future<void> _onChangeRole(ManagedUser user) async {
     final provider = context.read<RolePromotionProvider>();
-    final messenger = ScaffoldMessenger.of(context);
 
     final options = RolePromotionProvider.availableRoleChanges(
       requesterRole: provider.requesterRole,
@@ -114,13 +113,12 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
     final error =
         await provider.changeRole(targetUid: user.uid, newRole: targetRole);
     if (!mounted) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          error ?? '${user.name} is now a ${roleLabel(targetRole)}.',
-        ),
-        backgroundColor: error != null ? Colors.red.shade700 : null,
-      ),
+    AppDialog.info(
+      context: context,
+      icon: error != null ? Icons.error_outline : Icons.check_circle_outline,
+      iconColor: error != null ? Theme.of(context).colorScheme.error : null,
+      title: error != null ? 'Role Change Failed' : 'Role Changed',
+      message: error ?? '${user.name} is now a ${roleLabel(targetRole)}.',
     );
   }
 
