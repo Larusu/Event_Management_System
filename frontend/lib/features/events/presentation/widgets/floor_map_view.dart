@@ -13,7 +13,7 @@ class FloorMapView extends StatelessWidget {
 
   const FloorMapView({super.key, required this.room, this.height = 320});
 
-  @override 
+  @override
   Widget build(BuildContext context) {
     final floor = floorForRoom(room);
     if (floor == null) {
@@ -24,7 +24,7 @@ class FloorMapView extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         height: height,
-        color: const Color(0xFFEEF2F4),
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
         child: InteractiveViewer(
           minScale: 1,
           maxScale: 6,
@@ -60,41 +60,44 @@ class MapUnavailable extends StatelessWidget {
 
   const MapUnavailable({super.key, required this.location, this.height = 320});
 
-  @override 
+  @override
   Widget build(BuildContext context) {
-    return ClipRRect( 
+    return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: Container ( 
-        height: height, 
+      child: Container(
+        height: height,
         width: double.infinity,
-        color: const Color(0xFFEEF2F4),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.map_outlined, size: 44, color: Color(0xFF8A979E)),
-              const SizedBox(height: 12),
-              const Text(
-                'map not available for this location',
-                style: TextStyle(color: Color(0xff5a6d75), fontSize: 13),
-              ),
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  location,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xff8a979e),
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                  ),
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.map_outlined,
+                size: 44,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            const SizedBox(height: 12),
+            Text(
+              'map not available for this location',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                location,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
-    }
+      ),
+    );
+  }
 }
 
 /// Paints the dotted route, the start ("you start here") dot, and the
@@ -108,14 +111,14 @@ class _RoutePainter extends CustomPainter {
   static const _startColor = Color(0xFF2D6CDF);
   static const _pinColor = Color(0xFFD64545);
 
-  @override 
+  @override
   void paint(Canvas canvas, Size size) {
     final path = room.routePath;
 
     final linePaint = Paint()
-      ..color = _routeColor 
-      ..strokeWidth = 7 
-      ..strokeCap = StrokeCap.round 
+      ..color = _routeColor
+      ..strokeWidth = 7
+      ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
     for (var i = 0; i < path.length - 1; i++) {
@@ -137,7 +140,7 @@ class _RoutePainter extends CustomPainter {
     final dir = (b - a) / total;
     var drawn = 0.0;
 
-    while(drawn < total){
+    while (drawn < total) {
       final end = (drawn + dash) < total ? drawn + dash : total;
       canvas.drawLine(a + dir * drawn, a + dir * end, paint);
       drawn += dash + gap;
@@ -156,18 +159,18 @@ class _RoutePainter extends CustomPainter {
       ..close();
     canvas.drawPath(tail, fill);
     canvas.drawCircle(center, radius, fill);
-    canvas.drawCircle( 
+    canvas.drawCircle(
       center,
       radius,
       Paint()
-        ..color = Colors.white 
+        ..color = Colors.white
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4,
     );
     canvas.drawCircle(center, radius * 0.42, Paint()..color = Colors.white);
   }
 
-  @override 
+  @override
   bool shouldRepaint(covariant _RoutePainter oldDelegate) =>
-    oldDelegate.room != room;
+      oldDelegate.room != room;
 }

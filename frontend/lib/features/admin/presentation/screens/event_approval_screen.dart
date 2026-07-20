@@ -2,6 +2,7 @@ import 'package:campus_event_app/core/constants/roles.dart';
 import 'package:campus_event_app/features/admin/models/pending_event.dart';
 import 'package:campus_event_app/features/admin/providers/event_approval_provider.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
+import 'package:campus_event_app/shared/widgets/app_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -27,10 +28,11 @@ class EventApprovalScreen extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
-        body: const Center(
+        body: Center(
           child: Text(
             'You do not have access to this page.',
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         ),
       );
@@ -190,53 +192,14 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
 
   /// Reason prompt. Returns `null` if cancelled, or the (possibly empty)
   /// reason string if the user chose to continue.
-  Future<String?> _askReason(PendingEvent event) async {
-    final controller = TextEditingController();
-    try {
-      return await showDialog<String>(
-        context: context,
-        builder: (dialogContext) {
-          return AlertDialog(
-            title: const Text('Rejection reason'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Optionally tell the organizer why "${event.title}" was '
-                  'rejected.',
-                  style: const TextStyle(fontSize: 13, color: Colors.grey),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    hintText: 'Reason (optional)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, controller.text),
-                child: const Text('Continue'),
-              ),
-            ],
-          );
-        },
-      );
-    } finally {
-      controller.dispose();
-    }
+  Future<String?> _askReason(PendingEvent event) {
+    return AppDialog.input(
+      context: context,
+      title: 'Rejection reason',
+      message: 'Optionally tell the organizer why "${event.title}" was '
+          'rejected.',
+      hintText: 'Reason (optional)',
+    );
   }
 
   Future<bool?> _confirm({
@@ -245,27 +208,12 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
     required String confirmLabel,
     bool destructive = false,
   }) {
-    return showDialog<bool>(
+    return AppDialog.confirm(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: destructive
-                  ? FilledButton.styleFrom(backgroundColor: Colors.red.shade700)
-                  : null,
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(confirmLabel),
-            ),
-          ],
-        );
-      },
+      title: title,
+      message: message,
+      confirmLabel: confirmLabel,
+      destructive: destructive,
     );
   }
 
@@ -359,7 +307,8 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
                     isRejected
                         ? 'No rejected events.'
                         : 'No events awaiting approval.',
-                    style: const TextStyle(color: Colors.grey),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ),
               ],
@@ -428,10 +377,10 @@ class _PendingEventTile extends StatelessWidget {
                         Expanded(
                           child: Text(
                             event.title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: Colors.black87,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ),
@@ -443,19 +392,24 @@ class _PendingEventTile extends StatelessWidget {
                     Text(
                       '${event.displayDate}  •  '
                       '${event.displayStartTime} - ${event.displayEndTime}',
-                      style:
-                          TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                      style: TextStyle(
+                          fontSize: 13,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '${event.slotsTotal} slots',
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              Icon(Icons.chevron_right,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ],
           ),
         ),
@@ -472,10 +426,16 @@ class _StatusTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final foreground =
         isRejected ? Colors.red.shade700 : Colors.orange.shade800;
-    final background =
-        isRejected ? Colors.red.shade50 : Colors.orange.shade50;
+    final background = isRejected
+        ? (isDark
+            ? Colors.red.shade900.withValues(alpha: 0.4)
+            : Colors.red.shade50)
+        : (isDark
+            ? Colors.orange.shade900.withValues(alpha: 0.4)
+            : Colors.orange.shade50);
     final label = isRejected ? 'Rejected' : 'Pending';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -509,12 +469,14 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: Colors.grey),
+          Icon(icon,
+              size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+              style: TextStyle(
+                  fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
             ),
           ),
         ],
@@ -554,17 +516,22 @@ class _PendingEventSheet extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundColor: Colors.grey.shade200,
-                  child: Icon(Icons.person, color: Colors.grey.shade600),
+                  backgroundColor:
+                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Icon(Icons.person,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Organized by',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                       Text(
                         event.organizerDisplay,
@@ -579,7 +546,8 @@ class _PendingEventSheet extends StatelessWidget {
                           event.organizerEmail,
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey.shade600,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                     ],
@@ -597,7 +565,8 @@ class _PendingEventSheet extends StatelessWidget {
                     event.coverImageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
-                      color: Colors.grey.shade200,
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
                       alignment: Alignment.center,
                       child: const Icon(Icons.image_not_supported_outlined,
                           color: Colors.grey),
@@ -632,7 +601,8 @@ class _PendingEventSheet extends StatelessWidget {
               else
                 const _InfoRow(icon: Icons.link, value: 'Online event')
             else if (event.location != null && event.location!.isNotEmpty)
-              _InfoRow(icon: Icons.location_on_outlined, value: event.location!),
+              _InfoRow(
+                  icon: Icons.location_on_outlined, value: event.location!),
             _InfoRow(
               icon: Icons.event_seat_outlined,
               value: '${event.slotsTotal} slots',
@@ -649,14 +619,14 @@ class _PendingEventSheet extends StatelessWidget {
                 value: 'Reason: ${event.rejectionReason}',
               ),
             const SizedBox(height: 24),
-            _buildActions(),
+            _buildActions(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActions() {
+  Widget _buildActions(BuildContext context) {
     if (isRejected) {
       return SizedBox(
         width: double.infinity,
@@ -679,7 +649,7 @@ class _PendingEventSheet extends StatelessWidget {
             label: const Text('Reject'),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.red.shade700,
-              side: BorderSide(color: Colors.red.shade200),
+              side: BorderSide(color: Theme.of(context).colorScheme.error),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),

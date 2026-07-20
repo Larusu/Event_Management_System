@@ -30,7 +30,7 @@ class RoleTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = _RoleTagColors.forRole(role);
+    final colors = _RoleTagColors.forRole(role, context);
     return Container(
       padding: EdgeInsets.symmetric(horizontal: fontSize * 0.7, vertical: 3),
       decoration: BoxDecoration(
@@ -55,22 +55,53 @@ class _RoleTagColors {
 
   const _RoleTagColors(this.background, this.foreground);
 
-  factory _RoleTagColors.forRole(String role) {
+  static _RoleTagColors forRole(String role, BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+
     switch (role) {
       case Roles.superAdmin:
         return _RoleTagColors(
-            Colors.deepPurple.shade50, Colors.deepPurple.shade700);
+          isDark
+              ? Colors.deepPurple.shade800.withValues(alpha: 0.4)
+              : Colors.deepPurple.shade50,
+          isDark ? Colors.deepPurple.shade200 : Colors.deepPurple.shade700,
+        );
       case Roles.faculty:
-        return _RoleTagColors(Colors.indigo.shade50, Colors.indigo.shade700);
+        return _RoleTagColors(
+          isDark
+              ? Colors.indigo.shade800.withValues(alpha: 0.4)
+              : Colors.indigo.shade50,
+          isDark ? Colors.indigo.shade200 : Colors.indigo.shade700,
+        );
       case Roles.organizer:
-        return _RoleTagColors(Colors.teal.shade50, Colors.teal.shade700);
+        return _RoleTagColors(
+          isDark
+              ? Colors.teal.shade800.withValues(alpha: 0.4)
+              : Colors.teal.shade50,
+          isDark ? Colors.teal.shade200 : Colors.teal.shade700,
+        );
       case Roles.student:
-        return _RoleTagColors(Colors.orange.shade50, Colors.orange.shade800);
+        return _RoleTagColors(
+          isDark
+              ? Colors.orange.shade800.withValues(alpha: 0.4)
+              : Colors.orange.shade50,
+          isDark ? Colors.orange.shade200 : Colors.orange.shade800,
+        );
       case Roles.guest:
         return _RoleTagColors(
-            Colors.blueGrey.shade50, Colors.blueGrey.shade700);
+          isDark
+              ? Colors.blueGrey.shade800.withValues(alpha: 0.4)
+              : Colors.blueGrey.shade50,
+          isDark ? Colors.blueGrey.shade200 : Colors.blueGrey.shade700,
+        );
       default:
-        return _RoleTagColors(Colors.grey.shade200, Colors.grey.shade700);
+        return _RoleTagColors(
+          isDark
+              ? Colors.grey.shade800.withValues(alpha: 0.4)
+              : Colors.grey.shade200,
+          isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+        );
     }
   }
 }

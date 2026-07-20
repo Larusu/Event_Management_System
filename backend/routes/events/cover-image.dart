@@ -91,7 +91,7 @@ Future<Response> onRequest(RequestContext context) async {
       return ResponseHelper.error(
         AuthException(
           EventErrorCode.validationFailed,
-          'Invalid image file.',
+          'Unsupported image type. Please use a JPEG or PNG.',
         ),
       );
     }
@@ -101,7 +101,7 @@ Future<Response> onRequest(RequestContext context) async {
       return ResponseHelper.error(
         AuthException(
           EventErrorCode.validationFailed,
-          'Invalid image file.',
+          'Image is too large. Maximum size is 5 MB.',
         ),
       );
     }

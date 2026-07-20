@@ -1,13 +1,14 @@
 import 'package:campus_event_app/core/constants/roles.dart';
-import 'package:campus_event_app/features/admin/presentation/screens/admin_landing_screen.dart';
+import 'package:campus_event_app/core/router/app_router.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
-import 'package:campus_event_app/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/settings_card.dart';
+import 'package:campus_event_app/shared/widgets/app_dialog.dart';
 import 'package:campus_event_app/shared/widgets/header.dart';
 import 'package:campus_event_app/shared/widgets/header_delegate.dart';
 import 'package:campus_event_app/shared/widgets/role_tag.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -23,8 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final currentUser = context.watch<AuthProvider>().currentUser;
     final userName = currentUser?.name ?? 'Account';
     final userRole = currentUser?.role;
-    final isAdmin =
-        userRole == Roles.faculty || userRole == Roles.superAdmin;
+    final isAdmin = userRole == Roles.faculty || userRole == Roles.superAdmin;
 
     return SafeArea(
       child: CustomScrollView(
@@ -68,17 +68,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                 child: SettingsCard(
                   icon: Icons.admin_panel_settings_outlined,
                   label: 'Admin Panel',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const AdminLandingScreen()),
-                    );
-                  },
+                  onTap: () => context.push(Routes.admin),
                 ),
               ),
             ),
@@ -98,13 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: SettingsCard(
                 icon: Icons.person_outline,
                 label: 'Edit profile information',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const EditProfileScreen()),
-                  );
-                },
+                onTap: () => context.push(Routes.editProfile),
               ),
             ),
           ),
@@ -123,6 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: SettingsCard(
                 icon: Icons.water_drop_outlined,
                 label: 'Choose theme',
+                onTap: () => context.push(Routes.theme),
               ),
             ),
           ),
@@ -151,13 +141,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 elevation: 2,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
-                color: Colors.red.shade50,
+                color: const Color.fromARGB(255, 255, 17, 0)
+                    .withValues(alpha: 0.3),
                 child: InkWell(
-                  onTap: () {
-                    context.read<AuthProvider>().signOut();
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  },
                   borderRadius: BorderRadius.circular(12),
+                  onTap: () async {
+                    final confirmed = await AppDialog.confirm(
+                      context: context,
+                      title: 'Sign out',
+                      message: 'Are you sure you want to sign out?',
+                      confirmLabel: 'Sign out',
+                      destructive: true,
+                    );
+                    if (confirmed && context.mounted) {
+                      // The router redirect reacts to the auth status change and
+                      // returns to /sign-in, so no manual navigation is needed.
+                      context.read<AuthProvider>().signOut();
+                    }
+                  },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
@@ -169,9 +170,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Text(
                           'Sign out',
                           style: TextStyle(
-                              fontSize: 15,
-                              color: Colors.red.shade700,
-                              fontWeight: FontWeight.w500),
+                            fontSize: 15,
+                            color: Colors.red.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),

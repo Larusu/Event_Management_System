@@ -1,16 +1,13 @@
+import 'package:campus_event_app/core/router/app_router.dart';
 import 'package:campus_event_app/core/theme/app_theme.dart';
-import 'package:campus_event_app/features/auth/presentation/screens/auth_gate.dart';
-import 'package:campus_event_app/features/auth/presentation/screens/forgot_password_screen.dart';
-import 'package:campus_event_app/features/auth/presentation/screens/sign_in_screen.dart';
-import 'package:campus_event_app/features/auth/presentation/screens/sign_up_screen.dart';
+import 'package:campus_event_app/core/theme/theme_provider.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
-import 'package:campus_event_app/features/events/presentation/screens/events_screen.dart';
 import 'package:campus_event_app/features/events/providers/event_dashboard_provider.dart';
 import 'package:campus_event_app/features/events/providers/event_list_provider.dart';
-import 'package:campus_event_app/features/profile/presentation/screens/settings_screen.dart';
 import 'package:campus_event_app/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 Future<void> main() async {
@@ -23,8 +20,33 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  // The AuthProvider is created once and shared between the widget tree and the
+  // router: go_router's redirect gates on its state and uses it as the
+  // refreshListenable, so the same instance must be registered via
+  // ChangeNotifierProvider.value below.
+  late final AuthProvider _authProvider;
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    _authProvider = AuthProvider()..initialize();
+    _router = createAppRouter(_authProvider);
+  }
+
+  @override
+  void dispose() {
+    _authProvider.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,26 +54,20 @@ class MyApp extends StatelessWidget {
     // to this MultiProvider rather than creating a second registration point.
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) {
-          final provider = AuthProvider();
-          provider.initialize();
-          return provider;
-        }),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()..loadThemeMode()),
+        ChangeNotifierProvider.value(value: _authProvider),
         ChangeNotifierProvider(create: (_) => EventListProvider()),
         ChangeNotifierProvider(create: (_) => EventDashboardProvider()),
       ],
-      child: MaterialApp(
-        title: 'Campus Event App',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        home: AuthGate(),
-        routes: {
-          '/sign-in': (context) => const SignInScreen(),
-          '/sign-up': (context) => const SignUpScreen(),
-          '/forgot-password': (context) => const ForgotPasswordScreen(),
-          '/events': (context) => const EventsScreen(),
-          '/settings': (context) => const SettingsScreen(),
-        },
+      child: Builder(
+        builder: (context) => MaterialApp.router(
+          title: 'Campus Event App',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: context.watch<ThemeProvider>().themeMode,
+          routerConfig: _router,
+        ),
       ),
     );
   }

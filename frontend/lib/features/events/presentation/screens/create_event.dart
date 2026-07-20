@@ -1,10 +1,12 @@
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
+import "package:image/image.dart" as img;
 import "package:image_picker/image_picker.dart";
 import "package:provider/provider.dart";
 
 import "../../../../core/constants/roles.dart";
 import "../../../auth/providers/auth_provider.dart";
+import "../../../../shared/widgets/app_dialog.dart";
 import "../../../../shared/widgets/modal.dart";
 import "../../providers/create_event_provider.dart";
 import "../../providers/event_dashboard_provider.dart";
@@ -84,24 +86,47 @@ class _CreateEventModalState extends State<_CreateEventModal> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final file = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
+    final file = await picker.pickImage(source: ImageSource.gallery);
     if (file == null) return;
-    final bytes = await file.readAsBytes();
+    final raw = await file.readAsBytes();
+
+    // The backend caps cover images at 5 MB. `image_picker`'s `imageQuality`
+    // only shrinks JPEGs, so a large PNG (e.g. a full-res poster) would sail
+    // past it and be rejected server-side. Re-encode to JPEG here — downscaling
+    // and stepping quality down — so any picked image fits under the cap.
+    final compressed = await _compressToJpeg(raw);
     if (!mounted) return;
+
+    final base = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
     setState(() {
-      _imageBytes = bytes;
-      _imageName = file.name;
-      _imageMime = file.mimeType ?? _mimeFromName(file.name);
+      _imageBytes = compressed;
+      _imageName = '$base.jpg';
+      _imageMime = 'image/jpeg';
     });
   }
 
-  String _mimeFromName(String name) {
-    final lower = name.toLowerCase();
-    if (lower.endsWith('.png')) return 'image/png';
-    return 'image/jpeg';
+  /// Decodes [bytes], downscales the longest side to at most 1600px, and encodes
+  /// as JPEG, lowering quality until the result is under the 5 MB backend cap.
+  Future<Uint8List> _compressToJpeg(Uint8List bytes) async {
+    const maxBytes = 5 * 1024 * 1024;
+    const maxDimension = 1600;
+
+    var decoded = img.decodeImage(bytes);
+    if (decoded == null) return bytes;
+
+    if (decoded.width > maxDimension || decoded.height > maxDimension) {
+      decoded = img.copyResize(
+        decoded,
+        width: decoded.width >= decoded.height ? maxDimension : null,
+        height: decoded.height > decoded.width ? maxDimension : null,
+      );
+    }
+
+    for (final quality in [85, 70, 55, 40]) {
+      final out = img.encodeJpg(decoded, quality: quality);
+      if (out.length <= maxBytes) return out;
+    }
+    return img.encodeJpg(decoded, quality: 40);
   }
 
   Future<void> _pickDate() async {
@@ -119,8 +144,8 @@ class _CreateEventModalState extends State<_CreateEventModal> {
   Future<void> _pickTime({required bool isStart}) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime:
-          (isStart ? _startTime : _endTime) ?? const TimeOfDay(hour: 9, minute: 0),
+      initialTime: (isStart ? _startTime : _endTime) ??
+          const TimeOfDay(hour: 9, minute: 0),
     );
     if (picked == null) return;
     setState(() {
@@ -132,28 +157,24 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     });
   }
 
-  String _formatDate(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-'
+  String _formatDate(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 
   String _formatTime(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
-  List<String> _splitCsv(String raw) => raw
-      .split(',')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
+  List<String> _splitCsv(String raw) =>
+      raw.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
   int _minutesOf(TimeOfDay t) => t.hour * 60 + t.minute;
 
-  void _snack(String message, {bool error = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: error ? Colors.red.shade700 : null,
-      ),
+  void _showError(String message) {
+    AppDialog.info(
+      context: context,
+      icon: Icons.error_outline_rounded,
+      iconColor: Theme.of(context).colorScheme.error,
+      message: message,
     );
   }
 
@@ -166,12 +187,12 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     final messenger = ScaffoldMessenger.of(context);
 
     if (_imageBytes == null) {
-      _snack('Please add a cover image.', error: true);
+      _showError('Please add a cover image.');
       return;
     }
     if (!_formKey.currentState!.validate()) return;
     if (_date == null) {
-      _snack('Please select an event date.', error: true);
+      _showError('Please select an event date.');
       return;
     }
 
@@ -182,11 +203,11 @@ class _CreateEventModalState extends State<_CreateEventModal> {
       end = const TimeOfDay(hour: 23, minute: 59);
     } else {
       if (_startTime == null || _endTime == null) {
-        _snack('Please select start and end times.', error: true);
+        _showError('Please select start and end times.');
         return;
       }
       if (_minutesOf(_endTime!) <= _minutesOf(_startTime!)) {
-        _snack('End time must be after start time.', error: true);
+        _showError('End time must be after start time.');
         return;
       }
       start = _startTime!;
@@ -195,12 +216,12 @@ class _CreateEventModalState extends State<_CreateEventModal> {
 
     final tags = _splitCsv(_categoryController.text);
     if (tags.isEmpty) {
-      _snack('Please add at least one category.', error: true);
+      _showError('Please add at least one category.');
       return;
     }
     final emails = _splitCsv(_contactController.text);
     if (emails.isEmpty) {
-      _snack('Please add at least one contact email.', error: true);
+      _showError('Please add at least one contact email.');
       return;
     }
     final slots = int.tryParse(_slotsController.text.trim()) ?? 0;
@@ -238,9 +259,8 @@ class _CreateEventModalState extends State<_CreateEventModal> {
         ),
       );
     } else {
-      _snack(
+      _showError(
         provider.errorMessage ?? 'Could not create the event.',
-        error: true,
       );
     }
   }
@@ -380,15 +400,21 @@ class _CreateEventModalState extends State<_CreateEventModal> {
         child: Container(
           width: 150,
           height: 150,
-          color: Colors.grey[300],
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: _imageBytes != null
               ? Image.memory(_imageBytes!, fit: BoxFit.cover)
-              : const Column(
+              : Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
-                    SizedBox(height: 6),
-                    Text("Add cover", style: TextStyle(color: Colors.grey)),
+                    Icon(Icons.add_a_photo,
+                        size: 48,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    const SizedBox(height: 6),
+                    Text("Add cover",
+                        style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant)),
                   ],
                 ),
         ),
@@ -495,9 +521,8 @@ class _CreateEventModalState extends State<_CreateEventModal> {
       inputFormatters: inputFormatters,
       validator: validator ??
           (required
-              ? (value) => (value == null || value.trim().isEmpty)
-                  ? 'Required'
-                  : null
+              ? (value) =>
+                  (value == null || value.trim().isEmpty) ? 'Required' : null
               : null),
       decoration: InputDecoration(
         labelText: label,

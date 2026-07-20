@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/roles.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../providers/event_dashboard_provider.dart';
 import '../../providers/event_detail_provider.dart';
@@ -30,7 +31,8 @@ class EventModal {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (_) => ChangeNotifierProvider(
         create: (_) => EventDetailProvider(),
         child: _EventModalView(eventId: eventId),
@@ -59,39 +61,51 @@ class _EventModalViewState extends State<_EventModalView> {
     });
   }
 
-  void _onRegister() {
+  void _onRegister() async {
     final provider = context.read<EventDetailProvider>();
     final event = provider.event;
     if (event == null) return;
 
-    showDialog(
+    final confirmed = await AppDialog.confirm(
       context: context,
-      builder: (_) => _RegisterConfirmDialog(
-        eventTitle: event.title,
-        onConfirm: () async {
-          Navigator.pop(context);
-          final success = await provider.register(widget.eventId);
-          if (!mounted) return;
-          if (success) {
-            // Refresh the Dashboard's registered sections so the newly
-            // registered event shows up without an app restart.
-            final dashboard = context.read<EventDashboardProvider>();
-            dashboard.loadRegistered();
-            dashboard.loadNextRegistered();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Registered successfully!')),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content:
-                    Text(provider.registrationError ?? 'Registration failed.'),
-              ),
-            );
-          }
-        },
+      icon: Icons.event_available,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Register for this event?',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            event.title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+        ],
       ),
+      confirmLabel: 'Confirm',
     );
+
+    if (!confirmed || !mounted) return;
+    final success = await provider.register(widget.eventId);
+    if (!mounted) return;
+    if (success) {
+      final dashboard = context.read<EventDashboardProvider>();
+      dashboard.loadRegistered();
+      dashboard.loadNextRegistered();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registered successfully!')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.registrationError ?? 'Registration failed.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -148,58 +162,7 @@ class _EventModalViewState extends State<_EventModalView> {
   }
 }
 
-/// Confirmation dialog shown before registering.
-class _RegisterConfirmDialog extends StatelessWidget {
-  final String eventTitle;
-  final VoidCallback onConfirm;
-
-  const _RegisterConfirmDialog({
-    required this.eventTitle,
-    required this.onConfirm,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.event_available, size: 48, color: primary),
-          const SizedBox(height: 16),
-          const Text(
-            'Register for this event?',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            eventTitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: onConfirm,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: primary,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Confirm'),
-        ),
-      ],
-    );
-  }
-}
-
-/// A minimal rounded bottom-sheet shell (handle + white background) used for the
+/// A minimal rounded bottom-sheet shell used for the
 /// loading and error states, so they match the modal's look.
 class _SheetShell extends StatelessWidget {
   final Widget child;
@@ -214,37 +177,14 @@ class _SheetShell extends StatelessWidget {
       maxChildSize: 0.6,
       expand: false,
       builder: (context, scrollController) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          child: Container(
-            color: Colors.white,
-            child: ListView(
-              controller: scrollController,
-              padding: EdgeInsets.zero,
-              children: [_dragHandle(), child],
-            ),
-          ),
+        return ListView(
+          controller: scrollController,
+          padding: EdgeInsets.zero,
+          children: [child],
         );
       },
     );
   }
-}
-
-/// The grey pill drag handle shown at the top of every modal state.
-Widget _dragHandle() {
-  return Container(
-    color: Colors.white,
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    alignment: Alignment.center,
-    child: Container(
-      width: 61,
-      height: 8,
-      decoration: BoxDecoration(
-        color: _kGrey,
-        borderRadius: BorderRadius.circular(15),
-      ),
-    ),
-  );
 }
 
 class EventModalContent extends StatelessWidget {
@@ -299,29 +239,22 @@ class EventModalContent extends StatelessWidget {
       maxChildSize: 0.95,
       expand: false,
       builder: (context, scrollController) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          child: Container(
-            color: Colors.white,
-            child: ListView(
-              controller: scrollController,
-              padding: EdgeInsets.zero,
-              children: [
-                _dragHandle(),
-                _cover(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(23, 20, 23, 24),
-                  child: _details(context),
-                ),
-              ],
+        return ListView(
+          controller: scrollController,
+          padding: EdgeInsets.zero,
+          children: [
+            _cover(context),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(23, 20, 23, 24),
+              child: _details(context),
             ),
-          ),
+          ],
         );
       },
     );
   }
 
-  Widget _cover() {
+  Widget _cover(BuildContext context) {
     return SizedBox(
       height: 300,
       width: double.infinity,
@@ -329,7 +262,7 @@ class EventModalContent extends StatelessWidget {
         coverImageUrl,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) => Container(
-          color: Colors.grey.shade200,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           alignment: Alignment.center,
           child: const Icon(Icons.image_not_supported_outlined,
               size: 48, color: _kGrey),
@@ -337,7 +270,7 @@ class EventModalContent extends StatelessWidget {
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
           return Container(
-            color: Colors.grey.shade100,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             alignment: Alignment.center,
             child: const CircularProgressIndicator(strokeWidth: 2),
           );
@@ -359,10 +292,10 @@ class EventModalContent extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
@@ -373,19 +306,19 @@ class EventModalContent extends StatelessWidget {
                 Text(
                   _formatDate(date),
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w300,
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 Text(
                   '${_formatTime(startTime)} - ${_formatTime(endTime)}',
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w300,
-                    color: Colors.black,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -398,11 +331,11 @@ class EventModalContent extends StatelessWidget {
         eventMode == 'online'
             ? Text(
                 streamLink ?? '',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w300,
                   fontStyle: FontStyle.italic,
-                  color: Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               )
             : InkWell(
@@ -413,11 +346,11 @@ class EventModalContent extends StatelessWidget {
                     Flexible(
                       child: Text(
                         location ?? '',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w300,
                           fontStyle: FontStyle.italic,
-                          color: Colors.black,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -429,14 +362,14 @@ class EventModalContent extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),        
+              ),
         const SizedBox(height: 12),
 
         // Host / guest speaker + info chip
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: _hostInfo()),
+            Expanded(child: _hostInfo(context)),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -457,11 +390,11 @@ class EventModalContent extends StatelessWidget {
         // Description
         Text(
           description,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w300,
             fontStyle: FontStyle.italic,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
 
@@ -488,7 +421,7 @@ class EventModalContent extends StatelessWidget {
         const SizedBox(height: 16),
 
         // Contact details
-        _contactInfo(),
+        _contactInfo(context),
         const SizedBox(height: 16),
 
         // Register button
@@ -521,13 +454,14 @@ class EventModalContent extends StatelessWidget {
     );
   }
 
-  Widget _hostInfo() {
+  Widget _hostInfo(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         RichText(
           text: TextSpan(
-            style: const TextStyle(fontSize: 13, color: Colors.black),
+            style: TextStyle(
+                fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
             children: [
               const TextSpan(
                 text: 'Hosted by: ',
@@ -541,7 +475,8 @@ class EventModalContent extends StatelessWidget {
           const SizedBox(height: 2),
           RichText(
             text: TextSpan(
-              style: const TextStyle(fontSize: 13, color: Colors.black),
+              style: TextStyle(
+                  fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
               children: [
                 const TextSpan(
                   text: 'Guest Speaker: ',
@@ -578,27 +513,27 @@ class EventModalContent extends StatelessWidget {
     );
   }
 
-  Widget _contactInfo() {
+  Widget _contactInfo(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Contact Details:',
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 2),
         ...contactEmails.map(
           (email) => Text(
             email,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w300,
               fontStyle: FontStyle.italic,
-              color: Colors.black,
+              color: Theme.of(context).colorScheme.onSurface,
               decoration: TextDecoration.underline,
             ),
           ),

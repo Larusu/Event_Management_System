@@ -191,8 +191,8 @@ class _EventCardState extends State<EventCard> {
                     children: [
                       Text(
                         widget.title,
-                        style: const TextStyle(
-                          color: Colors.black,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -206,8 +206,9 @@ class _EventCardState extends State<EventCard> {
                           const SizedBox(width: 4),
                           Text(
                             '${widget.participants} participants',
-                            style: const TextStyle(
-                                color: Colors.black, fontSize: 12),
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 12),
                           ),
                         ],
                       ),
@@ -218,8 +219,9 @@ class _EventCardState extends State<EventCard> {
                           const SizedBox(width: 4),
                           Text(
                             '${widget.openSlots} slots left',
-                            style: const TextStyle(
-                                color: Colors.black, fontSize: 12),
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 12),
                           ),
                         ],
                       ),

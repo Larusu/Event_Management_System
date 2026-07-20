@@ -19,7 +19,7 @@ class AppButton extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         minimumSize: const Size.fromHeight(48),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        backgroundColor: const Color(0xFF00364D),
+        backgroundColor: Theme.of(context).colorScheme.primary,
       ),
       child: isLoading
           ? const SizedBox(

@@ -4,7 +4,9 @@ import 'package:campus_event_app/features/auth/presentation/widgets/app_button.d
 import 'package:campus_event_app/features/auth/presentation/widgets/app_text_field.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/profile_avatar.dart';
+import 'package:campus_event_app/shared/widgets/app_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -69,36 +71,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() {
       _isLoading = false;
       if (success) {
-        showDialog(
+        AppDialog.info(
           context: context,
-          builder: (_) => Dialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            child: Padding(
-              padding: EdgeInsetsGeometry.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Icon(Icons.check_circle_outline_rounded),
-                  const SizedBox(height: 10),
-                  const Text(
-                    "Your profile has been updated successfully.",
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 10),
-                  AppButton(
-                    label: "Ok",
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.pop(context);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
+          icon: Icons.check_circle_outline_rounded,
+          message: 'Your profile has been updated successfully.',
+        ).then((_) {
+          if (mounted) context.pop();
+        });
       } else {
         final provider = context.read<AuthProvider>();
         final code = provider.errorCode;

@@ -175,10 +175,11 @@ class _EventListBody extends StatelessWidget {
     }
 
     if (events.isEmpty && featured.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'No events found.',
-          style: TextStyle(color: Colors.grey),
+          style:
+              TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       );
     }

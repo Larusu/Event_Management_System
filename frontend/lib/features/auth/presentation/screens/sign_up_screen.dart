@@ -1,9 +1,11 @@
+import 'package:campus_event_app/core/router/app_router.dart';
 import 'package:campus_event_app/core/utils/validators.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_button.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_text_field.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -55,7 +57,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     if (!mounted) return;
     if (success) {
-      Navigator.pushReplacementNamed(context, '/sign-in');
+      context.go(Routes.signIn);
       return;
     }
     setState(() {
@@ -277,7 +279,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 ),
                             recognizer: TapGestureRecognizer()
                               ..onTap = () {
-                                Navigator.pushNamed(context, '/sign-in');
+                                context.go(Routes.signIn);
                               },
                           )
                         ],

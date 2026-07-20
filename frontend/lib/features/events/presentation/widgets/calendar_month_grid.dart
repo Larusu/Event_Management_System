@@ -118,7 +118,9 @@ class _DayCell extends StatelessWidget {
             child: Text(
               '${date.day}',
               style: TextStyle(
-                color: isToday ? Colors.white : Colors.black,
+                color: isToday
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurface,
                 fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
               ),
             ),
