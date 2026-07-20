@@ -50,6 +50,7 @@ class EventListProvider extends ChangeNotifier {
         query: query,
         tags: tags,
         limit: 10,
+        upcoming: true,
       );
       _events = response.events;
       _nextCursor = response.nextCursor;
@@ -75,6 +76,7 @@ class EventListProvider extends ChangeNotifier {
         tags: _currentTags,
         cursor: _nextCursor,
         limit: 10,
+        upcoming: true,
       );
       _events = [..._events, ...response.events];
       _nextCursor = response.nextCursor;

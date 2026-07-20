@@ -61,6 +61,10 @@ Future<Response> _handleGet(RequestContext context) async {
     final searchParam = query['search'];
     final cursorParam = query['cursor'];
     final limitParam = query['limit'];
+    // Opt-in filter: when `upcoming=true`, events that have already ended are
+    // excluded (used by the browse/Events List feed; the calendar omits it so
+    // it can still show past dates).
+    final upcomingOnly = query['upcoming'] == 'true';
 
     var limit = _defaultLimit;
     if (limitParam != null) {
@@ -84,6 +88,7 @@ Future<Response> _handleGet(RequestContext context) async {
       search: searchParam,
       cursor: cursorParam,
       limit: limit,
+      upcomingOnly: upcomingOnly,
     );
 
     String? nextCursor;

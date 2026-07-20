@@ -16,6 +16,7 @@ abstract class EventRepository {
     List<String>? tags,
     String? cursor,
     int? limit,
+    bool upcoming = false,
   });
   Future<List<Event>> getFeaturedEvents({int limit = 3});
   Future<List<Event>> getRegisteredEvents();
@@ -68,12 +69,14 @@ class EventApiRepository
     List<String>? tags,
     String? cursor,
     int? limit,
+    bool upcoming = false,
   }) async {
     final path = ApiEventsListHelper.buildPath(
       query: query,
       tags: tags,
       cursor: cursor,
       limit: limit,
+      upcoming: upcoming,
     );
     final response = await _api.get(path);
     final json = response.data['events'];
@@ -232,6 +235,7 @@ class ApiEventsListHelper {
     List<String>? tags,
     String? cursor,
     int? limit,
+    bool upcoming = false,
   }) {
     final params = <String, String>{};
     if (query != null && query.isNotEmpty) params['search'] = query;
@@ -240,6 +244,7 @@ class ApiEventsListHelper {
     }
     if (cursor != null) params['cursor'] = cursor;
     if (limit != null) params['limit'] = limit.toString();
+    if (upcoming) params['upcoming'] = 'true';
     if (params.isEmpty) return ApiRoutes.events;
     final qs = params.entries.map((e) => '${e.key}=${e.value}').join('&');
     return '${ApiRoutes.events}?$qs';

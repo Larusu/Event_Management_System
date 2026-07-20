@@ -175,6 +175,65 @@ void main() {
 
       expect(response.statusCode, anyOf(equals(200), equals(500)));
     });
+
+    test('accepts upcoming=true without a 400 (may hit Firestore)', () async {
+      final context = _MockRequestContext();
+      final request = _MockRequest();
+
+      when(() => context.request).thenReturn(request);
+      when(() => request.method).thenReturn(HttpMethod.get);
+      when(() => request.url).thenReturn(
+        Uri.parse('/events?upcoming=true'),
+      );
+
+      final response = await events_route.onRequest(context);
+
+      expect(response.statusCode, anyOf(equals(200), equals(500)));
+    });
+  });
+
+  group('EventService.hasEndedAt', () {
+    Event eventWith({required String date, required String endTime}) => Event(
+          eventId: 'evt_test',
+          title: 'Test',
+          description: '',
+          coverImageUrl: '',
+          date: date,
+          startTime: '09:00',
+          endTime: endTime,
+          eventMode: 'offline',
+          hostName: '',
+          contactEmails: const [],
+          tags: const [],
+          isOpenToGuests: false,
+          slotsTotal: 0,
+          registeredCount: 0,
+        );
+
+    test('event that finished earlier the same UTC day has ended', () {
+      // Ends 21:00 campus-local (UTC+8) = 13:00 UTC.
+      final event = eventWith(date: '2026-07-20', endTime: '21:00');
+      final now = DateTime.utc(2026, 7, 20, 20, 44); // 04:44 next day, campus
+      expect(EventService.hasEndedAt(event, now), isTrue);
+    });
+
+    test('event still running (before its end time) has not ended', () {
+      final event = eventWith(date: '2026-07-20', endTime: '21:00');
+      final now = DateTime.utc(2026, 7, 20, 12); // 20:00 campus, before 21:00
+      expect(EventService.hasEndedAt(event, now), isFalse);
+    });
+
+    test('future event has not ended', () {
+      final event = eventWith(date: '2026-07-25', endTime: '10:00');
+      final now = DateTime.utc(2026, 7, 20, 20, 44);
+      expect(EventService.hasEndedAt(event, now), isFalse);
+    });
+
+    test('malformed end time is treated as not ended (kept)', () {
+      final event = eventWith(date: '2026-07-20', endTime: '');
+      final now = DateTime.utc(2026, 7, 20, 20, 44);
+      expect(EventService.hasEndedAt(event, now), isFalse);
+    });
   });
 
   group('Opaque cursor pagination', () {
