@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
+import "package:image/image.dart" as img;
 import "package:image_picker/image_picker.dart";
 import "package:provider/provider.dart";
 
@@ -85,24 +86,47 @@ class _CreateEventModalState extends State<_CreateEventModal> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final file = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
+    final file = await picker.pickImage(source: ImageSource.gallery);
     if (file == null) return;
-    final bytes = await file.readAsBytes();
+    final raw = await file.readAsBytes();
+
+    // The backend caps cover images at 5 MB. `image_picker`'s `imageQuality`
+    // only shrinks JPEGs, so a large PNG (e.g. a full-res poster) would sail
+    // past it and be rejected server-side. Re-encode to JPEG here — downscaling
+    // and stepping quality down — so any picked image fits under the cap.
+    final compressed = await _compressToJpeg(raw);
     if (!mounted) return;
+
+    final base = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
     setState(() {
-      _imageBytes = bytes;
-      _imageName = file.name;
-      _imageMime = file.mimeType ?? _mimeFromName(file.name);
+      _imageBytes = compressed;
+      _imageName = '$base.jpg';
+      _imageMime = 'image/jpeg';
     });
   }
 
-  String _mimeFromName(String name) {
-    final lower = name.toLowerCase();
-    if (lower.endsWith('.png')) return 'image/png';
-    return 'image/jpeg';
+  /// Decodes [bytes], downscales the longest side to at most 1600px, and encodes
+  /// as JPEG, lowering quality until the result is under the 5 MB backend cap.
+  Future<Uint8List> _compressToJpeg(Uint8List bytes) async {
+    const maxBytes = 5 * 1024 * 1024;
+    const maxDimension = 1600;
+
+    var decoded = img.decodeImage(bytes);
+    if (decoded == null) return bytes;
+
+    if (decoded.width > maxDimension || decoded.height > maxDimension) {
+      decoded = img.copyResize(
+        decoded,
+        width: decoded.width >= decoded.height ? maxDimension : null,
+        height: decoded.height > decoded.width ? maxDimension : null,
+      );
+    }
+
+    for (final quality in [85, 70, 55, 40]) {
+      final out = img.encodeJpg(decoded, quality: quality);
+      if (out.length <= maxBytes) return out;
+    }
+    return img.encodeJpg(decoded, quality: 40);
   }
 
   Future<void> _pickDate() async {
