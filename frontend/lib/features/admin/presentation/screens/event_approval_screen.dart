@@ -28,10 +28,11 @@ class EventApprovalScreen extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
-        body: const Center(
+        body: Center(
           child: Text(
             'You do not have access to this page.',
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         ),
       );
@@ -425,9 +426,16 @@ class _StatusTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final foreground =
         isRejected ? Colors.red.shade700 : Colors.orange.shade800;
-    final background = isRejected ? Colors.red.shade50 : Colors.orange.shade50;
+    final background = isRejected
+        ? (isDark
+            ? Colors.red.shade900.withValues(alpha: 0.4)
+            : Colors.red.shade50)
+        : (isDark
+            ? Colors.orange.shade900.withValues(alpha: 0.4)
+            : Colors.orange.shade50);
     final label = isRejected ? 'Rejected' : 'Pending';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -557,7 +565,8 @@ class _PendingEventSheet extends StatelessWidget {
                     event.coverImageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
-                      color: Colors.grey.shade200,
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
                       alignment: Alignment.center,
                       child: const Icon(Icons.image_not_supported_outlined,
                           color: Colors.grey),
@@ -610,14 +619,14 @@ class _PendingEventSheet extends StatelessWidget {
                 value: 'Reason: ${event.rejectionReason}',
               ),
             const SizedBox(height: 24),
-            _buildActions(),
+            _buildActions(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActions() {
+  Widget _buildActions(BuildContext context) {
     if (isRejected) {
       return SizedBox(
         width: double.infinity,
@@ -640,7 +649,7 @@ class _PendingEventSheet extends StatelessWidget {
             label: const Text('Reject'),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.red.shade700,
-              side: BorderSide(color: Colors.red.shade200),
+              side: BorderSide(color: Theme.of(context).colorScheme.error),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),

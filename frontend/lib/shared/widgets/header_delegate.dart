@@ -15,7 +15,10 @@ class HeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Material(child: child);
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      child: child,
+    );
   }
 
   @override

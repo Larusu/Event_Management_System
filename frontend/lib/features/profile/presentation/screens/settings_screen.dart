@@ -160,7 +160,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 elevation: 2,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
-                color: Colors.red.withValues(alpha: 0.1),
+                color: const Color.fromARGB(255, 255, 17, 0)
+                    .withValues(alpha: 0.3),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () async {
