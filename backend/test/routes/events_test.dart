@@ -1386,6 +1386,12 @@ void main() {
   // -----------------------------------------------------------------------
 
   group('POST /events', () {
+    test('all creator roles require approval', () {
+      for (final role in ['organizer', 'faculty', 'super_admin']) {
+        expect(events_route.initialEventStatus(role), equals('pending'));
+      }
+    });
+
     test('returns 405 for PUT', () async {
       final context = _MockRequestContext();
       final request = _MockRequest();

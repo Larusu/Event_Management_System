@@ -12,6 +12,77 @@ import 'package:http/http.dart' as http;
 /// On failure, every method throws [AuthException] — callers (routes)
 /// catch this one type and hand it to [ResponseHelper.error].
 class FirebaseEventService {
+  /// Returns every non-deleted event owned by [uid], newest event date first.
+  static Future<List<Map<String, dynamic>>> getCreatedEvents(String uid) async {
+    final client = await _firestoreClient();
+    final projectId = _firestoreProjectId();
+    final events = <Map<String, dynamic>>[];
+    var offset = 0;
+    const batchSize = 100;
+
+    while (true) {
+      final query = {
+        'from': [
+          {'collectionId': 'events'},
+        ],
+        'where': {
+          'fieldFilter': {
+            'field': {'fieldPath': 'organizer_uid'},
+            'op': 'EQUAL',
+            'value': {'stringValue': uid},
+          },
+        },
+        'offset': offset,
+        'limit': batchSize,
+      };
+      final uri = Uri.parse(
+        'https://firestore.googleapis.com/v1/projects/$projectId'
+        '/databases/(default)/documents:runQuery',
+      );
+      final response = await client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'structuredQuery': query}),
+      );
+      if (response.statusCode != 200) {
+        throw StateError(
+          'Firestore created-events query failed: ${response.statusCode}',
+        );
+      }
+
+      final rows = jsonDecode(response.body) as List<dynamic>;
+      var documentCount = 0;
+      for (final rawRow in rows) {
+        final row = rawRow as Map<String, dynamic>;
+        final document = row['document'] as Map<String, dynamic>?;
+        if (document == null) continue;
+        documentCount++;
+        final fields = document['fields'] as Map<String, dynamic>? ?? {};
+        final decoded = _decodeFirestoreFields(fields);
+        if (decoded['is_deleted'] as bool? ?? false) continue;
+        events.add({
+          'event_id': (document['name'] as String? ?? '').split('/').last,
+          ...decoded,
+          'slots_remaining':
+              ((decoded['slots_total'] as int? ?? 0) -
+                      (decoded['registered_count'] as int? ?? 0))
+                  .clamp(0, 1 << 31),
+        });
+      }
+      if (documentCount < batchSize) break;
+      offset += documentCount;
+    }
+
+    events.sort((a, b) {
+      final date = (b['date'] as String? ?? '').compareTo(
+        a['date'] as String? ?? '',
+      );
+      if (date != 0) return date;
+      return (b['event_id'] as String).compareTo(a['event_id'] as String);
+    });
+    return events;
+  }
+
   /// Whether [uid] has an active (non-cancelled) registration for [eventId].
   ///
   /// Reads `registrations/{uid}_{eventId}` from Firestore. Returns `false`

@@ -57,6 +57,13 @@ class ApiClient {
         ));
   }
 
+  Future<ApiResponse> delete(String path, {bool auth = true}) {
+    return _send(() async => _client.delete(
+          _uri(path),
+          headers: await _headers(auth),
+        ));
+  }
+
   /// Uploads a single file as `multipart/form-data` (used for the Cloudinary
   /// cover-image endpoint). The file is sent under [field]; the `Content-Type`
   /// is set per-part from [contentType], never `application/json`.
