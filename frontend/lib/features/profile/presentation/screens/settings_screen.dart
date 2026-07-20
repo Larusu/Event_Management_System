@@ -1,6 +1,7 @@
 import 'package:campus_event_app/core/constants/roles.dart';
 import 'package:campus_event_app/features/admin/presentation/screens/admin_landing_screen.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
+import 'package:campus_event_app/features/events/presentation/screens/previous_registration.dart';
 import 'package:campus_event_app/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/settings_card.dart';
@@ -94,7 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 2.5),
               child: SettingsCard(
                 icon: Icons.person_outline,
                 label: 'Edit profile information',
@@ -103,6 +104,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     context,
                     MaterialPageRoute(
                         builder: (context) => const EditProfileScreen()),
+                  );
+                },
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 2.5, 16, 10),
+              child: SettingsCard(
+                icon: Icons.history,
+                label: 'View previous registrations',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const PreviousRegisteredEventsScreen(),
+                    ),
                   );
                 },
               ),

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../../../core/constants/roles.dart';
 import '../../features/events/presentation/screens/calendar.dart';
+import '../../features/events/presentation/screens/created_events_screen.dart';
 import '../../features/events/presentation/screens/dashboard.dart';
 import '../../features/profile/presentation/screens/settings_screen.dart';
 import 'navbar.dart';
@@ -17,44 +18,55 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _selectedPageIndex = 1;
+  _ShellDestination _selectedDestination = _ShellDestination.dashboard;
 
   @override
   Widget build(BuildContext context) {
     final role = context.watch<AuthProvider>().currentUser?.role;
     final isGuest = role == Roles.guest;
+    final showCreatedEvents = role != Roles.student;
 
-    final pages = <Widget>[
-      const CalendarPage(),
-      const DashboardPage(),
-      const EventsScreen(),
-      const SettingsScreen(),
+    final destinations = <(_ShellDestination, Widget)>[
+      (_ShellDestination.calendar, const CalendarPage()),
+      if (showCreatedEvents)
+        (_ShellDestination.createdEvents, const CreatedEventsScreen()),
+      (_ShellDestination.dashboard, const DashboardPage()),
+      (_ShellDestination.events, const EventsScreen()),
+      (_ShellDestination.settings, const SettingsScreen()),
     ];
 
-    // Guard against a role change (e.g. demotion) leaving the admin tab
-    // selected after it disappears from the shell.
-    final safeIndex =
-        _selectedPageIndex < pages.length ? _selectedPageIndex : 1;
+    final selectedIndex = destinations.indexWhere(
+      (entry) => entry.$1 == _selectedDestination,
+    );
+    final safeIndex = selectedIndex < 0
+        ? destinations.indexWhere(
+            (entry) => entry.$1 == _ShellDestination.dashboard,
+          )
+        : selectedIndex;
 
     return Scaffold(
       bottomNavigationBar: NavBar(
         selectedPageIndex: safeIndex,
+        showCreatedEvents: showCreatedEvents,
         onPageSelected: (index) {
           setState(() {
-            _selectedPageIndex = index;
+            _selectedDestination = destinations[index].$1;
           });
         },
       ),
-      floatingActionButton: safeIndex == 2 && !isGuest
-          ? FloatingActionButton(
-              onPressed: () => createNewEvent(context),
-              child: const Icon(Icons.add),
-            )
-          : null,
+      floatingActionButton:
+          destinations[safeIndex].$1 == _ShellDestination.events && !isGuest
+              ? FloatingActionButton(
+                  onPressed: () => createNewEvent(context),
+                  child: const Icon(Icons.add),
+                )
+              : null,
       body: IndexedStack(
         index: safeIndex,
-        children: pages,
+        children: destinations.map((entry) => entry.$2).toList(),
       ),
     );
   }
 }
+
+enum _ShellDestination { calendar, createdEvents, dashboard, events, settings }

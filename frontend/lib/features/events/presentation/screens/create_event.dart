@@ -3,9 +3,8 @@ import "package:flutter/services.dart";
 import "package:image_picker/image_picker.dart";
 import "package:provider/provider.dart";
 
-import "../../../../core/constants/roles.dart";
-import "../../../auth/providers/auth_provider.dart";
 import "../../../../shared/widgets/modal.dart";
+import '../../models/event.dart';
 import "../../providers/create_event_provider.dart";
 import "../../providers/event_dashboard_provider.dart";
 import "../../providers/event_list_provider.dart";
@@ -16,14 +15,11 @@ import "../../providers/event_list_provider.dart";
 void createNewEvent(BuildContext context) {
   final listProvider = context.read<EventListProvider>();
   final dashProvider = context.read<EventDashboardProvider>();
-  final role = context.read<AuthProvider>().currentUser?.role;
-
   ModalContainer.show(
     context: context,
     child: ChangeNotifierProvider(
       create: (_) => CreateEventProvider(),
       child: _CreateEventModal(
-        creatorRole: role,
         onCreated: () {
           listProvider.load();
           dashProvider.loadFeatured();
@@ -33,10 +29,31 @@ void createNewEvent(BuildContext context) {
   );
 }
 
-class _CreateEventModal extends StatefulWidget {
-  const _CreateEventModal({this.creatorRole, this.onCreated});
+/// Opens the event form pre-filled for an existing event.
+void editEvent(
+  BuildContext context, {
+  required Event event,
+  required VoidCallback onUpdated,
+}) {
+  ModalContainer.show(
+    context: context,
+    child: ChangeNotifierProvider(
+      create: (_) => CreateEventProvider(),
+      child: _CreateEventModal(
+        initialEvent: event,
+        onCreated: onUpdated,
+      ),
+    ),
+  );
+}
 
-  final String? creatorRole;
+class _CreateEventModal extends StatefulWidget {
+  const _CreateEventModal({
+    this.initialEvent,
+    this.onCreated,
+  });
+
+  final Event? initialEvent;
   final VoidCallback? onCreated;
 
   @override
@@ -67,6 +84,40 @@ class _CreateEventModalState extends State<_CreateEventModal> {
   String _eventMode = 'offline';
   bool _allDay = false;
   bool _isOpenToGuests = false;
+
+  bool get _isEditing => widget.initialEvent != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final event = widget.initialEvent;
+    if (event == null) return;
+    _titleController.text = event.title;
+    _descriptionController.text = event.description;
+    _categoryController.text = event.tags.join(', ');
+    _hostController.text = event.hostName;
+    _guestSpeakerController.text = event.guestSpeaker ?? '';
+    _locationController.text = event.location ?? '';
+    _streamLinkController.text = event.streamLink ?? '';
+    _contactController.text = event.contactEmails.join(', ');
+    _slotsController.text =
+        (event.registeredCount + event.slotsRemaining).toString();
+    _date = DateTime.tryParse(event.date);
+    _startTime = _parseTime(event.startTime);
+    _endTime = _parseTime(event.endTime);
+    _eventMode = event.eventMode;
+    _allDay = event.startTime == '00:00' && event.endTime == '23:59';
+    _isOpenToGuests = event.isOpenToGuests;
+  }
+
+  TimeOfDay? _parseTime(String value) {
+    final parts = value.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
 
   @override
   void dispose() {
@@ -119,8 +170,8 @@ class _CreateEventModalState extends State<_CreateEventModal> {
   Future<void> _pickTime({required bool isStart}) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime:
-          (isStart ? _startTime : _endTime) ?? const TimeOfDay(hour: 9, minute: 0),
+      initialTime: (isStart ? _startTime : _endTime) ??
+          const TimeOfDay(hour: 9, minute: 0),
     );
     if (picked == null) return;
     setState(() {
@@ -132,19 +183,15 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     });
   }
 
-  String _formatDate(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-'
+  String _formatDate(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 
   String _formatTime(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
-  List<String> _splitCsv(String raw) => raw
-      .split(',')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
+  List<String> _splitCsv(String raw) =>
+      raw.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
   int _minutesOf(TimeOfDay t) => t.hour * 60 + t.minute;
 
@@ -165,7 +212,7 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     // removes this widget (and its context) from the tree.
     final messenger = ScaffoldMessenger.of(context);
 
-    if (_imageBytes == null) {
+    if (_imageBytes == null && !_isEditing) {
       _snack('Please add a cover image.', error: true);
       return;
     }
@@ -206,9 +253,10 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     final slots = int.tryParse(_slotsController.text.trim()) ?? 0;
 
     final ok = await provider.submit(
-      imageBytes: _imageBytes!,
-      imageFilename: _imageName ?? 'cover.jpg',
-      imageMimeType: _imageMime ?? 'image/jpeg',
+      imageBytes: _imageBytes,
+      imageFilename: _imageName,
+      imageMimeType: _imageMime,
+      existingEvent: widget.initialEvent,
       title: _titleController.text,
       description: _descriptionController.text,
       date: _formatDate(_date!),
@@ -229,17 +277,19 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     if (ok) {
       widget.onCreated?.call();
       Navigator.pop(context);
-      final isOrganizer = widget.creatorRole == Roles.organizer;
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            isOrganizer ? 'Event submitted for approval.' : 'Event created.',
+            _isEditing
+                ? 'Event updated.'
+                : 'Event submitted for approval.',
           ),
         ),
       );
     } else {
       _snack(
-        provider.errorMessage ?? 'Could not create the event.',
+        provider.errorMessage ??
+            'Could not ${_isEditing ? 'update' : 'create'} the event.',
         error: true,
       );
     }
@@ -257,8 +307,8 @@ class _CreateEventModalState extends State<_CreateEventModal> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "New Event",
+            Text(
+              _isEditing ? 'Edit Event' : 'New Event',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             const SizedBox(height: 15.0),
@@ -338,7 +388,9 @@ class _CreateEventModalState extends State<_CreateEventModal> {
                 ),
                 Switch.adaptive(
                   value: _isOpenToGuests,
-                  onChanged: (value) => setState(() => _isOpenToGuests = value),
+                  onChanged: _isEditing
+                      ? null
+                      : (value) => setState(() => _isOpenToGuests = value),
                 ),
               ],
             ),
@@ -361,7 +413,7 @@ class _CreateEventModalState extends State<_CreateEventModal> {
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text("Add Event"),
+                      : Text(_isEditing ? 'Save Changes' : 'Add Event'),
                 ),
               ],
             ),
@@ -383,14 +435,21 @@ class _CreateEventModalState extends State<_CreateEventModal> {
           color: Colors.grey[300],
           child: _imageBytes != null
               ? Image.memory(_imageBytes!, fit: BoxFit.cover)
-              : const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
-                    SizedBox(height: 6),
-                    Text("Add cover", style: TextStyle(color: Colors.grey)),
-                  ],
-                ),
+              : _isEditing && widget.initialEvent!.coverImageUrl.isNotEmpty
+                  ? Image.network(
+                      widget.initialEvent!.coverImageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.broken_image_outlined, size: 48),
+                    )
+                  : const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
+                        SizedBox(height: 6),
+                        Text("Add cover", style: TextStyle(color: Colors.grey)),
+                      ],
+                    ),
         ),
       ),
     );
@@ -495,9 +554,8 @@ class _CreateEventModalState extends State<_CreateEventModal> {
       inputFormatters: inputFormatters,
       validator: validator ??
           (required
-              ? (value) => (value == null || value.trim().isEmpty)
-                  ? 'Required'
-                  : null
+              ? (value) =>
+                  (value == null || value.trim().isEmpty) ? 'Required' : null
               : null),
       decoration: InputDecoration(
         labelText: label,

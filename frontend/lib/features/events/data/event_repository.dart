@@ -19,6 +19,7 @@ abstract class EventRepository {
   });
   Future<List<Event>> getFeaturedEvents({int limit = 3});
   Future<List<Event>> getRegisteredEvents();
+  Future<List<Event>> getCreatedEvents();
   Future<Event?> getNextRegisteredEvent();
   Future<List<String>> getTags();
   Future<Map<String, dynamic>> registerForEvent(String eventId);
@@ -34,10 +35,19 @@ abstract class EventRepository {
   /// Creates an event via `POST /events`. [body] must already
   /// contain a `cover_image_url` from [uploadCoverImage].
   Future<Event> createEvent(Map<String, dynamic> body);
+  Future<void> updateEvent(String eventId, Map<String, dynamic> body);
+  Future<void> deleteEvent(String eventId);
+}
+
+/// Paginated access to the signed-in user's registration history.
+abstract class PreviousRegisteredEventsRepository {
+  Future<EventListResponse> getPreviousRegisteredEvents({String? cursor});
+  Future<EventListResponse> getUpcomingRegisteredEvents({String? cursor});
 }
 
 /// Talks to the real Dart Frog backend.
-class EventApiRepository implements EventRepository {
+class EventApiRepository
+    implements EventRepository, PreviousRegisteredEventsRepository {
   final ApiClient _api;
 
   EventApiRepository([ApiClient? api]) : _api = api ?? ApiClient();
@@ -97,6 +107,51 @@ class EventApiRepository implements EventRepository {
   }
 
   @override
+  Future<List<Event>> getCreatedEvents() async {
+    final response = await _api.get(ApiRoutes.eventsCreated);
+    final json = response.data['events'];
+    if (json is! List) return const [];
+    return json.map((e) => Event.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  Future<EventListResponse> getPreviousRegisteredEvents({
+    String? cursor,
+  }) =>
+      _getRegisteredEventsPage(filter: 'past', cursor: cursor);
+
+  @override
+  Future<EventListResponse> getUpcomingRegisteredEvents({
+    String? cursor,
+  }) =>
+      _getRegisteredEventsPage(filter: 'upcoming', cursor: cursor);
+
+  Future<EventListResponse> _getRegisteredEventsPage({
+    required String filter,
+    String? cursor,
+  }) async {
+    final query = <String, String>{'filter': filter};
+    if (cursor != null && cursor.isNotEmpty) {
+      query['cursor'] = cursor;
+    }
+    final path = Uri(
+      path: ApiRoutes.eventsRegistered,
+      queryParameters: query,
+    ).toString();
+    final response = await _api.get(path);
+    final json = response.data['events'];
+    if (json is! List) {
+      return const EventListResponse(events: []);
+    }
+    final events =
+        json.map((e) => Event.fromJson(e as Map<String, dynamic>)).toList();
+    return EventListResponse(
+      events: events,
+      nextCursor: response.data['next_cursor'] as String?,
+    );
+  }
+
+  @override
   Future<Event?> getNextRegisteredEvent() async {
     final response = await _api.get(ApiRoutes.eventsNextRegistered);
     final json = response.data['event'];
@@ -153,6 +208,19 @@ class EventApiRepository implements EventRepository {
     }
     return Event.fromJson(json);
   }
+
+  @override
+  Future<void> updateEvent(
+    String eventId,
+    Map<String, dynamic> body,
+  ) async {
+    await _api.patch(ApiRoutes.eventById(eventId), body);
+  }
+
+  @override
+  Future<void> deleteEvent(String eventId) async {
+    await _api.delete(ApiRoutes.eventById(eventId));
+  }
 }
 
 /// Helper to build the events list query path.
@@ -180,3 +248,6 @@ class ApiEventsListHelper {
 
 /// All event data now comes from the live backend.
 EventRepository createEventRepository() => EventApiRepository();
+
+PreviousRegisteredEventsRepository createPreviousRegisteredEventsRepository() =>
+    EventApiRepository();

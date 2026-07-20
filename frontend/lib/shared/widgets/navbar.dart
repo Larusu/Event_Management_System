@@ -3,11 +3,14 @@ import "package:flutter/material.dart";
 class NavBar extends StatelessWidget {
   final int selectedPageIndex;
   final ValueChanged<int> onPageSelected;
+  final bool showCreatedEvents;
 
-  const NavBar(
-      {super.key,
-      required this.selectedPageIndex,
-      required this.onPageSelected});
+  const NavBar({
+    super.key,
+    required this.selectedPageIndex,
+    required this.onPageSelected,
+    this.showCreatedEvents = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +28,11 @@ class NavBar extends StatelessWidget {
             icon: Icon(Icons.calendar_month_outlined),
             label: '',
           ),
+          if (showCreatedEvents)
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.event_note_outlined),
+              label: '',
+            ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             label: '',

@@ -64,6 +64,9 @@ class ApiRoutes {
   /// Registered events: `/events/registered`.
   static const String eventsRegistered = '/events/registered';
 
+  /// Events created by the signed-in user, including pending/rejected events.
+  static const String eventsCreated = '/events/created';
+
   /// Next registered event: `/events/next-registered`.
   static const String eventsNextRegistered = '/events/next-registered';
 
