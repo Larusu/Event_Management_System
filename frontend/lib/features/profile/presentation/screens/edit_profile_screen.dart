@@ -6,6 +6,7 @@ import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:campus_event_app/shared/widgets/app_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -75,7 +76,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           icon: Icons.check_circle_outline_rounded,
           message: 'Your profile has been updated successfully.',
         ).then((_) {
-          if (mounted) Navigator.pop(context);
+          if (mounted) context.pop();
         });
       } else {
         final provider = context.read<AuthProvider>();

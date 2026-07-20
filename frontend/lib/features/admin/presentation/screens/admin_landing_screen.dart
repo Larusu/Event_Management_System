@@ -1,10 +1,10 @@
-import 'package:campus_event_app/features/admin/presentation/screens/event_approval_screen.dart';
-import 'package:campus_event_app/features/admin/presentation/screens/role_promotion_screen.dart';
+import 'package:campus_event_app/core/router/app_router.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/settings_card.dart';
 import 'package:campus_event_app/shared/widgets/header.dart';
 import 'package:campus_event_app/shared/widgets/header_delegate.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 /// Faculty / super_admin management hub. Acts as a landing menu that routes
@@ -30,7 +30,7 @@ class AdminLandingScreen extends StatelessWidget {
                   views: const [],
                   page: 'settings',
                   headerSubtitle: userName,
-                  onBack: () => Navigator.pop(context),
+                  onBack: () => context.pop(),
                 ),
               ),
             ),
@@ -40,14 +40,7 @@ class AdminLandingScreen extends StatelessWidget {
                 child: SettingsCard(
                   icon: Icons.fact_check_outlined,
                   label: 'Event Approvals',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const EventApprovalScreen(),
-                      ),
-                    );
-                  },
+                  onTap: () => context.push(Routes.adminApprovals),
                 ),
               ),
             ),
@@ -58,14 +51,7 @@ class AdminLandingScreen extends StatelessWidget {
                 child: SettingsCard(
                   icon: Icons.manage_accounts_outlined,
                   label: 'Role Management',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RolePromotionScreen(),
-                      ),
-                    );
-                  },
+                  onTap: () => context.push(Routes.adminRoles),
                 ),
               ),
             ),

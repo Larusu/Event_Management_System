@@ -1,8 +1,6 @@
 import 'package:campus_event_app/core/constants/roles.dart';
-import 'package:campus_event_app/features/admin/presentation/screens/admin_landing_screen.dart';
+import 'package:campus_event_app/core/router/app_router.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
-import 'package:campus_event_app/features/profile/presentation/screens/edit_profile_screen.dart';
-import 'package:campus_event_app/features/profile/presentation/screens/theme_settings_screen.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/settings_card.dart';
 import 'package:campus_event_app/shared/widgets/app_dialog.dart';
@@ -10,6 +8,7 @@ import 'package:campus_event_app/shared/widgets/header.dart';
 import 'package:campus_event_app/shared/widgets/header_delegate.dart';
 import 'package:campus_event_app/shared/widgets/role_tag.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -74,13 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: SettingsCard(
                   icon: Icons.admin_panel_settings_outlined,
                   label: 'Admin Panel',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const AdminLandingScreen()),
-                    );
-                  },
+                  onTap: () => context.push(Routes.admin),
                 ),
               ),
             ),
@@ -100,13 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: SettingsCard(
                 icon: Icons.person_outline,
                 label: 'Edit profile information',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const EditProfileScreen()),
-                  );
-                },
+                onTap: () => context.push(Routes.editProfile),
               ),
             ),
           ),
@@ -125,13 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: SettingsCard(
                 icon: Icons.water_drop_outlined,
                 label: 'Choose theme',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const ThemeSettingsScreen()),
-                  );
-                },
+                onTap: () => context.push(Routes.theme),
               ),
             ),
           ),
@@ -172,9 +153,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       confirmLabel: 'Sign out',
                       destructive: true,
                     );
-                    if (confirmed) {
+                    if (confirmed && context.mounted) {
+                      // The router redirect reacts to the auth status change and
+                      // returns to /sign-in, so no manual navigation is needed.
                       context.read<AuthProvider>().signOut();
-                      Navigator.of(context).popUntil((route) => route.isFirst);
                     }
                   },
                   child: Padding(

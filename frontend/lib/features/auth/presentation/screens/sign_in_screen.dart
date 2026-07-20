@@ -1,9 +1,11 @@
+import 'package:campus_event_app/core/router/app_router.dart';
 import 'package:campus_event_app/core/utils/validators.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_button.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_text_field.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -50,14 +52,9 @@ class _SignInScreenState extends State<SignInScreen> {
       }
     });
 
-    // On success the AuthGate (home route) reacts to the status change and
-    // swaps to MainShell. But if this SignInScreen was reached as a pushed
-    // route (e.g. after registration), that pushed route would sit on top of
-    // the gate and hide the dashboard. Pop back to the root so the gate — now
-    // showing MainShell — is visible.
-    if (success) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
-    }
+    // On success the router redirect (driven by AuthProvider as its
+    // refreshListenable) reacts to the status change and navigates to the
+    // dashboard, so no explicit navigation is needed here.
   }
 
   @override
@@ -122,7 +119,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       child: InkWell(
                         mouseCursor: SystemMouseCursors.click,
                         onTap: () {
-                          Navigator.pushNamed(context, '/forgot-password');
+                          context.push(Routes.forgotPassword);
                         },
                         child: Text(
                           "Forgot password?",
@@ -177,7 +174,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                     ),
                             recognizer: TapGestureRecognizer()
                               ..onTap = () {
-                                Navigator.pushNamed(context, '/sign-up');
+                                context.push(Routes.signUp);
                               },
                           ),
                         ],

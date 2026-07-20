@@ -1,60 +1,40 @@
 import 'package:campus_event_app/features/events/presentation/screens/create_event.dart';
-import 'package:campus_event_app/features/events/presentation/screens/events_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../../../core/constants/roles.dart';
-import '../../features/events/presentation/screens/calendar.dart';
-import '../../features/events/presentation/screens/dashboard.dart';
-import '../../features/profile/presentation/screens/settings_screen.dart';
 import 'navbar.dart';
 
-class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+/// Persistent shell hosting the bottom navigation. The [navigationShell] is an
+/// IndexedStack under the hood, so each tab keeps its state when switching.
+class MainShell extends StatelessWidget {
+  final StatefulNavigationShell navigationShell;
 
-  @override
-  State<MainShell> createState() => _MainShellState();
-}
-
-class _MainShellState extends State<MainShell> {
-  int _selectedPageIndex = 1;
+  const MainShell({super.key, required this.navigationShell});
 
   @override
   Widget build(BuildContext context) {
     final role = context.watch<AuthProvider>().currentUser?.role;
     final isGuest = role == Roles.guest;
-
-    final pages = <Widget>[
-      const CalendarPage(),
-      const DashboardPage(),
-      const EventsScreen(),
-      const SettingsScreen(),
-    ];
-
-    // Guard against a role change (e.g. demotion) leaving the admin tab
-    // selected after it disappears from the shell.
-    final safeIndex =
-        _selectedPageIndex < pages.length ? _selectedPageIndex : 1;
+    final currentIndex = navigationShell.currentIndex;
 
     return Scaffold(
       bottomNavigationBar: NavBar(
-        selectedPageIndex: safeIndex,
-        onPageSelected: (index) {
-          setState(() {
-            _selectedPageIndex = index;
-          });
-        },
+        selectedPageIndex: currentIndex,
+        onPageSelected: (index) => navigationShell.goBranch(
+          index,
+          // Re-tapping the current tab pops it back to its initial route.
+          initialLocation: index == currentIndex,
+        ),
       ),
-      floatingActionButton: safeIndex == 2 && !isGuest
+      floatingActionButton: currentIndex == 2 && !isGuest
           ? FloatingActionButton(
               onPressed: () => createNewEvent(context),
               child: const Icon(Icons.add),
             )
           : null,
-      body: IndexedStack(
-        index: safeIndex,
-        children: pages,
-      ),
+      body: navigationShell,
     );
   }
 }

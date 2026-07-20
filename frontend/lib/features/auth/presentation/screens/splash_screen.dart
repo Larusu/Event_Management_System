@@ -1,6 +1,11 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-import '../screens/auth_gate.dart';
+import 'package:campus_event_app/core/router/app_router.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/auth_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -59,15 +64,26 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _navigateAfterDelay() async {
     await Future.delayed(const Duration(milliseconds: 2200));
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (_, animation, __) => const AuthGate(),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
+    // Hold the splash until the restored session has resolved, then hand off to
+    // the router. The redirect corrects to /sign-in when unauthenticated.
+    await _waitForAuthResolved();
+    if (!mounted) return;
+    context.go(Routes.dashboard);
+  }
+
+  Future<void> _waitForAuthResolved() {
+    final auth = context.read<AuthProvider>();
+    if (auth.status != AuthStatus.unknown) return Future.value();
+    final completer = Completer<void>();
+    void listener() {
+      if (auth.status != AuthStatus.unknown) {
+        auth.removeListener(listener);
+        if (!completer.isCompleted) completer.complete();
+      }
+    }
+
+    auth.addListener(listener);
+    return completer.future;
   }
 
   @override
