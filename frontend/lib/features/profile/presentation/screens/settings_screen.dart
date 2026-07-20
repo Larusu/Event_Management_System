@@ -1,3 +1,5 @@
+import 'package:campus_event_app/core/constants/roles.dart';
+import 'package:campus_event_app/features/admin/presentation/screens/admin_landing_screen.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
 import 'package:campus_event_app/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/profile_avatar.dart';
@@ -21,6 +23,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final currentUser = context.watch<AuthProvider>().currentUser;
     final userName = currentUser?.name ?? 'Account';
     final userRole = currentUser?.role;
+    final isAdmin =
+        userRole == Roles.faculty || userRole == Roles.superAdmin;
 
     return SafeArea(
       child: CustomScrollView(
@@ -52,9 +56,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
+          if (isAdmin) ...[
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: Text(
+                  'Admin',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                child: SettingsCard(
+                  icon: Icons.admin_panel_settings_outlined,
+                  label: 'Admin Panel',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AdminLandingScreen()),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: Text(
+                'Profile',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
               child: SettingsCard(
                 icon: Icons.person_outline,
                 label: 'Edit profile information',
