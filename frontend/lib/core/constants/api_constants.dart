@@ -4,7 +4,6 @@ const String apiBaseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8080',
 );
 
-/// Auth route paths currently implemented by the backend.
 class ApiRoutes {
   const ApiRoutes._();
 
@@ -31,20 +30,24 @@ class ApiRoutes {
   /// Role promotion (faculty/super_admin): `PATCH /users/{targetUID}/role`.
   static String userRole(String targetUid) => '/users/$targetUid/role';
 
-  /// Events feed (Feature 3).
+  /// Events feed. Also used for `POST /events` create
   static const String events = '/events';
 
-  /// Pending events review queue (Feature 4, faculty/super_admin):
+  /// Cover-image upload: `POST /events/cover-image`
+  /// (multipart/form-data, single file field `image`).
+  static const String eventsCoverImage = '/events/cover-image';
+
+  /// Pending events review queue:
   /// `GET /events/pending?cursor=`.
   static String eventsPending({String? cursor}) {
     if (cursor == null || cursor.isEmpty) return '/events/pending';
     return '/events/pending?cursor=${Uri.encodeComponent(cursor)}';
   }
 
-  /// Event moderation (Feature 4): `PATCH /events/{eventId}/status`.
+  /// Event moderation: `PATCH /events/{eventId}/status`.
   static String eventStatus(String eventId) => '/events/$eventId/status';
 
-  /// Single-event detail (Feature 3): `/events/{eventId}`.
+  /// Single-event detail: `/events/{eventId}`.
   static String eventById(String eventId) => '/events/$eventId';
 
   /// Featured events: `/events/featured?limit=N`.
