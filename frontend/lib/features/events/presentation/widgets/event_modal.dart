@@ -30,7 +30,8 @@ class EventModal {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (_) => ChangeNotifierProvider(
         create: (_) => EventDetailProvider(),
         child: _EventModalView(eventId: eventId),
@@ -201,7 +202,7 @@ class _RegisterConfirmDialog extends StatelessWidget {
   }
 }
 
-/// A minimal rounded bottom-sheet shell (handle + white background) used for the
+/// A minimal rounded bottom-sheet shell used for the
 /// loading and error states, so they match the modal's look.
 class _SheetShell extends StatelessWidget {
   final Widget child;
@@ -216,37 +217,14 @@ class _SheetShell extends StatelessWidget {
       maxChildSize: 0.6,
       expand: false,
       builder: (context, scrollController) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          child: Container(
-            color: Theme.of(context).colorScheme.surface,
-            child: ListView(
-              controller: scrollController,
-              padding: EdgeInsets.zero,
-              children: [_dragHandle(context), child],
-            ),
-          ),
+        return ListView(
+          controller: scrollController,
+          padding: EdgeInsets.zero,
+          children: [child],
         );
       },
     );
   }
-}
-
-/// The grey pill drag handle shown at the top of every modal state.
-Widget _dragHandle(BuildContext context) {
-  return Container(
-    color: Theme.of(context).colorScheme.surface,
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    alignment: Alignment.center,
-    child: Container(
-      width: 61,
-      height: 8,
-      decoration: BoxDecoration(
-        color: _kGrey,
-        borderRadius: BorderRadius.circular(15),
-      ),
-    ),
-  );
 }
 
 class EventModalContent extends StatelessWidget {
@@ -301,23 +279,16 @@ class EventModalContent extends StatelessWidget {
       maxChildSize: 0.95,
       expand: false,
       builder: (context, scrollController) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          child: Container(
-            color: Theme.of(context).colorScheme.surface,
-            child: ListView(
-              controller: scrollController,
-              padding: EdgeInsets.zero,
-              children: [
-                _dragHandle(context),
-                _cover(context),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(23, 20, 23, 24),
-                  child: _details(context),
-                ),
-              ],
+        return ListView(
+          controller: scrollController,
+          padding: EdgeInsets.zero,
+          children: [
+            _cover(context),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(23, 20, 23, 24),
+              child: _details(context),
             ),
-          ),
+          ],
         );
       },
     );

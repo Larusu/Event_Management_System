@@ -144,11 +144,20 @@ class _CreateEventModalState extends State<_CreateEventModal> {
 
   int _minutesOf(TimeOfDay t) => t.hour * 60 + t.minute;
 
-  void _snack(String message, {bool error = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: error ? Colors.red.shade700 : null,
+  void _showError(String message) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        icon: Icon(Icons.error_outline_rounded,
+            color: Theme.of(context).colorScheme.error, size: 32),
+        title: const Text('Error'),
+        content: Text(message, textAlign: TextAlign.center),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
   }
@@ -162,12 +171,12 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     final messenger = ScaffoldMessenger.of(context);
 
     if (_imageBytes == null) {
-      _snack('Please add a cover image.', error: true);
+      _showError('Please add a cover image.');
       return;
     }
     if (!_formKey.currentState!.validate()) return;
     if (_date == null) {
-      _snack('Please select an event date.', error: true);
+      _showError('Please select an event date.');
       return;
     }
 
@@ -178,11 +187,11 @@ class _CreateEventModalState extends State<_CreateEventModal> {
       end = const TimeOfDay(hour: 23, minute: 59);
     } else {
       if (_startTime == null || _endTime == null) {
-        _snack('Please select start and end times.', error: true);
+        _showError('Please select start and end times.');
         return;
       }
       if (_minutesOf(_endTime!) <= _minutesOf(_startTime!)) {
-        _snack('End time must be after start time.', error: true);
+        _showError('End time must be after start time.');
         return;
       }
       start = _startTime!;
@@ -191,12 +200,12 @@ class _CreateEventModalState extends State<_CreateEventModal> {
 
     final tags = _splitCsv(_categoryController.text);
     if (tags.isEmpty) {
-      _snack('Please add at least one category.', error: true);
+      _showError('Please add at least one category.');
       return;
     }
     final emails = _splitCsv(_contactController.text);
     if (emails.isEmpty) {
-      _snack('Please add at least one contact email.', error: true);
+      _showError('Please add at least one contact email.');
       return;
     }
     final slots = int.tryParse(_slotsController.text.trim()) ?? 0;
@@ -234,9 +243,8 @@ class _CreateEventModalState extends State<_CreateEventModal> {
         ),
       );
     } else {
-      _snack(
+      _showError(
         provider.errorMessage ?? 'Could not create the event.',
-        error: true,
       );
     }
   }
