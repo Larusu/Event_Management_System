@@ -1,3 +1,4 @@
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:image/image.dart" as img;
@@ -15,6 +16,35 @@ import "../../providers/create_event_provider.dart";
 import "../../providers/created_events_provider.dart";
 import "../../providers/event_dashboard_provider.dart";
 import "../../providers/event_list_provider.dart";
+
+/// Backend cap for cover images. Picks larger than this are re-encoded down.
+const int _maxImageBytes = 5 * 1024 * 1024;
+
+/// Decodes [bytes], downscales the longest side to at most 1600px, and encodes
+/// as JPEG, stepping quality down until the result is under [_maxImageBytes].
+///
+/// Runs in a background isolate via `compute`, so it must remain a top-level
+/// function and do only pure, synchronous work.
+Uint8List _compressJpeg(Uint8List bytes) {
+  const maxDimension = 1600;
+
+  var decoded = img.decodeImage(bytes);
+  if (decoded == null) return bytes;
+
+  if (decoded.width > maxDimension || decoded.height > maxDimension) {
+    decoded = img.copyResize(
+      decoded,
+      width: decoded.width >= decoded.height ? maxDimension : null,
+      height: decoded.height > decoded.width ? maxDimension : null,
+    );
+  }
+
+  for (final quality in [80, 60, 45]) {
+    final out = img.encodeJpg(decoded, quality: quality);
+    if (out.length <= _maxImageBytes) return out;
+  }
+  return img.encodeJpg(decoded, quality: 40);
+}
 
 /// Opens the New Event modal. Captures the ambient list/dashboard providers so
 /// the feed can be refreshed after a successful create, and scopes a
@@ -86,6 +116,7 @@ class _CreateEventModalState extends State<_CreateEventModal> {
   Uint8List? _imageBytes;
   String? _imageName;
   String? _imageMime;
+  bool _isProcessingImage = false;
 
   DateTime? _date;
   TimeOfDay? _startTime;
@@ -156,48 +187,41 @@ class _CreateEventModalState extends State<_CreateEventModal> {
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.gallery);
-    if (file == null) return;
-    final raw = await file.readAsBytes();
+    if (_isProcessingImage) return;
 
-    // The backend caps cover images at 5 MB. `image_picker`'s `imageQuality`
-    // only shrinks JPEGs, so a large PNG (e.g. a full-res poster) would sail
-    // past it and be rejected server-side. Re-encode to JPEG here — downscaling
-    // and stepping quality down — so any picked image fits under the cap.
-    final compressed = await _compressToJpeg(raw);
+    final picker = ImagePicker();
+    // Ask the platform decoder to downscale and re-encode before the bytes ever
+    // reach Dart, so the common case needs no expensive in-app compression.
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 85,
+    );
+    if (file == null) return;
     if (!mounted) return;
 
-    final base = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
-    setState(() {
-      _imageBytes = compressed;
-      _imageName = '$base.jpg';
-      _imageMime = 'image/jpeg';
-    });
-  }
+    setState(() => _isProcessingImage = true);
+    try {
+      final raw = await file.readAsBytes();
 
-  /// Decodes [bytes], downscales the longest side to at most 1600px, and encodes
-  /// as JPEG, lowering quality until the result is under the 5 MB backend cap.
-  Future<Uint8List> _compressToJpeg(Uint8List bytes) async {
-    const maxBytes = 5 * 1024 * 1024;
-    const maxDimension = 1600;
+      // The picker's downscaling covers most images. A still-oversized pick
+      // (e.g. a huge PNG the platform left untouched) is re-encoded to JPEG on
+      // a background isolate via `compute`, so the UI thread never blocks.
+      final compressed = raw.length <= _maxImageBytes
+          ? raw
+          : await compute(_compressJpeg, raw);
+      if (!mounted) return;
 
-    var decoded = img.decodeImage(bytes);
-    if (decoded == null) return bytes;
-
-    if (decoded.width > maxDimension || decoded.height > maxDimension) {
-      decoded = img.copyResize(
-        decoded,
-        width: decoded.width >= decoded.height ? maxDimension : null,
-        height: decoded.height > decoded.width ? maxDimension : null,
-      );
+      final base = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
+      setState(() {
+        _imageBytes = compressed;
+        _imageName = '$base.jpg';
+        _imageMime = 'image/jpeg';
+      });
+    } finally {
+      if (mounted) setState(() => _isProcessingImage = false);
     }
-
-    for (final quality in [85, 70, 55, 40]) {
-      final out = img.encodeJpg(decoded, quality: quality);
-      if (out.length <= maxBytes) return out;
-    }
-    return img.encodeJpg(decoded, quality: 40);
   }
 
   Future<void> _pickDate() async {
@@ -511,14 +535,16 @@ class _CreateEventModalState extends State<_CreateEventModal> {
 
   Widget _buildImagePicker() {
     return GestureDetector(
-      onTap: _pickImage,
+      onTap: _isProcessingImage ? null : _pickImage,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(25.0),
         child: Container(
           width: 150,
           height: 150,
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: _imageBytes != null
+          child: _isProcessingImage
+              ? const Center(child: CircularProgressIndicator())
+              : _imageBytes != null
               ? Image.memory(_imageBytes!, fit: BoxFit.cover)
               : _isEditing && widget.initialEvent!.coverImageUrl.isNotEmpty
                   ? Image.network(
