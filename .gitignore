@@ -68,3 +68,4 @@ android/key.properties
 
 # Firebase / backend secrets
 backend/service-account.json
+backend/.env

@@ -4,10 +4,11 @@ import 'dart:convert';
 import 'package:backend/constants/error_codes.dart';
 import 'package:backend/firebase_config.dart';
 import 'package:backend/models/user.dart';
+import 'package:backend/services/firebase_id_token_verifier.dart';
+import 'package:backend/services/firestore_client.dart';
 import 'package:backend/utils/response_helper.dart';
 
 import 'package:firebase_admin/firebase_admin.dart';
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 
 /// Firebase Authentication Service
@@ -184,11 +185,25 @@ class FirebaseAuthService {
 
   /// Verifies a Firebase ID token and returns the uid from its `sub` claim.
   /// Throws [AuthException] with AUTH001 if the token is invalid or expired.
+  ///
+  /// Uses [FirebaseIdTokenVerifier] (local RS256 verification against Google's
+  /// cached public keys) instead of `firebase_admin`/`openid_client`, which
+  /// did uncached network work on every request. This runs on every protected
+  /// route, so keeping it in-memory is the main latency win.
   static Future<String> verifyIdToken(String idToken) async {
+    final projectId = FirebaseConfig.envMap['FIREBASE_PROJECT_ID'];
+    if (projectId == null || projectId.isEmpty) {
+      throw AuthException(
+        AuthErrorCode.internalError,
+        'Server misconfigured: missing FIREBASE_PROJECT_ID',
+      );
+    }
     try {
-      final decoded = await _firebaseAuth.verifyIdToken(idToken);
-      return decoded.claims.subject; // the uid from the JWT sub claim
-    } catch (e) {
+      return await FirebaseIdTokenVerifier.verify(
+        idToken,
+        projectId: projectId,
+      );
+    } catch (_) {
       throw AuthException(
         AuthErrorCode.invalidToken,
         'Invalid or expired token.',
@@ -628,44 +643,9 @@ class FirebaseAuthService {
   /// Builds an authenticated HTTP client for Firestore REST calls using
   /// the service account credentials (NOT the Web API key - that's only
   /// for the Identity Toolkit calls above).
-  static Future<http.Client> _firestoreClient() async {
-    final envMap = FirebaseConfig.envMap;
-    final projectId = envMap['FIREBASE_PROJECT_ID'];
-    if (projectId == null || projectId.isEmpty) {
-      throw StateError('FIREBASE_PROJECT_ID missing from .env');
-    }
+  static Future<http.Client> _firestoreClient() => FirestoreClient.instance();
 
-    final credentials = ServiceAccountCredentials.fromJson({
-      'type': 'service_account',
-      'project_id': projectId,
-      'private_key_id': envMap['FIREBASE_PRIVATE_KEY_ID'],
-      'private_key': envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(
-        r'\n',
-        '\n',
-      ),
-      'client_email': envMap['FIREBASE_CLIENT_EMAIL'],
-      'client_id': envMap['FIREBASE_CLIENT_ID'],
-    });
-
-    final scopes = [
-      'https://www.googleapis.com/auth/datastore',
-      'https://www.googleapis.com/auth/cloud-platform',
-    ];
-    final authClient = await obtainAccessCredentialsViaServiceAccount(
-      credentials,
-      scopes,
-      http.Client(),
-    );
-    return authenticatedClient(http.Client(), authClient);
-  }
-
-  static String _firestoreProjectId() {
-    final projectId = FirebaseConfig.envMap['FIREBASE_PROJECT_ID'];
-    if (projectId == null || projectId.isEmpty) {
-      throw StateError('FIREBASE_PROJECT_ID missing from .env');
-    }
-    return projectId;
-  }
+  static String _firestoreProjectId() => FirestoreClient.projectId();
 
   /// Writes (creates) the users/{uid} Firestore document.
   /// snake_case field names. is_deleted always present. last_login_at

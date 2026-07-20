@@ -49,8 +49,15 @@ class _SignInScreenState extends State<SignInScreen> {
         _errorMessage = context.read<AuthProvider>().errorMessage;
       }
     });
-    // Navigation on success is handled by the route guard reacting to the
-    // AuthProvider status change.
+
+    // On success the AuthGate (home route) reacts to the status change and
+    // swaps to MainShell. But if this SignInScreen was reached as a pushed
+    // route (e.g. after registration), that pushed route would sit on top of
+    // the gate and hide the dashboard. Pop back to the root so the gate — now
+    // showing MainShell — is visible.
+    if (success) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
 
   @override

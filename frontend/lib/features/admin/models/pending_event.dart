@@ -22,6 +22,10 @@ class PendingEvent {
   final String organizerEmail;
   final String createdAt;
 
+  /// Only meaningful for rejected events (from `GET /events/rejected`);
+  /// null/empty for pending rows.
+  final String? rejectionReason;
+
   const PendingEvent({
     required this.eventId,
     required this.title,
@@ -40,6 +44,7 @@ class PendingEvent {
     required this.organizerName,
     required this.organizerEmail,
     required this.createdAt,
+    this.rejectionReason,
   });
 
   factory PendingEvent.fromJson(Map<String, dynamic> json) => PendingEvent(
@@ -60,6 +65,7 @@ class PendingEvent {
         organizerName: json['organizer_name'] as String? ?? '',
         organizerEmail: json['organizer_email'] as String? ?? '',
         createdAt: json['created_at'] as String? ?? '',
+        rejectionReason: json['rejection_reason'] as String?,
       );
 
   bool get isOnline => eventMode == 'online';

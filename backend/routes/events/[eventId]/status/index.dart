@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:backend/constants/error_codes.dart';
 import 'package:backend/constants/event_error_codes.dart';
 import 'package:backend/services/event_moderation_service.dart';
+import 'package:backend/services/event_service.dart';
 import 'package:backend/utils/response_helper.dart';
 import 'package:dart_frog/dart_frog.dart';
 
@@ -44,6 +45,9 @@ Future<Response> onRequest(RequestContext context, String eventId) async {
       action: action.trim(),
       reason: reason,
     );
+
+    // Approve/reject/reopen flips visibility in the feed + tag list.
+    EventService.invalidateCaches();
 
     return ResponseHelper.success(
       message: 'Event status updated.',

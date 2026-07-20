@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:backend/constants/error_codes.dart';
 import 'package:backend/constants/event_error_codes.dart';
+import 'package:backend/services/event_service.dart';
 import 'package:backend/services/firebase_event_service.dart';
 import 'package:backend/utils/response_helper.dart';
 import 'package:backend/utils/validators.dart';
@@ -30,12 +31,24 @@ Future<Response> onRequest(RequestContext context, String eventId) async {
 
 Future<Response> _handleGet(RequestContext context, String eventId) async {
   try {
-    final event = await FirebaseEventService.getEventById(eventId);
+    final uid = context.read<String>();
+
+    // These two reads are independent, so run them concurrently instead of
+    // back-to-back. isRegisteredForEvent never throws (returns false on any
+    // error), so awaiting the event read first still surfaces EVT002 cleanly.
+    final eventFuture = FirebaseEventService.getEventById(eventId);
+    final registeredFuture =
+        FirebaseEventService.isRegisteredForEvent(uid, eventId);
+    final event = await eventFuture;
+    final isRegistered = await registeredFuture;
 
     return Response.json(
       body: {
         'success': true,
-        'events': event.toJson(),
+        'events': {
+          ...event.toJson(),
+          'is_registered': isRegistered,
+        },
       },
     );
   } on AuthException catch (e) {
@@ -109,6 +122,9 @@ Future<Response> _handlePatch(RequestContext context, String eventId) async {
 
     await FirebaseEventService.updateEvent(eventId, updates);
 
+    // Edits can change title/tags/visibility — refresh the cached snapshot.
+    EventService.invalidateCaches();
+
     return ResponseHelper.success(
       message: 'Event updated successfully.',
     );
@@ -154,6 +170,9 @@ Future<Response> _handleDelete(RequestContext context, String eventId) async {
     }
 
     await FirebaseEventService.softDeleteEvent(eventId);
+
+    // A deleted event must drop out of the feed / tag list right away.
+    EventService.invalidateCaches();
 
     return Response.json(
       statusCode: 200,

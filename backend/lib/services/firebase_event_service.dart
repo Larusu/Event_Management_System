@@ -1,10 +1,10 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:backend/constants/event_error_codes.dart';
-import 'package:backend/firebase_config.dart';
 import 'package:backend/models/event.dart';
+import 'package:backend/services/firestore_client.dart';
 import 'package:backend/utils/response_helper.dart';
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 
 /// Firestore-backed event operations.
@@ -12,6 +12,51 @@ import 'package:http/http.dart' as http;
 /// On failure, every method throws [AuthException] — callers (routes)
 /// catch this one type and hand it to [ResponseHelper.error].
 class FirebaseEventService {
+  /// Whether [uid] has an active (non-cancelled) registration for [eventId].
+  ///
+  /// Reads `registrations/{uid}_{eventId}` from Firestore. Returns `false`
+  /// on any error so the caller never breaks — the detail endpoint treats
+  /// a missing or corrupt registration document the same as "not registered".
+  static Future<bool> isRegisteredForEvent(
+    String uid,
+    String eventId,
+  ) async {
+    try {
+      final client = await _firestoreClient();
+      final projectId = _firestoreProjectId();
+
+      final docId = '${uid}_$eventId';
+      final uri = Uri.parse(
+        'https://firestore.googleapis.com/v1/projects/$projectId'
+        '/databases/(default)/documents/registrations/$docId',
+      );
+
+      final response = await client.get(uri);
+
+      if (response.statusCode == 404) {
+        return false;
+      }
+      if (response.statusCode != 200) {
+        return false;
+      }
+
+      final decoded =
+          jsonDecode(response.body) as Map<String, dynamic>;
+      final fields =
+          decoded['fields'] as Map<String, dynamic>? ?? {};
+
+      final isCancelled =
+          (fields['is_cancelled'] as Map<String, dynamic>?)
+                  ?['booleanValue']
+              as bool? ??
+          false;
+
+      return !isCancelled;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Returns full detail for a single approved, non-deleted event.
   ///
   /// Throws [AuthException] with EVT002 when the event does not exist,
@@ -131,39 +176,6 @@ class FirebaseEventService {
     await updateEvent(eventId, {'is_deleted': true, 'updated_at': timeNow});
   }
 
-  static Map<String, dynamic> _encodeFirestoreFields(
-    Map<String, dynamic> fields,
-  ) {
-    final result = <String, dynamic>{};
-
-    for (final entry in fields.entries) {
-      final key = entry.key;
-      final value = entry.value;
-
-      if (value == null) {
-        result[key] = {'nullValue': null};
-      } else if (value is String) {
-        result[key] = {'stringValue': value};
-      } else if (value is bool) {
-        result[key] = {'booleanValue': value};
-      } else if (value is int) {
-        result[key] = {'integerValue': value.toString()};
-      } else if (value is double) {
-        result[key] = {'doubleValue': value};
-      } else if (value is List<String>) {
-        result[key] = {
-          'arrayValue': {
-            'values': value.map((v) => {'stringValue': v}).toList(),
-          },
-        };
-      } else {
-        result[key] = {'stringValue': value.toString()};
-      }
-    }
-
-    return result;
-  }
-
   /// Whether an event document should be returned to clients.
   ///
   /// Exposed for unit testing — routes never call this directly.
@@ -193,14 +205,77 @@ class FirebaseEventService {
       contactEmails: List<String>.from(
         doc['contact_emails'] as List<dynamic>? ?? const [],
       ),
-      tags: List<String>.from(doc['tags'] as List<dynamic>? ?? const []),
+      tags: List<String>.from(
+        doc['tags'] as List<dynamic>? ?? const [],
+      ),
       isOpenToGuests: doc['is_open_to_guests'] as bool? ?? false,
       slotsTotal: doc['slots_total'] as int? ?? 0,
       registeredCount: doc['registered_count'] as int? ?? 0,
     );
   }
 
-  static Future<Map<String, dynamic>?> _getEventDocument(String eventId) async {
+  /// Creates a new event document in Firestore.
+  ///
+  /// Returns the raw Firestore fields map for the created event.
+  static Future<Map<String, dynamic>> createEvent({
+    required Map<String, dynamic> fields,
+    required String eventId,
+  }) async {
+    final client = await _firestoreClient();
+    final projectId = _firestoreProjectId();
+
+    final uri = Uri.parse(
+      'https://firestore.googleapis.com/v1/projects/$projectId'
+      '/databases/(default)/documents/events?documentId=$eventId',
+    );
+
+    final body = {
+      'fields': _encodeFirestoreFields(fields),
+    };
+
+    final response = await client.post(
+      uri,
+      body: jsonEncode(body),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode != 200) {
+      throw StateError(
+        'Firestore create failed for events/$eventId: '
+        '${response.statusCode} ${response.body}',
+      );
+    }
+
+    final decoded =
+        jsonDecode(response.body) as Map<String, dynamic>;
+    final firestoreFields =
+        decoded['fields'] as Map<String, dynamic>? ?? {};
+    return _decodeFirestoreFields(firestoreFields);
+  }
+
+  /// Generates an event ID from the event title.
+  ///
+  /// Format: `evt_{slugified_title}_{4-char hex}`.
+  /// Example: "Uniteam" -> "evt_uniteam_a3f8".
+  static String generateEventId(String title) {
+    final slug = title
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
+        .replaceAll(RegExp(r'\s+'), '-')
+        .replaceAll(RegExp(r'-+'), '-')
+        .trim();
+    final truncated =
+        slug.length > 24 ? slug.substring(0, 24) : slug;
+    final suffix = Random.secure()
+        .nextInt(0xFFFF)
+        .toRadixString(16)
+        .padLeft(4, '0');
+    return 'evt_${truncated}_$suffix';
+  }
+
+  static Future<Map<String, dynamic>?> _getEventDocument(
+    String eventId,
+  ) async {
     final client = await _firestoreClient();
     final projectId = _firestoreProjectId();
 
@@ -221,34 +296,84 @@ class FirebaseEventService {
       );
     }
 
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final fields = decoded['fields'] as Map<String, dynamic>? ?? {};
+    final decoded =
+        jsonDecode(response.body) as Map<String, dynamic>;
+    final fields =
+        decoded['fields'] as Map<String, dynamic>? ?? {};
     return _decodeFirestoreFields(fields);
+  }
+
+  static Map<String, dynamic> _encodeFirestoreFields(
+    Map<String, dynamic> fields,
+  ) {
+    final result = <String, dynamic>{};
+
+    for (final entry in fields.entries) {
+      final key = entry.key;
+      final value = entry.value;
+
+      if (value == null) {
+        result[key] = {'nullValue': null};
+      } else if (value is String) {
+        result[key] = {'stringValue': value};
+      } else if (value is bool) {
+        result[key] = {'booleanValue': value};
+      } else if (value is int) {
+        result[key] = {'integerValue': value.toString()};
+      } else if (value is double) {
+        result[key] = {'doubleValue': value};
+      } else if (value is List<String>) {
+        result[key] = {
+          'arrayValue': {
+            'values':
+                value.map((v) => {'stringValue': v}).toList(),
+          },
+        };
+      } else if (value is List) {
+        result[key] = {
+          'arrayValue': {
+            'values': value
+                .map((v) => {'stringValue': v.toString()})
+                .toList(),
+          },
+        };
+      } else {
+        result[key] = {'stringValue': value.toString()};
+      }
+    }
+
+    return result;
   }
 
   static Map<String, dynamic> _decodeFirestoreFields(
     Map<String, dynamic> fields,
   ) {
     String? stringField(String key) =>
-        (fields[key] as Map<String, dynamic>?)?['stringValue'] as String?;
+        (fields[key] as Map<String, dynamic>?)?['stringValue']
+            as String?;
 
     bool? boolField(String key) =>
-        (fields[key] as Map<String, dynamic>?)?['booleanValue'] as bool?;
+        (fields[key] as Map<String, dynamic>?)?['booleanValue']
+            as bool?;
 
     int? intField(String key) {
-      final raw =
-          (fields[key] as Map<String, dynamic>?)?['integerValue'] as String?;
+      final raw = (fields[key] as Map<String, dynamic>?)
+          ?['integerValue'] as String?;
       return raw == null ? null : int.tryParse(raw);
     }
 
     List<String> stringListField(String key) {
       final array = fields[key] as Map<String, dynamic>?;
-      final values = array?['arrayValue'] as Map<String, dynamic>?;
-      final items = values?['values'] as List<dynamic>? ?? const [];
+      final values =
+          array?['arrayValue'] as Map<String, dynamic>?;
+      final items =
+          values?['values'] as List<dynamic>? ?? const [];
       return items
           .map(
             (item) =>
-                (item as Map<String, dynamic>)['stringValue'] as String? ?? '',
+                (item as Map<String, dynamic>)['stringValue']
+                    as String? ??
+                '',
           )
           .where((value) => value.isNotEmpty)
           .toList();
@@ -281,40 +406,7 @@ class FirebaseEventService {
     };
   }
 
-  static Future<http.Client> _firestoreClient() async {
-    final envMap = FirebaseConfig.envMap;
-    final projectId = envMap['FIREBASE_PROJECT_ID'];
-    if (projectId == null || projectId.isEmpty) {
-      throw StateError('FIREBASE_PROJECT_ID missing from .env');
-    }
+  static Future<http.Client> _firestoreClient() => FirestoreClient.instance();
 
-    final credentials = ServiceAccountCredentials.fromJson({
-      'type': 'service_account',
-      'project_id': projectId,
-      'private_key_id': envMap['FIREBASE_PRIVATE_KEY_ID'],
-      'private_key':
-          envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(r'\n', '\n'),
-      'client_email': envMap['FIREBASE_CLIENT_EMAIL'],
-      'client_id': envMap['FIREBASE_CLIENT_ID'],
-    });
-
-    const scopes = [
-      'https://www.googleapis.com/auth/datastore',
-      'https://www.googleapis.com/auth/cloud-platform',
-    ];
-    final authClient = await obtainAccessCredentialsViaServiceAccount(
-      credentials,
-      scopes,
-      http.Client(),
-    );
-    return authenticatedClient(http.Client(), authClient);
-  }
-
-  static String _firestoreProjectId() {
-    final projectId = FirebaseConfig.envMap['FIREBASE_PROJECT_ID'];
-    if (projectId == null || projectId.isEmpty) {
-      throw StateError('FIREBASE_PROJECT_ID missing from .env');
-    }
-    return projectId;
-  }
+  static String _firestoreProjectId() => FirestoreClient.projectId();
 }

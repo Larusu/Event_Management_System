@@ -1,13 +1,18 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/constants/error_codes.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/event_moderation_repository.dart';
 import '../models/pending_event.dart';
 
 enum EventApprovalStatus { idle, loading, loaded, error }
 
-/// Screen-scoped state for the event review queue. Loads pending events and
-/// approves/rejects them via `PATCH /events/{eventId}/status`.
+/// Which review queue is being viewed: events awaiting approval, or already
+/// rejected events (the reopen surface).
+enum ReviewFilter { pending, rejected }
+
+/// Screen-scoped state for the event review queue. Loads pending or rejected
+/// events (per [filter]) and moderates them via `PATCH /events/{eventId}/status`.
 class EventApprovalProvider extends ChangeNotifier {
   final EventModerationRepository _repository;
 
@@ -15,6 +20,7 @@ class EventApprovalProvider extends ChangeNotifier {
       : _repository = repository ?? createEventModerationRepository();
 
   EventApprovalStatus _status = EventApprovalStatus.idle;
+  ReviewFilter _filter = ReviewFilter.pending;
   List<PendingEvent> _events = [];
   String? _errorMessage;
   String? _nextCursor;
@@ -22,10 +28,28 @@ class EventApprovalProvider extends ChangeNotifier {
   bool _isDisposed = false;
 
   EventApprovalStatus get status => _status;
+  ReviewFilter get filter => _filter;
   List<PendingEvent> get events => _events;
   String? get errorMessage => _errorMessage;
   bool get isLoadingMore => _isLoadingMore;
   bool get hasMore => _nextCursor != null;
+
+  /// Switches between the pending and rejected queues, reloading from scratch.
+  /// No-op if the filter is unchanged.
+  Future<void> setFilter(ReviewFilter filter) async {
+    if (_filter == filter) return;
+    _filter = filter;
+    await load();
+  }
+
+  Future<PendingEventsPage> _fetch({String? cursor}) {
+    switch (_filter) {
+      case ReviewFilter.pending:
+        return _repository.getPending(cursor: cursor);
+      case ReviewFilter.rejected:
+        return _repository.getRejected(cursor: cursor);
+    }
+  }
 
   Future<void> load() async {
     _status = EventApprovalStatus.loading;
@@ -35,7 +59,7 @@ class EventApprovalProvider extends ChangeNotifier {
     _safeNotify();
 
     try {
-      final page = await _repository.getPending();
+      final page = await _fetch();
       _events = page.events;
       _nextCursor = page.nextCursor;
       _status = EventApprovalStatus.loaded;
@@ -55,7 +79,7 @@ class EventApprovalProvider extends ChangeNotifier {
     _safeNotify();
 
     try {
-      final page = await _repository.getPending(cursor: _nextCursor);
+      final page = await _fetch(cursor: _nextCursor);
       _events = [..._events, ...page.events];
       _nextCursor = page.nextCursor;
     } on ApiException catch (_) {
@@ -68,8 +92,11 @@ class EventApprovalProvider extends ChangeNotifier {
     _safeNotify();
   }
 
-  /// Approves or rejects an event, removing it from the queue on success.
-  /// Returns `null` on success, or a user-facing error message on failure.
+  /// Approves, rejects, or reopens an event, removing it from the current queue
+  /// on success. Returns `null` on success, or a user-facing error message on
+  /// failure. When the failure indicates the event is stale (another reviewer
+  /// already acted: EVT005 invalid transition, or EVT002 not found), the row is
+  /// also dropped from the list so the queue stays accurate.
   Future<String?> moderate({
     required String eventId,
     required String action,
@@ -81,14 +108,22 @@ class EventApprovalProvider extends ChangeNotifier {
         action: action,
         reason: reason,
       );
-      _events = _events.where((e) => e.eventId != eventId).toList();
-      _safeNotify();
+      _removeEvent(eventId);
       return null;
     } on ApiException catch (e) {
+      if (e.code == EventErrorCodes.invalidStatusTransition ||
+          e.code == EventErrorCodes.notFound) {
+        _removeEvent(eventId);
+      }
       return e.message;
     } catch (_) {
       return 'Something went wrong. Please try again.';
     }
+  }
+
+  void _removeEvent(String eventId) {
+    _events = _events.where((e) => e.eventId != eventId).toList();
+    _safeNotify();
   }
 
   void _safeNotify() {

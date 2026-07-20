@@ -1,11 +1,10 @@
 import 'dart:convert';
 
 import 'package:backend/constants/event_error_codes.dart';
-import 'package:backend/firebase_config.dart';
 import 'package:backend/services/firebase_auth_service.dart';
 import 'package:backend/services/firebase_event_service.dart';
+import 'package:backend/services/firestore_client.dart';
 import 'package:backend/utils/response_helper.dart';
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 
 /// Review-queue and status-moderation logic.
@@ -39,6 +38,24 @@ class EventModerationService {
   static Future<PendingEventPage> fetchPending({
     String? cursor,
     int limit = _defaultPageSize,
+  }) =>
+      _fetchByStatus(status: 'pending', cursor: cursor, limit: limit);
+
+  /// Returns a page of rejected, non-deleted events sorted by `created_at`
+  /// ascending (oldest first). Used by the reopen surface of the review queue.
+  static Future<PendingEventPage> fetchRejected({
+    String? cursor,
+    int limit = _defaultPageSize,
+  }) =>
+      _fetchByStatus(status: 'rejected', cursor: cursor, limit: limit);
+
+  /// Shared review-queue query: pages the `events` collection ordered by
+  /// `created_at` ascending and keeps only non-deleted events whose `status`
+  /// matches [status]. Status is filtered client-side (no composite index).
+  static Future<PendingEventPage> _fetchByStatus({
+    required String status,
+    String? cursor,
+    int limit = _defaultPageSize,
   }) async {
     final startAfter = _decodePendingCursor(cursor);
 
@@ -48,7 +65,10 @@ class EventModerationService {
     var exhausted = false;
 
     while (matched.length < limit && !exhausted) {
-      final batch = await _fetchPendingBatch(startAfter: batchStartAfter);
+      final batch = await _fetchBatch(
+        status: status,
+        startAfter: batchStartAfter,
+      );
 
       if (batch.docCount < _batchSize) {
         exhausted = true;
@@ -212,7 +232,8 @@ class EventModerationService {
     }
   }
 
-  static Future<_PendingBatch> _fetchPendingBatch({
+  static Future<_PendingBatch> _fetchBatch({
+    required String status,
     Map<String, String>? startAfter,
   }) async {
     final client = await _firestoreClient();
@@ -262,9 +283,9 @@ class EventModerationService {
       final createdAt = parsed['created_at'] as String? ?? '';
       lastDoc = {'created_at': createdAt, 'eventId': eventId};
 
-      final status = parsed['status'] as String? ?? '';
+      final docStatus = parsed['status'] as String? ?? '';
       final isDeleted = parsed['is_deleted'] as bool? ?? false;
-      if (status != 'pending' || isDeleted) {
+      if (docStatus != status || isDeleted) {
         continue;
       }
 
@@ -284,6 +305,9 @@ class EventModerationService {
         'slots_total': parsed['slots_total'] as int? ?? 0,
         'organizer_uid': parsed['organizer_uid'] as String? ?? '',
         'created_at': createdAt,
+        // Moderation metadata: only meaningful (non-null) for rejected events.
+        'rejection_reason': parsed['rejection_reason'] as String?,
+        'reviewed_at': parsed['reviewed_at'] as String?,
       });
     }
 
@@ -364,45 +388,14 @@ class EventModerationService {
       'created_at': stringField('created_at'),
       'status': stringField('status'),
       'is_deleted': boolField('is_deleted'),
+      'rejection_reason': stringField('rejection_reason'),
+      'reviewed_at': stringField('reviewed_at'),
     };
   }
 
-  static Future<http.Client> _firestoreClient() async {
-    final envMap = FirebaseConfig.envMap;
-    final projectId = envMap['FIREBASE_PROJECT_ID'];
-    if (projectId == null || projectId.isEmpty) {
-      throw StateError('FIREBASE_PROJECT_ID missing from .env');
-    }
+  static Future<http.Client> _firestoreClient() => FirestoreClient.instance();
 
-    final credentials = ServiceAccountCredentials.fromJson({
-      'type': 'service_account',
-      'project_id': projectId,
-      'private_key_id': envMap['FIREBASE_PRIVATE_KEY_ID'],
-      'private_key':
-          envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(r'\n', '\n'),
-      'client_email': envMap['FIREBASE_CLIENT_EMAIL'],
-      'client_id': envMap['FIREBASE_CLIENT_ID'],
-    });
-
-    const scopes = [
-      'https://www.googleapis.com/auth/datastore',
-      'https://www.googleapis.com/auth/cloud-platform',
-    ];
-    final authClient = await obtainAccessCredentialsViaServiceAccount(
-      credentials,
-      scopes,
-      http.Client(),
-    );
-    return authenticatedClient(http.Client(), authClient);
-  }
-
-  static String _firestoreProjectId() {
-    final projectId = FirebaseConfig.envMap['FIREBASE_PROJECT_ID'];
-    if (projectId == null || projectId.isEmpty) {
-      throw StateError('FIREBASE_PROJECT_ID missing from .env');
-    }
-    return projectId;
-  }
+  static String _firestoreProjectId() => FirestoreClient.projectId();
 }
 
 /// A page of pending events for the review queue.

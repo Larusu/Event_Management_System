@@ -1,25 +1,52 @@
 import 'dart:convert';
 
 import 'package:backend/constants/event_error_codes.dart';
+import 'package:backend/constants/event_exception.dart';
 import 'package:backend/services/event_service.dart';
+import 'package:backend/services/firebase_event_service.dart';
 import 'package:backend/utils/response_helper.dart';
+import 'package:backend/utils/validators.dart';
 import 'package:dart_frog/dart_frog.dart';
 
 /// Default page size when no `limit` query parameter is supplied.
 const _defaultLimit = 20;
 
-/// Upper bound on `limit` to protect Firestore from runaway reads. Values above
-/// this are clamped down rather than rejected.
+/// Upper bound on `limit` to protect Firestore from runaway reads.
 const _maxLimit = 100;
 
+/// Server-owned fields that must never be accepted from the client.
+const _serverOwnedFields = {
+  'status',
+  'organizer_uid',
+  'registered_count',
+  'is_deleted',
+  'created_at',
+  'updated_at',
+};
+
+/// Roles allowed to create events.
+const _privilegedRoles = {'organizer', 'faculty', 'super_admin'};
+
 Future<Response> onRequest(RequestContext context) async {
-  if (context.request.method != HttpMethod.get) {
-    return Response.json(
-      statusCode: 405,
-      body: {'success': false, 'message': 'Method not allowed'},
-    );
+  if (context.request.method == HttpMethod.get) {
+    return _handleGet(context);
   }
 
+  if (context.request.method == HttpMethod.post) {
+    return _handlePost(context);
+  }
+
+  return Response.json(
+    statusCode: 405,
+    body: {'success': false, 'message': 'Method not allowed.'},
+  );
+}
+
+// ---------------------------------------------------------------------------
+// GET /events
+// ---------------------------------------------------------------------------
+
+Future<Response> _handleGet(RequestContext context) async {
   try {
     final query = context.request.url.queryParameters;
 
@@ -45,8 +72,8 @@ Future<Response> onRequest(RequestContext context) async {
           },
         );
       }
-      // Clamp oversized limits down to protect Firestore from runaway reads.
-      limit = parsedLimit > _maxLimit ? _maxLimit : parsedLimit;
+      limit =
+          parsedLimit > _maxLimit ? _maxLimit : parsedLimit;
     }
 
     final page = await EventService.fetchEvents(
@@ -89,7 +116,10 @@ Future<Response> onRequest(RequestContext context) async {
     return ResponseHelper.errorFromException(e);
   } catch (e, stack) {
     // ignore: avoid_print
-    print('${EventErrorCode.internalError} Internal error: $e\n$stack');
+    print(
+      '${EventErrorCode.internalError} '
+      'Internal error: $e\n$stack',
+    );
     return Response.json(
       statusCode: 500,
       body: {
@@ -97,6 +127,113 @@ Future<Response> onRequest(RequestContext context) async {
         'code': EventErrorCode.internalError,
         'message': 'Internal server error',
       },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /events — create event
+// ---------------------------------------------------------------------------
+
+Future<Response> _handlePost(RequestContext context) async {
+  final uid = context.read<String>();
+
+  try {
+    final userDoc = context.read<Map<String, dynamic>>();
+    final role = userDoc['role'] as String? ?? '';
+
+    // --- Role gate (EVT004) ---
+    if (!_privilegedRoles.contains(role)) {
+      return ResponseHelper.error(
+        AuthException(
+          EventErrorCode.permissionDenied,
+          'You do not have permission to perform this action.',
+        ),
+      );
+    }
+
+    // --- Parse body ---
+    final bodyString = await context.request.body();
+    final body =
+        jsonDecode(bodyString) as Map<String, dynamic>;
+
+    // --- Strip server-owned fields silently ---
+    for (final field in _serverOwnedFields) {
+      body.remove(field);
+    }
+
+    // --- Validate ---
+    final validationError =
+        EventValidationService.validateCreateEvent(body);
+    if (validationError != null) {
+      return ResponseHelper.error(
+        AuthException(
+          EventErrorCode.validationFailed,
+          validationError,
+        ),
+      );
+    }
+
+    // --- Determine status from role ---
+    final status =
+        (role == 'organizer') ? 'pending' : 'approved';
+
+    // --- Generate event ID ---
+    final title = body['title'] as String;
+    final eventId =
+        FirebaseEventService.generateEventId(title);
+
+    // --- Build Firestore fields ---
+    final now = DateTime.now().toUtc().toIso8601String();
+    final fields = <String, dynamic>{
+      ...body,
+      'status': status,
+      'organizer_uid': uid,
+      'registered_count': 0,
+      'is_deleted': false,
+      'created_at': now,
+      'updated_at': now,
+    };
+
+    // --- Persist ---
+    await FirebaseEventService.createEvent(
+      fields: fields,
+      eventId: eventId,
+    );
+
+    // A new event can add tags / change the feed — drop the cached snapshot so
+    // it (and any new tags) surface immediately on this instance.
+    EventService.invalidateCaches();
+
+    // --- Build response ---
+    final eventResponse = <String, dynamic>{
+      'event_id': eventId,
+      ...body,
+      'status': status,
+      'organizer_uid': uid,
+      'registered_count': 0,
+      'is_deleted': false,
+      'created_at': now,
+      'updated_at': now,
+    };
+
+    return ResponseHelper.success(
+      message: 'Event created.',
+      data: {'event': eventResponse},
+    );
+  } on AuthException catch (e) {
+    return ResponseHelper.error(e);
+  } catch (e, stack) {
+    // ignore: avoid_print
+    print(
+      '${EventErrorCode.internalError} '
+      'Internal error: $e\n$stack',
+    );
+    return ResponseHelper.error(
+      AuthException(
+        EventErrorCode.internalError,
+        'Internal server error',
+      ),
     );
   }
 }

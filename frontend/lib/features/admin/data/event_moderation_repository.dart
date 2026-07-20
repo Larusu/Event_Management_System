@@ -16,6 +16,10 @@ abstract class EventModerationRepository {
   /// Fetches a page of pending, non-deleted events (oldest first).
   Future<PendingEventsPage> getPending({String? cursor});
 
+  /// Fetches a page of rejected, non-deleted events (oldest first). Rows carry
+  /// `rejection_reason` so the reviewer can decide whether to reopen.
+  Future<PendingEventsPage> getRejected({String? cursor});
+
   /// Approves, rejects, or reopens an event. [reason] is only stored on reject.
   Future<void> updateStatus({
     required String eventId,
@@ -33,14 +37,24 @@ class EventModerationApiRepository implements EventModerationRepository {
   @override
   Future<PendingEventsPage> getPending({String? cursor}) async {
     final response = await _api.get(ApiRoutes.eventsPending(cursor: cursor));
-    final json = response.data['events'];
+    return _parsePage(response.data);
+  }
+
+  @override
+  Future<PendingEventsPage> getRejected({String? cursor}) async {
+    final response = await _api.get(ApiRoutes.eventsRejected(cursor: cursor));
+    return _parsePage(response.data);
+  }
+
+  PendingEventsPage _parsePage(Map<String, dynamic> data) {
+    final json = data['events'];
     if (json is! List) {
       return const PendingEventsPage(events: []);
     }
     final events = json
         .map((e) => PendingEvent.fromJson(e as Map<String, dynamic>))
         .toList();
-    final nextCursor = response.data['next_cursor'] as String?;
+    final nextCursor = data['next_cursor'] as String?;
     return PendingEventsPage(events: events, nextCursor: nextCursor);
   }
 

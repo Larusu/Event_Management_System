@@ -2,11 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:backend/constants/event_error_codes.dart';
-import 'package:backend/firebase_config.dart';
+import 'package:backend/constants/event_exception.dart';
 import 'package:backend/models/event.dart';
-import 'package:backend/utils/response_helper.dart';
+import 'package:backend/services/firestore_client.dart';
 
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 
 /// Service for fetching events from Firestore.
@@ -17,55 +16,56 @@ class EventService {
   /// Number of documents fetched from Firestore per batch while scanning.
   static const int _batchSize = 100;
 
-  static Future<http.Client> _firestoreClient() async {
-    final envMap = FirebaseConfig.envMap;
-    final projectId = envMap['FIREBASE_PROJECT_ID'];
-    if (projectId == null || projectId.isEmpty) {
-      throw StateError('FIREBASE_PROJECT_ID missing from .env');
-    }
+  /// How long the approved-events snapshot is trusted before re-scanning
+  /// Firestore. Short enough that new/edited events surface quickly, long
+  /// enough that a burst of feed/search/tag requests is served by one scan
+  /// instead of one scan each.
+  static const Duration _snapshotTtl = Duration(seconds: 60);
 
-    final credentials = ServiceAccountCredentials.fromJson({
-      'type': 'service_account',
-      'project_id': projectId,
-      'private_key_id': envMap['FIREBASE_PRIVATE_KEY_ID'],
-      'private_key': envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(
-        r'\n',
-        '\n',
-      ),
-      'client_email': envMap['FIREBASE_CLIENT_EMAIL'],
-      'client_id': envMap['FIREBASE_CLIENT_ID'],
-    });
+  /// How long the derived tag list is trusted before rebuilding. Tags change
+  /// rarely, so this is generous; a create/edit/delete/moderation invalidates
+  /// it immediately on the instance that handled the write.
+  static const Duration _tagsCacheTtl = Duration(minutes: 5);
 
-    const scopes = [
-      'https://www.googleapis.com/auth/datastore',
-      'https://www.googleapis.com/auth/cloud-platform',
-    ];
-    final authClient = await obtainAccessCredentialsViaServiceAccount(
-      credentials,
-      scopes,
-      http.Client(),
-    );
-    return authenticatedClient(http.Client(), authClient);
-  }
+  /// Cached full list of approved, non-deleted events in chronological
+  /// (date, id) order — the single source both the feed/search scan and the
+  /// tag list read from.
+  static List<Event>? _snapshot;
+  static DateTime? _snapshotAt;
 
-  static String _firestoreProjectId() {
-    final projectId = FirebaseConfig.envMap['FIREBASE_PROJECT_ID'];
-    if (projectId == null || projectId.isEmpty) {
-      throw StateError('FIREBASE_PROJECT_ID missing from .env');
-    }
-    return projectId;
+  /// The in-progress snapshot rebuild, if any. Concurrent callers await this
+  /// same future so a cold cache under load triggers only ONE Firestore scan.
+  static Future<List<Event>>? _snapshotInFlight;
+
+  static List<String>? _tagsCache;
+  static DateTime? _tagsCacheAt;
+
+  static Future<http.Client> _firestoreClient() => FirestoreClient.instance();
+
+  static String _firestoreProjectId() => FirestoreClient.projectId();
+
+  /// Clears all in-memory caches (approved-events snapshot + tag list).
+  ///
+  /// Write routes call this after a successful create/edit/delete/moderation
+  /// so the change is reflected immediately on this instance; other Cloud Run
+  /// instances refresh within [_snapshotTtl] / [_tagsCacheTtl]. Also used by
+  /// tests to guarantee isolation.
+  static void invalidateCaches() {
+    _snapshot = null;
+    _snapshotAt = null;
+    _snapshotInFlight = null;
+    _tagsCache = null;
+    _tagsCacheAt = null;
   }
 
   /// Fetches a page of events with optional filtering and pagination.
   ///
-  /// Firestore is queried in batches ordered by `date` ascending (then document
-  /// ID as a tiebreaker) - a chronological feed. This uses only single-field
-  /// indexes: there are no where-filters (`status == "approved"`,
-  /// `is_deleted == false`, `tags`, and `search` are applied client-side).
-  /// Because filtering happens after fetching, we keep pulling batches until
-  /// the page is full or the collection is exhausted - this prevents a page
-  /// from ending early (and silently dropping matching events) just because a
-  /// batch happened to be mostly filtered out.
+  /// Reads from the shared in-memory [_approvedSnapshot] (already sorted by
+  /// `date` ascending, then document id) rather than re-scanning Firestore per
+  /// request. `tags` and `search` are applied in memory over that snapshot, and
+  /// the cursor is resolved by position in the filtered list. The snapshot
+  /// itself is built with single-field indexes only (no composite index) and
+  /// filters `status == "approved"` / `is_deleted == false` client-side.
   ///
   /// Note: documents without a `date` field are excluded by Firestore's
   /// order-by, which is the intended behavior for a dated event feed.
@@ -83,45 +83,49 @@ class EventService {
     String? cursor,
     int limit = 20,
   }) async {
+    // Validate/parse the opaque cursor first, so a malformed cursor still
+    // yields EVT001 before we touch the (possibly cached) snapshot.
     final startAfter = _decodeCursor(cursor);
 
-    final matched = <Event>[];
-    // Where the next Firestore batch resumes. Starts at the incoming cursor and
-    // advances by the LAST document scanned each batch, so we keep moving
-    // forward even through documents that get filtered out.
-    var batchStartAfter = startAfter;
-    // The sort position (date + id) of the last event we actually added to the
-    // page. This - not the last doc scanned - is what the next client page must
-    // resume after.
-    Map<String, String>? lastMatched;
-    var exhausted = false;
+    // The full ordered list of visible events, served from the in-memory
+    // snapshot cache (one Firestore scan shared across requests).
+    final snapshot = await _approvedSnapshot();
 
-    while (matched.length < limit && !exhausted) {
-      final batch = await _fetchBatch(startAfter: batchStartAfter);
-
-      // Firestore returned fewer docs than requested -> no more docs exist.
-      if (batch.docCount < _batchSize) {
-        exhausted = true;
-      }
-      if (batch.lastDoc != null) {
-        batchStartAfter = batch.lastDoc;
-      }
-
-      for (final event in batch.events) {
-        if (_passesFilters(event, tags: tags, search: search)) {
-          matched.add(event);
-          lastMatched = {'date': event.date, 'eventId': event.eventId};
-          if (matched.length == limit) {
-            break;
-          }
-        }
+    // Apply the tag + search filters in memory.
+    final filtered = <Event>[];
+    for (final event in snapshot) {
+      if (_passesFilters(event, tags: tags, search: search)) {
+        filtered.add(event);
       }
     }
 
-    // A full page means there may be more results, so hand back a cursor.
-    // Stopping because the collection ran out means this is the last page.
-    final nextCursor = matched.length == limit ? lastMatched : null;
-    return EventPage(events: matched, nextCursor: nextCursor);
+    // Resume strictly after the cursor's (date, eventId) position. The list
+    // is already sorted, so the first element that sorts after the cursor is
+    // the start of this page.
+    var startIndex = 0;
+    if (startAfter != null) {
+      final cursorDate = startAfter['date'] ?? '';
+      final cursorId = startAfter['eventId'] ?? '';
+      startIndex = filtered.indexWhere(
+        (e) => _isAfter(e, cursorDate, cursorId),
+      );
+      if (startIndex < 0) {
+        startIndex = filtered.length;
+      }
+    }
+
+    final pageEvents = filtered.skip(startIndex).take(limit).toList();
+
+    // Only hand back a cursor when the page is full AND more results remain,
+    // so the client never has to fetch a trailing empty page.
+    final hasMore = startIndex + pageEvents.length < filtered.length;
+    Map<String, String>? nextCursor;
+    if (pageEvents.length == limit && hasMore) {
+      final last = pageEvents.last;
+      nextCursor = {'date': last.date, 'eventId': last.eventId};
+    }
+
+    return EventPage(events: pageEvents, nextCursor: nextCursor);
   }
 
   /// Fetches the soonest [limit] upcoming approved events (Featured).
@@ -133,11 +137,87 @@ class EventService {
   /// [limit] must already be validated by the route (default 3, max 10).
   static Future<List<Event>> fetchFeatured({int limit = 3}) async {
     final today = _todayUtcDateString();
+    final snapshot = await _approvedSnapshot();
+
     final matched = <Event>[];
+    for (final event in snapshot) {
+      // ISO date strings compare lexicographically in chronological order.
+      if (event.date.compareTo(today) < 0) {
+        continue;
+      }
+      matched.add(event);
+      if (matched.length == limit) {
+        break;
+      }
+    }
+
+    return matched;
+  }
+
+  /// Returns all unique tags from approved, non-deleted events, sorted
+  /// alphabetically.
+  ///
+  /// The computed list is memoized for [_tagsCacheTtl] and derived from the
+  /// shared approved-events snapshot, so repeated calls (e.g. every client
+  /// opening the filter chips) cost zero Firestore reads.
+  static Future<List<String>> fetchTags() async {
+    final now = DateTime.now();
+    final cached = _tagsCache;
+    final cachedAt = _tagsCacheAt;
+    if (cached != null &&
+        cachedAt != null &&
+        now.difference(cachedAt) < _tagsCacheTtl) {
+      return cached;
+    }
+
+    final snapshot = await _approvedSnapshot();
+    final allTags = <String>{};
+    for (final event in snapshot) {
+      allTags.addAll(event.tags);
+    }
+    final sorted = allTags.toList()..sort();
+
+    _tagsCache = sorted;
+    _tagsCacheAt = DateTime.now();
+    return sorted;
+  }
+
+  /// Returns the cached approved-events snapshot, rebuilding it from Firestore
+  /// when missing or expired.
+  ///
+  /// A rebuild in progress is shared via [_snapshotInFlight] so a cold cache
+  /// under concurrent load triggers exactly one Firestore scan (no stampede).
+  static Future<List<Event>> _approvedSnapshot() {
+    final now = DateTime.now();
+    final snap = _snapshot;
+    final at = _snapshotAt;
+    if (snap != null && at != null && now.difference(at) < _snapshotTtl) {
+      return Future.value(snap);
+    }
+    return _snapshotInFlight ??= _rebuildSnapshot();
+  }
+
+  static Future<List<Event>> _rebuildSnapshot() async {
+    try {
+      final events = await _buildSnapshot();
+      _snapshot = events;
+      _snapshotAt = DateTime.now();
+      return events;
+    } finally {
+      // Clear the in-flight marker on success or failure so the next caller
+      // can retry a failed scan (nothing is cached when the scan throws).
+      _snapshotInFlight = null;
+    }
+  }
+
+  /// Scans the entire events collection once and returns every approved,
+  /// non-deleted event in chronological (date, then id) order.
+  static Future<List<Event>> _buildSnapshot() async {
+    final events = <Event>[];
     Map<String, String>? batchStartAfter;
     var exhausted = false;
 
-    while (matched.length < limit && !exhausted) {
+    while (!exhausted) {
       final batch = await _fetchBatch(startAfter: batchStartAfter);
 
       if (batch.docCount < _batchSize) {
@@ -148,49 +228,23 @@ class EventService {
       }
 
       for (final event in batch.events) {
-        if (!_passesFeaturedFilters(event, today: today)) {
-          continue;
-        }
-        matched.add(event);
-        if (matched.length == limit) {
-          break;
+        if (_passesFilters(event)) {
+          events.add(event);
         }
       }
     }
 
-    return matched;
+    return events;
   }
 
-  /// Returns all unique tags from approved, non-deleted events.
-  ///
-  /// Uses the same batch-scanning approach as [fetchEvents] but only
-  /// collects tags, stopping early once the collection is exhausted.
-  static Future<List<String>> fetchTags() async {
-    var batchStartAfter = <String, String>{};
-    var exhausted = false;
-    final allTags = <String>{};
-
-    while (!exhausted) {
-      final batch = await _fetchBatch(
-        startAfter: batchStartAfter.isNotEmpty ? batchStartAfter : null,
-      );
-
-      if (batch.docCount < _batchSize) {
-        exhausted = true;
-      }
-      if (batch.lastDoc != null) {
-        batchStartAfter = batch.lastDoc!;
-      }
-
-      for (final event in batch.events) {
-        if (_passesFilters(event)) {
-          allTags.addAll(event.tags);
-        }
-      }
+  /// Whether [event] sorts strictly after the (date, eventId) position — the
+  /// same ordering used by the Firestore query, so cursors line up.
+  static bool _isAfter(Event event, String date, String eventId) {
+    final byDate = event.date.compareTo(date);
+    if (byDate != 0) {
+      return byDate > 0;
     }
-
-    final sorted = allTags.toList()..sort();
-    return sorted;
+    return event.eventId.compareTo(eventId) > 0;
   }
 
   /// UTC calendar date as `YYYY-MM-DD` — used for featured `date >= today`.
@@ -200,15 +254,6 @@ class EventService {
     final m = now.month.toString().padLeft(2, '0');
     final d = now.day.toString().padLeft(2, '0');
     return '$y-$m-$d';
-  }
-
-  /// Featured filter: approved, not deleted, and on/after [today].
-  static bool _passesFeaturedFilters(Event event, {required String today}) {
-    if (!_passesFilters(event)) {
-      return false;
-    }
-    // ISO date strings compare lexicographically in chronological order.
-    return event.date.compareTo(today) >= 0;
   }
 
   /// Decodes and validates the incoming opaque [cursor].
@@ -273,12 +318,6 @@ class EventService {
     );
 
     if (response.statusCode != 200) {
-      // ignore: avoid_print
-      print('Firestore query failed: ${response.statusCode}');
-      // ignore: avoid_print
-      print('Query: ${jsonEncode(structuredQuery)}');
-      // ignore: avoid_print
-      print('Response: ${response.body}');
       throw StateError(
         'Firestore query failed: ${response.statusCode} ${response.body}',
       );
@@ -516,10 +555,4 @@ class _EventBatch {
   /// Sort position `{date, eventId}` of the last raw document seen (used to
   /// advance the scan cursor).
   final Map<String, String>? lastDoc;
-}
-
-/// Exception thrown when event operations fail.
-class EventException extends AppException {
-  /// Creates an [EventException] with an error [code] and [message].
-  EventException(super.code, super.message);
 }

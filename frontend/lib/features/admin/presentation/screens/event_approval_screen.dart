@@ -77,20 +77,33 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
   }
 
   void _openEventSheet(PendingEvent event) {
+    final isRejected =
+        context.read<EventApprovalProvider>().filter == ReviewFilter.rejected;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (sheetContext) => _PendingEventSheet(
         event: event,
-        onApprove: () {
-          Navigator.pop(sheetContext);
-          _approve(event);
-        },
-        onReject: () {
-          Navigator.pop(sheetContext);
-          _reject(event);
-        },
+        isRejected: isRejected,
+        onApprove: isRejected
+            ? null
+            : () {
+                Navigator.pop(sheetContext);
+                _approve(event);
+              },
+        onReject: isRejected
+            ? null
+            : () {
+                Navigator.pop(sheetContext);
+                _reject(event);
+              },
+        onReopen: isRejected
+            ? () {
+                Navigator.pop(sheetContext);
+                _reopen(event);
+              }
+            : null,
       ),
     );
   }
@@ -145,6 +158,31 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
     messenger.showSnackBar(
       SnackBar(
         content: Text(error ?? '"${event.title}" rejected.'),
+        backgroundColor: error != null ? Colors.red.shade700 : null,
+      ),
+    );
+  }
+
+  Future<void> _reopen(PendingEvent event) async {
+    final provider = context.read<EventApprovalProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    final confirmed = await _confirm(
+      title: 'Reopen event',
+      message: 'Reopen "${event.title}"? It will move back to the pending '
+          'queue for review.',
+      confirmLabel: 'Reopen',
+    );
+    if (!mounted || confirmed != true) return;
+
+    final error = await provider.moderate(
+      eventId: event.eventId,
+      action: 'reopen',
+    );
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(error ?? '"${event.title}" reopened.'),
         backgroundColor: error != null ? Colors.red.shade700 : null,
       ),
     );
@@ -244,7 +282,43 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
           style: Theme.of(context).textTheme.titleMedium,
         ),
       ),
-      body: SafeArea(child: _buildBody(provider)),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildFilter(provider),
+            Expanded(child: _buildBody(provider)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilter(EventApprovalProvider provider) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: SegmentedButton<ReviewFilter>(
+        style: SegmentedButton.styleFrom(
+          selectedBackgroundColor: colorScheme.primary,
+          selectedForegroundColor: colorScheme.onPrimary,
+        ),
+        segments: const [
+          ButtonSegment(
+            value: ReviewFilter.pending,
+            label: Text('Pending'),
+            icon: Icon(Icons.hourglass_empty),
+          ),
+          ButtonSegment(
+            value: ReviewFilter.rejected,
+            label: Text('Rejected'),
+            icon: Icon(Icons.cancel_outlined),
+          ),
+        ],
+        selected: {provider.filter},
+        onSelectionChanged: (selection) {
+          provider.setFilter(selection.first);
+        },
+      ),
     );
   }
 
@@ -273,16 +347,19 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
         );
       case EventApprovalStatus.loaded:
         final events = provider.events;
+        final isRejected = provider.filter == ReviewFilter.rejected;
         if (events.isEmpty) {
           return RefreshIndicator(
             onRefresh: provider.load,
             child: ListView(
-              children: const [
-                SizedBox(height: 120),
+              children: [
+                const SizedBox(height: 120),
                 Center(
                   child: Text(
-                    'No events awaiting approval.',
-                    style: TextStyle(color: Colors.grey),
+                    isRejected
+                        ? 'No rejected events.'
+                        : 'No events awaiting approval.',
+                    style: const TextStyle(color: Colors.grey),
                   ),
                 ),
               ],
@@ -308,6 +385,7 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
               final event = events[index];
               return _PendingEventTile(
                 event: event,
+                isRejected: isRejected,
                 onTap: () => _openEventSheet(event),
               );
             },
@@ -317,12 +395,17 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
   }
 }
 
-/// Small queue row: title + date/time only.
+/// Small queue row: title + date/time + a status tag.
 class _PendingEventTile extends StatelessWidget {
   final PendingEvent event;
+  final bool isRejected;
   final VoidCallback onTap;
 
-  const _PendingEventTile({required this.event, required this.onTap});
+  const _PendingEventTile({
+    required this.event,
+    required this.isRejected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -340,13 +423,21 @@ class _PendingEventTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      event.title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            event.title,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _StatusTag(isRejected: isRejected),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -367,6 +458,37 @@ class _PendingEventTile extends StatelessWidget {
               const Icon(Icons.chevron_right, color: Colors.grey),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small tinted pill showing whether an event is pending or rejected.
+class _StatusTag extends StatelessWidget {
+  final bool isRejected;
+
+  const _StatusTag({required this.isRejected});
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground =
+        isRejected ? Colors.red.shade700 : Colors.orange.shade800;
+    final background =
+        isRejected ? Colors.red.shade50 : Colors.orange.shade50;
+    final label = isRejected ? 'Rejected' : 'Pending';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: foreground,
         ),
       ),
     );
@@ -401,16 +523,22 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-/// Minimal detail sheet for a pending event with approve/reject actions.
+/// Minimal detail sheet for a review-queue event. In the pending queue it shows
+/// approve/reject actions; in the rejected queue it shows the rejection reason
+/// and a single reopen action.
 class _PendingEventSheet extends StatelessWidget {
   final PendingEvent event;
-  final VoidCallback onApprove;
-  final VoidCallback onReject;
+  final bool isRejected;
+  final VoidCallback? onApprove;
+  final VoidCallback? onReject;
+  final VoidCallback? onReopen;
 
   const _PendingEventSheet({
     required this.event,
-    required this.onApprove,
-    required this.onReject,
+    required this.isRejected,
+    this.onApprove,
+    this.onReject,
+    this.onReopen,
   });
 
   @override
@@ -513,37 +641,61 @@ class _PendingEventSheet extends StatelessWidget {
               icon: Icons.groups_outlined,
               value: event.isOpenToGuests ? 'Open to guests' : 'Students only',
             ),
+            if (isRejected &&
+                event.rejectionReason != null &&
+                event.rejectionReason!.trim().isNotEmpty)
+              _InfoRow(
+                icon: Icons.notes_outlined,
+                value: 'Reason: ${event.rejectionReason}',
+              ),
             const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onReject,
-                    icon: const Icon(Icons.close),
-                    label: const Text('Reject'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red.shade700,
-                      side: BorderSide(color: Colors.red.shade200),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: onApprove,
-                    icon: const Icon(Icons.check),
-                    label: const Text('Approve'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            _buildActions(),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildActions() {
+    if (isRejected) {
+      return SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          onPressed: onReopen,
+          icon: const Icon(Icons.restart_alt),
+          label: const Text('Reopen'),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+        ),
+      );
+    }
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: onReject,
+            icon: const Icon(Icons.close),
+            label: const Text('Reject'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red.shade700,
+              side: BorderSide(color: Colors.red.shade200),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: onApprove,
+            icon: const Icon(Icons.check),
+            label: const Text('Approve'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

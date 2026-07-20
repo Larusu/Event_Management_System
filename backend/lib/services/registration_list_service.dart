@@ -1,13 +1,27 @@
 import 'dart:convert';
 
 import 'package:backend/constants/event_error_codes.dart';
-import 'package:backend/firebase_config.dart';
+import 'package:backend/constants/event_exception.dart';
 import 'package:backend/services/event_service.dart';
 import 'package:backend/services/firebase_event_service.dart';
-import 'package:googleapis_auth/auth_io.dart';
+import 'package:backend/services/firestore_client.dart';
 import 'package:http/http.dart' as http;
 
-/// Read-path for a caller's upcoming registered events (Feature 5, Dev B).
+/// Which slice of a caller's registrations to return.
+///
+/// [upcoming] keeps events dated today or later (soonest first); [past] keeps
+/// events dated before today (most recent first) for the registration history
+/// view. Defaults to [upcoming] so existing callers are unaffected.
+enum RegisteredFilter {
+  /// Events dated today or later, sorted soonest first (ascending).
+  upcoming,
+
+  /// Events dated before today, sorted most recent first (descending).
+  past,
+}
+
+/// Read-path for a caller's registered events, upcoming or past (Feature 5,
+/// Dev B).
 ///
 /// Uses the locked `registrations` schema (doc 5.4). Write path lives
 /// separately so Dev A can own register/cancel without merge conflicts.
@@ -20,24 +34,29 @@ class RegistrationListService {
   /// Collection name locked in Feature 5 §5.4.1.
   static const collectionId = 'registrations';
 
-  /// Returns a page of upcoming registered events for [uid], soonest first.
+  /// Returns a page of registered events for [uid].
   ///
-  /// Filters active registrations (`is_cancelled == false`), resolves each
-  /// event, keeps approved / non-deleted / `date >= today`, then paginates
-  /// with an opaque `{date, eventId}` cursor (EVT001 if malformed).
+  /// [filter] selects upcoming (`date >= today`, soonest first) or past
+  /// (`date < today`, most recent first). Filters active registrations
+  /// (`is_cancelled == false`), resolves each event, keeps approved /
+  /// non-deleted / date-in-range, then paginates with an opaque
+  /// `{date, eventId}` cursor (EVT001 if malformed).
   static Future<RegisteredEventPage> fetchRegistered({
     required String uid,
     String? cursor,
     int limit = _defaultPageSize,
+    RegisteredFilter filter = RegisteredFilter.upcoming,
   }) async {
     final startAfter = decodeRegisteredCursor(cursor);
-    final upcoming = await _loadUpcomingRegisteredEvents(uid);
+    final events = await _loadRegisteredEvents(uid, filter);
+    final descending = filter == RegisteredFilter.past;
 
     final page = <Map<String, dynamic>>[];
     Map<String, String>? lastMatched;
 
-    for (final event in upcoming) {
-      if (startAfter != null && !_isAfterCursor(event, startAfter)) {
+    for (final event in events) {
+      if (startAfter != null &&
+          !_isBeyondCursor(event, startAfter, descending: descending)) {
         continue;
       }
       page.add(_listCard(event));
@@ -55,7 +74,8 @@ class RegistrationListService {
   static Future<Map<String, dynamic>?> fetchNextRegistered({
     required String uid,
   }) async {
-    final upcoming = await _loadUpcomingRegisteredEvents(uid);
+    final upcoming =
+        await _loadRegisteredEvents(uid, RegisteredFilter.upcoming);
     if (upcoming.isEmpty) {
       return null;
     }
@@ -93,8 +113,9 @@ class RegistrationListService {
     }
   }
 
-  /// Whether a resolved registration should appear in registered lists.
+  /// Whether a resolved registration should appear in the upcoming list.
   ///
+  /// Keeps approved, non-deleted events dated today or later.
   /// Exposed for unit tests.
   static bool passesUpcomingFilters({
     required String status,
@@ -102,14 +123,51 @@ class RegistrationListService {
     required String date,
     required String today,
   }) {
-    if (status != 'approved') return false;
-    if (isDeleted) return false;
-    if (date.isEmpty) return false;
+    if (!_passesSharedFilters(
+      status: status,
+      isDeleted: isDeleted,
+      date: date,
+    )) {
+      return false;
+    }
     return date.compareTo(today) >= 0;
   }
 
-  static Future<List<_ResolvedRegisteredEvent>> _loadUpcomingRegisteredEvents(
+  /// Whether a resolved registration should appear in the past (history) list.
+  ///
+  /// Keeps approved, non-deleted events dated before today.
+  /// Exposed for unit tests.
+  static bool passesPastFilters({
+    required String status,
+    required bool isDeleted,
+    required String date,
+    required String today,
+  }) {
+    if (!_passesSharedFilters(
+      status: status,
+      isDeleted: isDeleted,
+      date: date,
+    )) {
+      return false;
+    }
+    return date.compareTo(today) < 0;
+  }
+
+  /// Eligibility shared by both list modes: approved, not deleted, dated.
+  static bool _passesSharedFilters({
+    required String status,
+    required bool isDeleted,
+    required String date,
+  }) {
+    if (status != 'approved') return false;
+    if (isDeleted) return false;
+    if (date.isEmpty) return false;
+    return true;
+  }
+
+  static Future<List<_ResolvedRegisteredEvent>> _loadRegisteredEvents(
     String uid,
+    RegisteredFilter filter,
   ) async {
     final today = _todayUtcDateString();
     final regs = await _fetchActiveRegistrations(uid);
@@ -133,21 +191,31 @@ class RegistrationListService {
         isDeleted: doc['is_deleted'] as bool? ?? false,
       );
 
-      if (!passesUpcomingFilters(
-        status: event.status,
-        isDeleted: event.isDeleted,
-        date: event.date,
-        today: today,
-      )) {
-        continue;
-      }
+      final passes = filter == RegisteredFilter.past
+          ? passesPastFilters(
+              status: event.status,
+              isDeleted: event.isDeleted,
+              date: event.date,
+              today: today,
+            )
+          : passesUpcomingFilters(
+              status: event.status,
+              isDeleted: event.isDeleted,
+              date: event.date,
+              today: today,
+            );
+      if (!passes) continue;
       resolved.add(event);
     }
 
+    final descending = filter == RegisteredFilter.past;
     resolved.sort((a, b) {
-      final byDate = a.date.compareTo(b.date);
+      final byDate =
+          descending ? b.date.compareTo(a.date) : a.date.compareTo(b.date);
       if (byDate != 0) return byDate;
-      return a.eventId.compareTo(b.eventId);
+      return descending
+          ? b.eventId.compareTo(a.eventId)
+          : a.eventId.compareTo(b.eventId);
     });
 
     return resolved;
@@ -257,14 +325,22 @@ class RegistrationListService {
     };
   }
 
-  static bool _isAfterCursor(
+  /// Whether [event] falls strictly past [cursor] in the active sort order.
+  ///
+  /// For ascending (upcoming) order this means "after" the cursor; for
+  /// descending (past) order it means "before" it. Matches the sort used in
+  /// [_loadRegisteredEvents] so pagination stays consistent.
+  static bool _isBeyondCursor(
     _ResolvedRegisteredEvent event,
-    Map<String, String> cursor,
-  ) {
+    Map<String, String> cursor, {
+    required bool descending,
+  }) {
     final dateCmp = event.date.compareTo(cursor['date']!);
-    if (dateCmp > 0) return true;
-    if (dateCmp < 0) return false;
-    return event.eventId.compareTo(cursor['eventId']!) > 0;
+    if (dateCmp != 0) {
+      return descending ? dateCmp < 0 : dateCmp > 0;
+    }
+    final idCmp = event.eventId.compareTo(cursor['eventId']!);
+    return descending ? idCmp < 0 : idCmp > 0;
   }
 
   static Map<String, dynamic> _listCard(_ResolvedRegisteredEvent event) => {
@@ -292,45 +368,12 @@ class RegistrationListService {
     return '$y-$m-$d';
   }
 
-  static Future<http.Client> _firestoreClient() async {
-    final envMap = FirebaseConfig.envMap;
-    final projectId = envMap['FIREBASE_PROJECT_ID'];
-    if (projectId == null || projectId.isEmpty) {
-      throw StateError('FIREBASE_PROJECT_ID missing from .env');
-    }
+  static Future<http.Client> _firestoreClient() => FirestoreClient.instance();
 
-    final credentials = ServiceAccountCredentials.fromJson({
-      'type': 'service_account',
-      'project_id': projectId,
-      'private_key_id': envMap['FIREBASE_PRIVATE_KEY_ID'],
-      'private_key':
-          envMap['FIREBASE_SERVICE_ACCOUNT_KEY']?.replaceAll(r'\n', '\n'),
-      'client_email': envMap['FIREBASE_CLIENT_EMAIL'],
-      'client_id': envMap['FIREBASE_CLIENT_ID'],
-    });
-
-    const scopes = [
-      'https://www.googleapis.com/auth/datastore',
-      'https://www.googleapis.com/auth/cloud-platform',
-    ];
-    final authClient = await obtainAccessCredentialsViaServiceAccount(
-      credentials,
-      scopes,
-      http.Client(),
-    );
-    return authenticatedClient(http.Client(), authClient);
-  }
-
-  static String _firestoreProjectId() {
-    final projectId = FirebaseConfig.envMap['FIREBASE_PROJECT_ID'];
-    if (projectId == null || projectId.isEmpty) {
-      throw StateError('FIREBASE_PROJECT_ID missing from .env');
-    }
-    return projectId;
-  }
+  static String _firestoreProjectId() => FirestoreClient.projectId();
 }
 
-/// A page of upcoming registered events.
+/// A page of registered events (upcoming or past, per the requested filter).
 class RegisteredEventPage {
   /// Creates a [RegisteredEventPage].
   RegisteredEventPage({required this.events, this.nextCursor});
