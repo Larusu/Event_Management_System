@@ -12,6 +12,7 @@ import "../../data/campus_map_data.dart";
 import "../../models/campus_map.dart";
 import '../../models/event.dart';
 import "../../providers/create_event_provider.dart";
+import "../../providers/created_events_provider.dart";
 import "../../providers/event_dashboard_provider.dart";
 import "../../providers/event_list_provider.dart";
 
@@ -21,6 +22,7 @@ import "../../providers/event_list_provider.dart";
 void createNewEvent(BuildContext context) {
   final listProvider = context.read<EventListProvider>();
   final dashProvider = context.read<EventDashboardProvider>();
+  final createdProvider = context.read<CreatedEventsProvider>();
   ModalContainer.show(
     context: context,
     child: ChangeNotifierProvider(
@@ -29,6 +31,9 @@ void createNewEvent(BuildContext context) {
         onCreated: () {
           listProvider.load();
           dashProvider.loadFeatured();
+          // Keep the owned-events list (and the modal's ownership check) current
+          // after creating an event.
+          createdProvider.load();
         },
       ),
     ),
@@ -293,6 +298,49 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     }
     final slots = int.tryParse(_slotsController.text.trim()) ?? 0;
 
+    // Warn organizers before an edit that will bounce an approved event back to
+    // the review queue. Only approval-reset fields trigger this, and only for
+    // organizers (faculty/super_admin edits never reset status).
+    var willResubmit = false;
+    final editedEvent = widget.initialEvent;
+    if (editedEvent != null &&
+        role == Roles.organizer &&
+        editedEvent.status == 'approved') {
+      final changed = changedEventFields(
+        existing: editedEvent,
+        title: _titleController.text,
+        description: _descriptionController.text,
+        coverImageUrl: editedEvent.coverImageUrl,
+        imagePicked: _imageBytes != null,
+        date: _formatDate(_date!),
+        startTime: _formatTime(start),
+        endTime: _formatTime(end),
+        eventMode: _eventMode,
+        location: _selectedRoomName() ?? '',
+        streamLink: _streamLinkController.text,
+        hostName: _hostController.text,
+        guestSpeaker: _guestSpeakerController.text,
+        contactEmails: emails,
+        tags: tags,
+        slotsTotal: slots,
+      );
+      if (changed.keys.any(approvalResetFields.contains)) {
+        final proceed = await AppDialog.confirm(
+          context: context,
+          icon: Icons.warning_amber_rounded,
+          title: 'Send back for review?',
+          message:
+              'Editing key details (title, date, time, location, mode, or '
+              'slots) sends this approved event back to the review queue until '
+              'it is approved again.',
+          confirmLabel: 'Save & resubmit',
+        );
+        if (!proceed) return;
+        if (!mounted) return;
+        willResubmit = true;
+      }
+    }
+
     final ok = await provider.submit(
       imageBytes: _imageBytes,
       imageFilename: _imageName,
@@ -320,8 +368,11 @@ class _CreateEventModalState extends State<_CreateEventModal> {
       await AppDialog.info(
         context: context,
         icon: Icons.check_circle,
+        title: _isEditing ? 'Event Updated' : 'Event Created',
         message: _isEditing
-            ? 'Event updated.'
+            ? (willResubmit
+                ? 'Event updated and sent back for review.'
+                : 'Event updated.')
             : (autoApproves
                 ? 'Event created.'
                 : 'Event submitted for approval.'),

@@ -117,4 +117,24 @@ class Event {
       return '';
     }
   }
+
+  /// True when the event's end (date + [endTime]) is at or before [now]
+  /// (defaults to the current local time). A missing/malformed date or time is
+  /// treated as not ended so a finished event is never assumed by accident.
+  bool hasEnded([DateTime? now]) {
+    final parsedDate = DateTime.tryParse(date);
+    final parts = endTime.split(':');
+    if (parsedDate == null || parts.length < 2) return false;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return false;
+    final end = DateTime(
+      parsedDate.year,
+      parsedDate.month,
+      parsedDate.day,
+      hour,
+      minute,
+    );
+    return !end.isAfter(now ?? DateTime.now());
+  }
 }

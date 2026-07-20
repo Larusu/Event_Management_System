@@ -2,6 +2,7 @@ import 'package:campus_event_app/core/router/app_router.dart';
 import 'package:campus_event_app/core/theme/app_theme.dart';
 import 'package:campus_event_app/core/theme/theme_provider.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
+import 'package:campus_event_app/features/events/providers/created_events_provider.dart';
 import 'package:campus_event_app/features/events/providers/event_dashboard_provider.dart';
 import 'package:campus_event_app/features/events/providers/event_list_provider.dart';
 import 'package:campus_event_app/firebase_options.dart';
@@ -58,6 +59,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: _authProvider),
         ChangeNotifierProvider(create: (_) => EventListProvider()),
         ChangeNotifierProvider(create: (_) => EventDashboardProvider()),
+        ChangeNotifierProvider(create: (_) => CreatedEventsProvider()),
       ],
       child: Builder(
         builder: (context) => MaterialApp.router(

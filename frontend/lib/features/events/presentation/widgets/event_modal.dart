@@ -6,6 +6,7 @@ import '../../../../shared/widgets/app_dialog.dart';
 
 import '../../../../core/constants/roles.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../providers/created_events_provider.dart';
 import '../../providers/event_dashboard_provider.dart';
 import '../../providers/event_detail_provider.dart';
 import '../screens/event_map.dart';
@@ -140,7 +141,12 @@ class _EventModalViewState extends State<_EventModalView> {
       case EventDetailStatus.loaded:
         final event = provider.event!;
         final role = context.read<AuthProvider>().currentUser?.role;
-        final showRegister = !(role == Roles.guest && !event.isOpenToGuests);
+        // Ownership is resolved frontend-only from the app-level owned-events
+        // list; users can't register for their own event.
+        final isOwnEvent =
+            context.watch<CreatedEventsProvider>().isOwnEvent(event.eventId);
+        final showRegister =
+            isOwnEvent || !(role == Roles.guest && !event.isOpenToGuests);
         return EventModalContent(
           coverImageUrl: event.coverImageUrl,
           title: event.title,
@@ -159,6 +165,7 @@ class _EventModalViewState extends State<_EventModalView> {
           registeredCount: event.registeredCount,
           slotsRemaining: event.slotsRemaining,
           isRegistered: event.isRegistered,
+          isOwnEvent: isOwnEvent,
           showRegisterButton: showRegister,
           onRegister: _onRegister,
         );
@@ -209,6 +216,7 @@ class EventModalContent extends StatelessWidget {
   final int registeredCount;
   final int slotsRemaining;
   final bool isRegistered;
+  final bool isOwnEvent;
   final bool showRegisterButton;
   final VoidCallback? onRegister;
 
@@ -231,6 +239,7 @@ class EventModalContent extends StatelessWidget {
     required this.registeredCount,
     required this.slotsRemaining,
     this.isRegistered = false,
+    this.isOwnEvent = false,
     this.showRegisterButton = true,
     this.onRegister,
   });
@@ -496,18 +505,24 @@ class EventModalContent extends StatelessWidget {
   }
 
   Widget _registerButton(Color primary) {
+    // Own events and already-registered events share the same non-interactive
+    // grey state; only the label differs.
+    final disabled = isOwnEvent || isRegistered;
+    final label = isOwnEvent
+        ? 'Event Owner'
+        : (isRegistered ? 'Registered \u2713' : 'Register Now!');
     return SizedBox(
       width: double.infinity,
       child: Material(
-        color: isRegistered ? Colors.grey : primary,
+        color: disabled ? Colors.grey : primary,
         borderRadius: BorderRadius.circular(15),
         child: InkWell(
           borderRadius: BorderRadius.circular(15),
-          onTap: isRegistered ? null : onRegister,
+          onTap: disabled ? null : onRegister,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Text(
-              isRegistered ? 'Registered \u2713' : 'Register Now!',
+              label,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 13, color: Colors.white),
             ),
