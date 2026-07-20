@@ -8,6 +8,8 @@ import "../../../../core/constants/roles.dart";
 import "../../../auth/providers/auth_provider.dart";
 import "../../../../shared/widgets/app_dialog.dart";
 import "../../../../shared/widgets/modal.dart";
+import "../../data/campus_map_data.dart";
+import "../../models/campus_map.dart";
 import '../../models/event.dart';
 import "../../providers/create_event_provider.dart";
 import "../../providers/event_dashboard_provider.dart";
@@ -72,7 +74,6 @@ class _CreateEventModalState extends State<_CreateEventModal> {
   final _categoryController = TextEditingController();
   final _hostController = TextEditingController();
   final _guestSpeakerController = TextEditingController();
-  final _locationController = TextEditingController();
   final _streamLinkController = TextEditingController();
   final _contactController = TextEditingController();
   final _slotsController = TextEditingController();
@@ -89,6 +90,12 @@ class _CreateEventModalState extends State<_CreateEventModal> {
   bool _allDay = false;
   bool _isOpenToGuests = false;
 
+  // Offline location is picked from the campus map registry (floor -> room) so
+  // it always resolves to a known room for the wayfinding map. The room's name
+  // is what gets stored as the free-text `location`.
+  String? _selectedFloorId;
+  String? _selectedRoomId;
+
   bool get _isEditing => widget.initialEvent != null;
 
   @override
@@ -101,8 +108,15 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     _categoryController.text = event.tags.join(', ');
     _hostController.text = event.hostName;
     _guestSpeakerController.text = event.guestSpeaker ?? '';
-    _locationController.text = event.location ?? '';
     _streamLinkController.text = event.streamLink ?? '';
+    final location = event.location;
+    if (location != null && location.isNotEmpty) {
+      final room = resolveRoomFromLocation(location);
+      if (room != null) {
+        _selectedFloorId = room.floorId;
+        _selectedRoomId = room.id;
+      }
+    }
     _contactController.text = event.contactEmails.join(', ');
     _slotsController.text =
         (event.registeredCount + event.slotsRemaining).toString();
@@ -130,7 +144,6 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     _categoryController.dispose();
     _hostController.dispose();
     _guestSpeakerController.dispose();
-    _locationController.dispose();
     _streamLinkController.dispose();
     _contactController.dispose();
     _slotsController.dispose();
@@ -294,7 +307,7 @@ class _CreateEventModalState extends State<_CreateEventModal> {
       startTime: _formatTime(start),
       endTime: _formatTime(end),
       eventMode: _eventMode,
-      location: _locationController.text,
+      location: _selectedRoomName() ?? '',
       streamLink: _streamLinkController.text,
       hostName: _hostController.text,
       guestSpeaker: _guestSpeakerController.text,
@@ -367,13 +380,7 @@ class _CreateEventModalState extends State<_CreateEventModal> {
             if (isOnline)
               _field(_streamLinkController, "Stream Link")
             else
-              _field(
-                _locationController,
-                "Location",
-                minLines: 2,
-                maxLines: null,
-                keyboardType: TextInputType.multiline,
-              ),
+              _buildLocationSelectors(),
             const SizedBox(height: 10.0),
             _buildAllDayToggle(),
             const SizedBox(height: 10.0),
@@ -509,6 +516,72 @@ class _CreateEventModalState extends State<_CreateEventModal> {
             onSelectionChanged: (selection) =>
                 setState(() => _eventMode = selection.first),
           ),
+        ),
+      ],
+    );
+  }
+
+  /// Resolves the name of the currently selected room (stored as `location`),
+  /// or null when nothing is selected.
+  String? _selectedRoomName() {
+    final floorId = _selectedFloorId;
+    final roomId = _selectedRoomId;
+    if (floorId == null || roomId == null) return null;
+    final floor = floorById(floorId);
+    if (floor == null) return null;
+    for (final room in floor.rooms) {
+      if (room.id == roomId) return room.name;
+    }
+    return null;
+  }
+
+  Widget _buildLocationSelectors() {
+    final floor =
+        _selectedFloorId == null ? null : floorById(_selectedFloorId!);
+    final rooms = floor?.rooms ?? const <MapRoom>[];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          initialValue: _selectedFloorId,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: "Location - Floor",
+            border: OutlineInputBorder(),
+            contentPadding:
+                EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+          ),
+          items: [
+            for (final f in campusMapRegistry)
+              DropdownMenuItem(value: f.id, child: Text(f.displayName)),
+          ],
+          validator: (value) =>
+              (value == null || value.isEmpty) ? 'Select a floor' : null,
+          onChanged: (value) => setState(() {
+            _selectedFloorId = value;
+            _selectedRoomId = null;
+          }),
+        ),
+        const SizedBox(height: 10.0),
+        DropdownButtonFormField<String>(
+          initialValue: _selectedRoomId,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: "Location - Room / Area",
+            border: OutlineInputBorder(),
+            contentPadding:
+                EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+          ),
+          items: [
+            for (final room in rooms)
+              DropdownMenuItem(value: room.id, child: Text(room.name)),
+          ],
+          validator: (value) =>
+              (value == null || value.isEmpty) ? 'Select a room / area' : null,
+          onChanged: floor == null
+              ? null
+              : (value) => setState(() => _selectedRoomId = value),
         ),
       ],
     );
