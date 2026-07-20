@@ -1,6 +1,7 @@
 // auth_middleware.dart
 import 'package:backend/constants/error_codes.dart';
 import 'package:backend/services/firebase_auth_service.dart';
+import 'package:backend/services/firestore_client.dart';
 import 'package:backend/utils/response_helper.dart';
 import 'package:dart_frog/dart_frog.dart';
 
@@ -23,10 +24,21 @@ Handler authMiddleware(Handler handler) {
 
       // Parse "Bearer <token>", verify via _firebaseAuth.verifyIdToken(token)
       final token = authHeader.substring(7);
+      final debug = FirestoreClient.debugTiming;
+      final sw = debug ? (Stopwatch()..start()) : null;
+
       final uid = await FirebaseAuthService.verifyIdToken(token);
+      final verifyMs = sw?.elapsedMilliseconds;
 
       // Step 2: Get user doc
       final userDoc = await FirebaseAuthService.getUserByUid(uid);
+      if (sw != null) {
+        // ignore: avoid_print
+        print(
+          '[authMiddleware] verifyIdToken=${verifyMs}ms '
+          'userDoc=${sw.elapsedMilliseconds - verifyMs!}ms',
+        );
+      }
       
       // Step 3: Check is_deleted
       final isDeleted = userDoc['is_deleted'] as bool? ?? false;

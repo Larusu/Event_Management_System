@@ -2,10 +2,9 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:backend/constants/event_error_codes.dart';
-import 'package:backend/firebase_config.dart';
 import 'package:backend/models/event.dart';
+import 'package:backend/services/firestore_client.dart';
 import 'package:backend/utils/response_helper.dart';
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 
 /// Firestore-backed event operations.
@@ -407,41 +406,7 @@ class FirebaseEventService {
     };
   }
 
-  static Future<http.Client> _firestoreClient() async {
-    final envMap = FirebaseConfig.envMap;
-    final projectId = envMap['FIREBASE_PROJECT_ID'];
-    if (projectId == null || projectId.isEmpty) {
-      throw StateError('FIREBASE_PROJECT_ID missing from .env');
-    }
+  static Future<http.Client> _firestoreClient() => FirestoreClient.instance();
 
-    final credentials = ServiceAccountCredentials.fromJson({
-      'type': 'service_account',
-      'project_id': projectId,
-      'private_key_id': envMap['FIREBASE_PRIVATE_KEY_ID'],
-      'private_key': envMap['FIREBASE_SERVICE_ACCOUNT_KEY']
-          ?.replaceAll(r'\n', '\n'),
-      'client_email': envMap['FIREBASE_CLIENT_EMAIL'],
-      'client_id': envMap['FIREBASE_CLIENT_ID'],
-    });
-
-    const scopes = [
-      'https://www.googleapis.com/auth/datastore',
-      'https://www.googleapis.com/auth/cloud-platform',
-    ];
-    final authClient = await obtainAccessCredentialsViaServiceAccount(
-      credentials,
-      scopes,
-      http.Client(),
-    );
-    return authenticatedClient(http.Client(), authClient);
-  }
-
-  static String _firestoreProjectId() {
-    final projectId =
-        FirebaseConfig.envMap['FIREBASE_PROJECT_ID'];
-    if (projectId == null || projectId.isEmpty) {
-      throw StateError('FIREBASE_PROJECT_ID missing from .env');
-    }
-    return projectId;
-  }
+  static String _firestoreProjectId() => FirestoreClient.projectId();
 }

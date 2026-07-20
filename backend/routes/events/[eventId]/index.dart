@@ -30,11 +30,16 @@ Future<Response> onRequest(RequestContext context, String eventId) async {
 
 Future<Response> _handleGet(RequestContext context, String eventId) async {
   try {
-    final event = await FirebaseEventService.getEventById(eventId);
-
     final uid = context.read<String>();
-    final isRegistered =
-        await FirebaseEventService.isRegisteredForEvent(uid, eventId);
+
+    // These two reads are independent, so run them concurrently instead of
+    // back-to-back. isRegisteredForEvent never throws (returns false on any
+    // error), so awaiting the event read first still surfaces EVT002 cleanly.
+    final eventFuture = FirebaseEventService.getEventById(eventId);
+    final registeredFuture =
+        FirebaseEventService.isRegisteredForEvent(uid, eventId);
+    final event = await eventFuture;
+    final isRegistered = await registeredFuture;
 
     return Response.json(
       body: {
