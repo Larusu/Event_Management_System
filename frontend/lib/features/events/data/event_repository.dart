@@ -1,3 +1,5 @@
+import 'package:http_parser/http_parser.dart';
+
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
@@ -20,6 +22,18 @@ abstract class EventRepository {
   Future<Event?> getNextRegisteredEvent();
   Future<List<String>> getTags();
   Future<Map<String, dynamic>> registerForEvent(String eventId);
+
+  /// Uploads a cover image to `POST /events/cover-image` and
+  /// returns the hosted Cloudinary URL to attach to a create/edit call.
+  Future<String> uploadCoverImage({
+    required List<int> bytes,
+    required String filename,
+    required String mimeType,
+  });
+
+  /// Creates an event via `POST /events`. [body] must already
+  /// contain a `cover_image_url` from [uploadCoverImage].
+  Future<Event> createEvent(Map<String, dynamic> body);
 }
 
 /// Talks to the real Dart Frog backend.
@@ -105,8 +119,39 @@ class EventApiRepository implements EventRepository {
     final response = await _api.post(
       ApiRoutes.eventRegister(eventId),
       {},
+      auth: true,
     );
     return response.data;
+  }
+
+  @override
+  Future<String> uploadCoverImage({
+    required List<int> bytes,
+    required String filename,
+    required String mimeType,
+  }) async {
+    final response = await _api.postMultipart(
+      ApiRoutes.eventsCoverImage,
+      field: 'image',
+      bytes: bytes,
+      filename: filename,
+      contentType: MediaType.parse(mimeType),
+    );
+    final url = response.data['cover_image_url'] as String?;
+    if (url == null || url.isEmpty) {
+      throw const ApiException('Image upload failed. Please try again.');
+    }
+    return url;
+  }
+
+  @override
+  Future<Event> createEvent(Map<String, dynamic> body) async {
+    final response = await _api.post(ApiRoutes.events, body, auth: true);
+    final json = response.data['event'];
+    if (json is! Map<String, dynamic>) {
+      throw const ApiException('Something went wrong. Please try again.');
+    }
+    return Event.fromJson(json);
   }
 }
 
@@ -121,7 +166,7 @@ class ApiEventsListHelper {
     int? limit,
   }) {
     final params = <String, String>{};
-    if (query != null && query.isNotEmpty) params['q'] = query;
+    if (query != null && query.isNotEmpty) params['search'] = query;
     if (tags != null && tags.isNotEmpty) {
       params['tags'] = Uri.encodeComponent(tags.join(','));
     }
