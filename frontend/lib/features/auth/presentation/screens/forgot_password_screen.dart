@@ -2,6 +2,7 @@ import 'package:campus_event_app/core/utils/validators.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_button.dart';
 import 'package:campus_event_app/features/auth/presentation/widgets/app_text_field.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
+import 'package:campus_event_app/shared/widgets/app_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -41,39 +42,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() {
       _isLoading = false;
       if (success) {
-        showDialog(
-            context: context,
-            builder: (_) => Dialog(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)),
-                  child: Padding(
-                    padding: EdgeInsetsGeometry.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.email_rounded),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        const Text(
-                          "A reset password link has been sent to your email. Please check your inbox to reset your password",
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        AppButton(
-                          label: "Ok",
-                          onPressed: () {
-                            Navigator.of(context)
-                                .popUntil((route) => route.isFirst);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ));
+        AppDialog.info(
+          context: context,
+          icon: Icons.email_rounded,
+          message: 'A reset password link has been sent to your email. '
+              'Please check your inbox to reset your password',
+        ).then((_) {
+          if (mounted) {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          }
+        });
       } else {
         _errorMessage = context.read<AuthProvider>().errorMessage;
       }

@@ -5,6 +5,7 @@ import 'package:campus_event_app/features/profile/presentation/screens/edit_prof
 import 'package:campus_event_app/features/profile/presentation/screens/theme_settings_screen.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:campus_event_app/features/profile/presentation/widgets/settings_card.dart';
+import 'package:campus_event_app/shared/widgets/app_dialog.dart';
 import 'package:campus_event_app/shared/widgets/header.dart';
 import 'package:campus_event_app/shared/widgets/header_delegate.dart';
 import 'package:campus_event_app/shared/widgets/role_tag.dart';
@@ -162,38 +163,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: Colors.red.withValues(alpha: 0.1),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    showDialog<bool>(
+                  onTap: () async {
+                    final confirmed = await AppDialog.confirm(
                       context: context,
-                      builder: (dialogContext) {
-                        return AlertDialog(
-                          title: const Text('Sign out'),
-                          content:
-                              const Text('Are you sure you want to sign out?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(dialogContext, false),
-                              child: const Text('Cancel'),
-                            ),
-                            FilledButton(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.red.shade700,
-                              ),
-                              onPressed: () =>
-                                  Navigator.pop(dialogContext, true),
-                              child: const Text('Sign out'),
-                            ),
-                          ],
-                        );
-                      },
-                    ).then((confirmed) {
-                      if (confirmed == true) {
-                        context.read<AuthProvider>().signOut();
-                        Navigator.of(context)
-                            .popUntil((route) => route.isFirst);
-                      }
-                    });
+                      title: 'Sign out',
+                      message: 'Are you sure you want to sign out?',
+                      confirmLabel: 'Sign out',
+                      destructive: true,
+                    );
+                    if (confirmed) {
+                      context.read<AuthProvider>().signOut();
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    }
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(

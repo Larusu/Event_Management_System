@@ -35,36 +35,4 @@ class ModalContainer {
       },
     );
   }
-
-  /// Pop-up modal or Dialog; call to view
-  static void popup({
-    required BuildContext context,
-    required Widget child,
-    bool barrierDismissible = true,
-  }) {
-    showDialog(
-      context: context,
-      barrierDismissible: barrierDismissible,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 24,
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: const [
-                BoxShadow(blurRadius: 15, color: Colors.black26),
-              ],
-            ),
-            child: SingleChildScrollView(child: child),
-          ),
-        );
-      },
-    );
-  }
 }

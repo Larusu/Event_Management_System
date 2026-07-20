@@ -2,6 +2,7 @@ import 'package:campus_event_app/core/constants/roles.dart';
 import 'package:campus_event_app/features/admin/models/pending_event.dart';
 import 'package:campus_event_app/features/admin/providers/event_approval_provider.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
+import 'package:campus_event_app/shared/widgets/app_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -190,53 +191,14 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
 
   /// Reason prompt. Returns `null` if cancelled, or the (possibly empty)
   /// reason string if the user chose to continue.
-  Future<String?> _askReason(PendingEvent event) async {
-    final controller = TextEditingController();
-    try {
-      return await showDialog<String>(
-        context: context,
-        builder: (dialogContext) {
-          return AlertDialog(
-            title: const Text('Rejection reason'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Optionally tell the organizer why "${event.title}" was '
-                  'rejected.',
-                  style: const TextStyle(fontSize: 13, color: Colors.grey),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    hintText: 'Reason (optional)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, controller.text),
-                child: const Text('Continue'),
-              ),
-            ],
-          );
-        },
-      );
-    } finally {
-      controller.dispose();
-    }
+  Future<String?> _askReason(PendingEvent event) {
+    return AppDialog.input(
+      context: context,
+      title: 'Rejection reason',
+      message: 'Optionally tell the organizer why "${event.title}" was '
+          'rejected.',
+      hintText: 'Reason (optional)',
+    );
   }
 
   Future<bool?> _confirm({
@@ -245,27 +207,12 @@ class _EventApprovalViewState extends State<_EventApprovalView> {
     required String confirmLabel,
     bool destructive = false,
   }) {
-    return showDialog<bool>(
+    return AppDialog.confirm(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: destructive
-                  ? FilledButton.styleFrom(backgroundColor: Colors.red.shade700)
-                  : null,
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(confirmLabel),
-            ),
-          ],
-        );
-      },
+      title: title,
+      message: message,
+      confirmLabel: confirmLabel,
+      destructive: destructive,
     );
   }
 

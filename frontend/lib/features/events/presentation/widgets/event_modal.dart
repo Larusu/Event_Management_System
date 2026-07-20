@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/roles.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../providers/event_dashboard_provider.dart';
 import '../../providers/event_detail_provider.dart';
@@ -60,39 +61,51 @@ class _EventModalViewState extends State<_EventModalView> {
     });
   }
 
-  void _onRegister() {
+  void _onRegister() async {
     final provider = context.read<EventDetailProvider>();
     final event = provider.event;
     if (event == null) return;
 
-    showDialog(
+    final confirmed = await AppDialog.confirm(
       context: context,
-      builder: (_) => _RegisterConfirmDialog(
-        eventTitle: event.title,
-        onConfirm: () async {
-          Navigator.pop(context);
-          final success = await provider.register(widget.eventId);
-          if (!mounted) return;
-          if (success) {
-            // Refresh the Dashboard's registered sections so the newly
-            // registered event shows up without an app restart.
-            final dashboard = context.read<EventDashboardProvider>();
-            dashboard.loadRegistered();
-            dashboard.loadNextRegistered();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Registered successfully!')),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content:
-                    Text(provider.registrationError ?? 'Registration failed.'),
-              ),
-            );
-          }
-        },
+      icon: Icons.event_available,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Register for this event?',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            event.title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+        ],
       ),
+      confirmLabel: 'Confirm',
     );
+
+    if (!confirmed || !mounted) return;
+    final success = await provider.register(widget.eventId);
+    if (!mounted) return;
+    if (success) {
+      final dashboard = context.read<EventDashboardProvider>();
+      dashboard.loadRegistered();
+      dashboard.loadNextRegistered();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registered successfully!')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.registrationError ?? 'Registration failed.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -146,59 +159,6 @@ class _EventModalViewState extends State<_EventModalView> {
           onRegister: _onRegister,
         );
     }
-  }
-}
-
-/// Confirmation dialog shown before registering.
-class _RegisterConfirmDialog extends StatelessWidget {
-  final String eventTitle;
-  final VoidCallback onConfirm;
-
-  const _RegisterConfirmDialog({
-    required this.eventTitle,
-    required this.onConfirm,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.event_available, size: 48, color: primary),
-          const SizedBox(height: 16),
-          const Text(
-            'Register for this event?',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            eventTitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: onConfirm,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: primary,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Confirm'),
-        ),
-      ],
-    );
   }
 }
 

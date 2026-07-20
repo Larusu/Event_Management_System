@@ -5,6 +5,7 @@ import "package:provider/provider.dart";
 
 import "../../../../core/constants/roles.dart";
 import "../../../auth/providers/auth_provider.dart";
+import "../../../../shared/widgets/app_dialog.dart";
 import "../../../../shared/widgets/modal.dart";
 import "../../providers/create_event_provider.dart";
 import "../../providers/event_dashboard_provider.dart";
@@ -145,20 +146,11 @@ class _CreateEventModalState extends State<_CreateEventModal> {
   int _minutesOf(TimeOfDay t) => t.hour * 60 + t.minute;
 
   void _showError(String message) {
-    showDialog(
+    AppDialog.info(
       context: context,
-      builder: (_) => AlertDialog(
-        icon: Icon(Icons.error_outline_rounded,
-            color: Theme.of(context).colorScheme.error, size: 32),
-        title: const Text('Error'),
-        content: Text(message, textAlign: TextAlign.center),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
+      icon: Icons.error_outline_rounded,
+      iconColor: Theme.of(context).colorScheme.error,
+      message: message,
     );
   }
 

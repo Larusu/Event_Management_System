@@ -4,6 +4,7 @@ import 'package:campus_event_app/core/constants/roles.dart';
 import 'package:campus_event_app/features/admin/models/managed_user.dart';
 import 'package:campus_event_app/features/admin/providers/role_promotion_provider.dart';
 import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
+import 'package:campus_event_app/shared/widgets/app_dialog.dart';
 import 'package:campus_event_app/shared/widgets/role_tag.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -166,31 +167,13 @@ class _RolePromotionViewState extends State<_RolePromotionView> {
 
   Future<bool?> _confirm(ManagedUser user, String targetRole) {
     final promoting = _isPromotion(user.role, targetRole);
-    return showDialog<bool>(
+    return AppDialog.confirm(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(promoting ? 'Confirm promotion' : 'Confirm demotion'),
-          content: Text(
-            '${promoting ? 'Promote' : 'Demote'} ${user.name} '
-            '(${roleLabel(user.role)}) to ${roleLabel(targetRole)}?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: promoting
-                  ? null
-                  : FilledButton.styleFrom(
-                      backgroundColor: Colors.red.shade700),
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(promoting ? 'Promote' : 'Demote'),
-            ),
-          ],
-        );
-      },
+      title: promoting ? 'Confirm promotion' : 'Confirm demotion',
+      message: '${promoting ? 'Promote' : 'Demote'} ${user.name} '
+          '(${roleLabel(user.role)}) to ${roleLabel(targetRole)}?',
+      confirmLabel: promoting ? 'Promote' : 'Demote',
+      destructive: !promoting,
     );
   }
 
