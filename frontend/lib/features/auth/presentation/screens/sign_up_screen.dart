@@ -1,0 +1,295 @@
+import 'package:campus_event_app/core/router/app_router.dart';
+import 'package:campus_event_app/core/utils/validators.dart';
+import 'package:campus_event_app/features/auth/presentation/widgets/app_button.dart';
+import 'package:campus_event_app/features/auth/presentation/widgets/app_text_field.dart';
+import 'package:campus_event_app/features/auth/providers/auth_provider.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _contactController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
+    _contactController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _signUp() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final success = await context.read<AuthProvider>().register(
+          firstName: _firstNameController.text.trim(),
+          lastName: _lastNameController.text.trim(),
+          email: _emailController.text.trim(),
+          contact: _contactController.text.trim(),
+          password: _passwordController.text,
+        );
+
+    if (!mounted) return;
+    if (success) {
+      context.go(Routes.signIn);
+      return;
+    }
+    setState(() {
+      _isLoading = false;
+      _errorMessage = context.read<AuthProvider>().errorMessage;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+            child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      "Welcome!",
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(
+                      height: 3,
+                    ),
+                    Text(
+                      "Fill up the blanks below to create your guest profile",
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(
+                      height: 20,
+                    ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: AppTextField(
+                            controller: _firstNameController,
+                            hintText: "First name",
+                            isRequired: true,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'First name is required';
+                              }
+
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 15,
+                        ),
+                        Expanded(
+                          child: AppTextField(
+                            controller: _lastNameController,
+                            hintText: "Last name",
+                            isRequired: true,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Last name is required';
+                              }
+
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(
+                      height: 15,
+                    ),
+                    AppTextField(
+                      controller: _emailController,
+                      hintText: "Email",
+                      isRequired: true,
+                      validator: Validators.email,
+                    ),
+                    const SizedBox(
+                      height: 15,
+                    ),
+                    AppTextField(
+                      controller: _contactController,
+                      hintText: "Contact #",
+                      keyboardType: TextInputType.phone,
+                      isRequired: true,
+                      validator: Validators.contact,
+                    ),
+                    const SizedBox(
+                      height: 15,
+                    ),
+                    AppTextField(
+                      controller: _passwordController,
+                      hintText: "Password",
+                      obscureText: _obscurePassword,
+                      isRequired: true,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword),
+                      ),
+                      validator: Validators.password,
+                    ),
+                    const SizedBox(
+                      height: 15,
+                    ),
+                    AppTextField(
+                      controller: _confirmPasswordController,
+                      hintText: "Confirm password",
+                      obscureText: _obscurePassword,
+                      isRequired: true,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword),
+                      ),
+                      validator: (value) => Validators.confirmPassword(
+                          value, _passwordController.text),
+                    ),
+                    const SizedBox(
+                      height: 15,
+                    ),
+                    if (_errorMessage != null) ...[
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    SizedBox(
+                      width: double.infinity,
+                      height: 40,
+                      child: AppButton(
+                        label: "Continue",
+                        isLoading: _isLoading,
+                        onPressed: _isLoading ? null : _signUp,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 15,
+                    ),
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: Theme.of(context).textTheme.labelMedium,
+                        children: [
+                          TextSpan(
+                              text: 'By clicking continue, you agree to our '),
+                          TextSpan(
+                            text: 'Terms of Service',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                // navigate to terms
+                              },
+                          ),
+                          const TextSpan(text: ' and '),
+                          TextSpan(
+                            text: 'Privacy Policy',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                // navigate to privacy policy
+                              },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Already have an account? ',
+                            style: Theme.of(context).textTheme.labelMedium,
+                          ),
+                          TextSpan(
+                            text: 'Log in',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                  fontWeight: FontWeight.w500,
+                                  decoration: TextDecoration.underline,
+                                ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                context.go(Routes.signIn);
+                              },
+                          )
+                        ],
+                      ),
+                    ),
+                  ],
+                )),
+          ),
+        ),
+      ),
+    );
+  }
+}

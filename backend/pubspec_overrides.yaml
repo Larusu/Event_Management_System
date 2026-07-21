@@ -1,0 +1,3 @@
+# Intentionally empty. Present so the Docker COPY glob in the
+# dart_frog-generated Dockerfile matches when building on Cloud Build.
+

@@ -14,3 +14,17 @@ build/
 
 # Test related files
 coverage/
+
+# Environment Variables & Credentials (NEVER commit sensitive data)
+env.prod.yaml
+.env
+.env.local
+.env.*.local
+credentials/
+*-firebase-adminsdk-*.json
+serviceAccountKey.json
+service-account.json
+
+# IDE
+.vscode/
+.idea/
