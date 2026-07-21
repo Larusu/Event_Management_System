@@ -128,21 +128,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: Text(
-                'Notification Settings',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-          ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-              child: SettingsCard(
-                icon: Icons.notifications_outlined,
-                label: 'Edit notifications',
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+              child: Center(
+                child: Text(
+                  'More settings coming soon',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 14,
+                  ),
+                ),
               ),
             ),
           ),
