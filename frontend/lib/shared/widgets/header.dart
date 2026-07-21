@@ -271,21 +271,24 @@ class _HeaderState extends State<Header> {
                     ],
                   ])
                 : Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outline,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
                         ),
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      child: Text(
-                        widget.headerSubtitle ?? "Account",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        child: Text(
+                          widget.headerSubtitle ?? "Account",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
                   )
