@@ -25,8 +25,12 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
-  // Ensures the owned-events list is warmed only once per shell lifetime.
-  bool _warmedOwnedEvents = false;
+  // Tracks which signed-in user the app-level owned-events cache has been
+  // synced for. The cache is app-level and outlives sign-out, so it must be
+  // re-synced whenever the uid changes (fresh load for organizers+, cleared
+  // for everyone else) or a stale list bleeds across users.
+  bool _hasSyncedOwnedEvents = false;
+  String? _syncedOwnedEventsUid;
 
   // Last branch index published to the TabFocusNotifier, so we only notify on
   // an actual tab change.
@@ -66,7 +70,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         }
       });
     }
-    final role = context.watch<AuthProvider>().currentUser?.role;
+    final currentUser = context.watch<AuthProvider>().currentUser;
+    final role = currentUser?.role;
+    final uid = currentUser?.uid;
     // Only organizers and up may create events (and therefore see the Created
     // Events tab and the create-event FAB); students and guests cannot.
     final canManageEvents = role == Roles.organizer ||
@@ -74,13 +80,22 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         role == Roles.superAdmin;
     final showCreatedEvents = canManageEvents;
 
-    // Warm the owned-events list once so the Event Modal can flag the user's own
-    // events from any tab (browse/dashboard/calendar), not just after visiting
-    // the Created Events screen.
-    if (canManageEvents && !_warmedOwnedEvents) {
-      _warmedOwnedEvents = true;
+    // Re-sync the app-level owned-events cache whenever the signed-in user
+    // changes. Organizers+ get a fresh load for their own events; everyone
+    // else (students/guests) has the cache cleared so they can never inherit a
+    // previous organizer's list. Runs at most once per uid.
+    final needsSync = !_hasSyncedOwnedEvents || _syncedOwnedEventsUid != uid;
+    if (needsSync) {
+      _hasSyncedOwnedEvents = true;
+      _syncedOwnedEventsUid = uid;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.read<CreatedEventsProvider>().ensureLoaded();
+        if (!mounted) return;
+        final owned = context.read<CreatedEventsProvider>();
+        if (uid != null && canManageEvents) {
+          owned.load();
+        } else {
+          owned.reset();
+        }
       });
     }
 

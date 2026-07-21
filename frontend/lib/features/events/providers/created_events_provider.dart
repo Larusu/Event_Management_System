@@ -15,7 +15,6 @@ class CreatedEventsProvider extends ChangeNotifier {
   List<Event> events = const [];
   String? errorMessage;
   final Set<String> _deletingEventIds = {};
-  bool _loadedOnce = false;
 
   bool isDeleting(String eventId) => _deletingEventIds.contains(eventId);
 
@@ -24,16 +23,20 @@ class CreatedEventsProvider extends ChangeNotifier {
   bool isOwnEvent(String eventId) =>
       events.any((event) => event.eventId == eventId);
 
-  /// Loads the owned-events list at most once, so ownership data can be warmed
-  /// app-wide for organizers without re-fetching on every screen. Use [load] to
-  /// force a refresh.
-  Future<void> ensureLoaded() async {
-    if (_loadedOnce) return;
-    await load();
+  /// Clears cached ownership data so a newly signed-in user cannot inherit the
+  /// previous user's owned-events list. This provider is app-level (single
+  /// instance for the app's lifetime), so it MUST be reset on every user
+  /// change — otherwise `isOwnEvent` reads a stale list and the Event Modal
+  /// shows the wrong "Event Owner" / "Register" state until an app restart.
+  void reset() {
+    events = const [];
+    errorMessage = null;
+    _deletingEventIds.clear();
+    status = CreatedEventsStatus.loading;
+    notifyListeners();
   }
 
   Future<void> load() async {
-    _loadedOnce = true;
     status = CreatedEventsStatus.loading;
     errorMessage = null;
     notifyListeners();
