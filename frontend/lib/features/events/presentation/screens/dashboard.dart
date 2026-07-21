@@ -301,21 +301,21 @@ class _DashboardPageState extends State<DashboardPage> {
           );
         }
 
-        return SizedBox(
-          height: 250,
-          child: ListView.builder(
-            itemCount: registered.length,
-            itemBuilder: (context, index) {
-              final event = registered[index];
-              return UpcomingEventBanner(
-                title: event.title,
-                day: event.displayDay,
-                date: event.displayDate,
-                startTime: event.displayStartTime,
-                endTime: event.displayEndTime,
-              );
-            },
-          ),
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 16),
+          itemCount: registered.length,
+          itemBuilder: (context, index) {
+            final event = registered[index];
+            return UpcomingEventBanner(
+              title: event.title,
+              day: event.displayDay,
+              date: event.displayDate,
+              startTime: event.displayStartTime,
+              endTime: event.displayEndTime,
+            );
+          },
         );
       },
     );
