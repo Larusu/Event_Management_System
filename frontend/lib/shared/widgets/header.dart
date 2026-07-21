@@ -136,9 +136,15 @@ class _HeaderState extends State<Header> {
       });
     }
 
+    // Fill the status-bar area with the header's own background (like an
+    // AppBar) so screens don't need a top SafeArea and there's no blank band
+    // above the header; content stays padded below the notch. Resolves to 0
+    // when an ancestor has already consumed the top inset.
+    final topInset = MediaQuery.of(context).padding.top;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.only(left: 16, right: 16, top: 8 + topInset, bottom: 8),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [

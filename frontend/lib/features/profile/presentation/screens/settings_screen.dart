@@ -27,11 +27,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isAdmin = userRole == Roles.faculty || userRole == Roles.superAdmin;
 
     return SafeArea(
+      top: false,
       child: CustomScrollView(
         slivers: [
           SliverPersistentHeader(
             pinned: true,
             delegate: HeaderDelegate(
+              height: 70 + MediaQuery.of(context).padding.top,
               child: Header(
                 header: 'Account \nSettings',
                 views: const [],

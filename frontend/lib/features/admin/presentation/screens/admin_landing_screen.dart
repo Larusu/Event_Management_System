@@ -20,11 +20,13 @@ class AdminLandingScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
+        top: false,
         child: CustomScrollView(
           slivers: [
             SliverPersistentHeader(
               pinned: true,
               delegate: HeaderDelegate(
+                height: 70 + MediaQuery.of(context).padding.top,
                 child: Header(
                   header: 'Admin \nPanel',
                   views: const [],

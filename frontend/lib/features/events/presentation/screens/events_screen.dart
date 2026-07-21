@@ -99,6 +99,7 @@ class _EventsScreenState extends State<EventsScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
+        top: false,
         child: Column(
           children: [
             Header(

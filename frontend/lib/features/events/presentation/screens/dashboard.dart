@@ -67,11 +67,13 @@ class _DashboardPageState extends State<DashboardPage> {
         context.watch<AuthProvider>().currentUser?.name ?? 'Account';
 
     return SafeArea(
+      top: false,
       child: CustomScrollView(
         slivers: [
           SliverPersistentHeader(
             pinned: true,
             delegate: HeaderDelegate(
+              height: 70 + MediaQuery.of(context).padding.top,
               child: Header(
                 header: 'EMS',
                 views: const [],

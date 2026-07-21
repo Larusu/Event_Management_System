@@ -43,6 +43,7 @@ class _CreatedEventsView extends StatelessWidget {
         context.watch<AuthProvider>().currentUser?.name ?? 'Account';
 
     return SafeArea(
+      top: false,
       child: Column(
         children: [
           Header(
