@@ -422,8 +422,8 @@ final List<FloorMap> campusMapRegistry = [
     startPoint: Offset(800, 820), // stairs (no elevator on this level)
     rooms: [
       MapRoom(
-        id: 'bl_bleachers_top',
-        name: 'Bleachers Area (Upper)',
+        id: 'bl_bleachers',
+        name: 'Bleachers',
         floorId: 'bleachers',
         marker: Offset(812, 370),
         routePath: [
@@ -434,8 +434,8 @@ final List<FloorMap> campusMapRegistry = [
         ],
       ),
       MapRoom(
-        id: 'bl_bleachers_bottom',
-        name: 'Bleachers Area (Lower)',
+        id: 'bl_cinema_lab',
+        name: 'Cinema Lab',
         floorId: 'bleachers',
         marker: Offset(812, 1110),
         routePath: [
@@ -444,13 +444,6 @@ final List<FloorMap> campusMapRegistry = [
           Offset(812, 1050),
           Offset(812, 1110),
         ],
-      ),
-      MapRoom(
-        id: 'bl_machine_room',
-        name: 'Machine Room',
-        floorId: 'bleachers',
-        marker: Offset(835, 640),
-        routePath: [Offset(800, 820), Offset(820, 720), Offset(835, 650)],
       ),
     ],
   ),
@@ -490,8 +483,9 @@ MapRoom? resolveRoomFromLocation(String location) {
     'sports area': 'gym_sports_area',
     'cafeteria': 'gym_cafeteria',
     'employee lounge': 'gym_employee_lounge',
-    'machine room': 'bl_machine_room',
-    'bleacher': 'bl_bleachers_top',
+    'cinema lab': 'bl_cinema_lab',
+    'cinema': 'bl_cinema_lab',
+    'bleacher': 'bl_bleachers',
     // 2nd floor
     'lounge (cafe)': 'l2_lounge_cafe',
     'lounge (library)': 'l2_lounge_library',
