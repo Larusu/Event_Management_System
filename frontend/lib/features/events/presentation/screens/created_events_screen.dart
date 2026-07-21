@@ -247,6 +247,10 @@ class _CreatedEventCard extends StatelessWidget {
                     '${event.registeredCount} registered • ${event.slotsRemaining} slots left',
                     style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                   ),
+                  if (event.status == 'rejected') ...[
+                    const SizedBox(height: 8),
+                    _RejectionBanner(reason: event.rejectionReason),
+                  ],
                   const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -294,6 +298,62 @@ class _CreatedEventCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Explains to the organizer why their event was rejected. Shown only on
+/// rejected cards; falls back to a generic line when the moderator left no
+/// reason (rejection reasons are optional).
+class _RejectionBanner extends StatelessWidget {
+  const _RejectionBanner({required this.reason});
+
+  final String? reason;
+
+  @override
+  Widget build(BuildContext context) {
+    final red = Colors.red.shade700;
+    final hasReason = reason != null && reason!.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red.withValues(alpha: .25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, size: 16, color: red),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Reason for rejection',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: red,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hasReason ? reason! : 'No reason was provided.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: hasReason ? FontStyle.normal : FontStyle.italic,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

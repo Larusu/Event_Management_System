@@ -26,6 +26,11 @@ class Event {
   final bool isRegistered;
   final String status;
 
+  /// Moderator's reason when [status] is `rejected`. Only returned by
+  /// `GET /events/created` (the organizer's own events); null everywhere else
+  /// and when no reason was supplied.
+  final String? rejectionReason;
+
   const Event({
     required this.eventId,
     required this.title,
@@ -46,6 +51,7 @@ class Event {
     required this.slotsRemaining,
     this.isRegistered = false,
     this.status = 'approved',
+    this.rejectionReason,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) => Event(
@@ -68,7 +74,15 @@ class Event {
         slotsRemaining: (json['slots_remaining'] as num?)?.toInt() ?? 0,
         isRegistered: json['is_registered'] as bool? ?? false,
         status: _eventStatus(json['status']),
+        rejectionReason: _nullableString(json['rejection_reason']),
       );
+
+  /// Trims a string field and collapses empty/blank values to null.
+  static String? _nullableString(dynamic value) {
+    if (value is! String) return null;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
 
   static List<String> _stringList(dynamic value) {
     if (value is List) {
