@@ -13,6 +13,12 @@ class EventListProvider extends ChangeNotifier {
   EventListProvider({EventRepository? repository})
       : _repository = repository ?? createEventRepository();
 
+  /// How long loaded data is considered fresh; a focus/resume refresh within
+  /// this window is skipped. Aligned with the backend's 60s snapshot cache.
+  static const Duration _refreshTtl = Duration(seconds: 60);
+
+  DateTime? _lastLoadedAt;
+
   EventListStatus _status = EventListStatus.idle;
   List<Event> _events = [];
   String? _errorMessage;
@@ -55,6 +61,7 @@ class EventListProvider extends ChangeNotifier {
       _events = response.events;
       _nextCursor = response.nextCursor;
       _status = EventListStatus.loaded;
+      _lastLoadedAt = DateTime.now();
     } on ApiException catch (e) {
       _errorMessage = e.message;
       _status = EventListStatus.error;
@@ -63,6 +70,32 @@ class EventListProvider extends ChangeNotifier {
       _status = EventListStatus.error;
     }
     _safeNotify();
+  }
+
+  /// Silently re-fetches the first page for the current query/tags when the
+  /// data is stale, replacing the list in place without a loading spinner.
+  /// Called when the events tab regains focus or the app resumes.
+  Future<void> refreshIfStale() async {
+    final last = _lastLoadedAt;
+    if (last != null && DateTime.now().difference(last) < _refreshTtl) return;
+    if (_status == EventListStatus.loading || _isLoadingMore) return;
+
+    try {
+      final response = await _repository.getEvents(
+        query: _currentQuery,
+        tags: _currentTags,
+        limit: 10,
+        upcoming: true,
+      );
+      _events = response.events;
+      _nextCursor = response.nextCursor;
+      _status = EventListStatus.loaded;
+      _lastLoadedAt = DateTime.now();
+      _safeNotify();
+    } catch (_) {
+      // Keep the existing list on a silent refresh failure.
+    }
+    await loadTags();
   }
 
   Future<void> loadMore() async {

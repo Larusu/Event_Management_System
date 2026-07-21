@@ -46,6 +46,12 @@ class CalendarProvider extends ChangeNotifier {
   /// Safety cap so a huge backlog of past events can't page forever.
   static const int _maxPages = 20;
 
+  /// How long loaded data is considered fresh; a focus/resume refresh within
+  /// this window is skipped. Aligned with the backend's 60s snapshot cache.
+  static const Duration _refreshTtl = Duration(seconds: 60);
+
+  DateTime? _lastLoadedAt;
+
   CalendarViewMode _viewMode = CalendarViewMode.month;
   DateTime _focusedDate = _dateOnly(DateTime.now());
   CalendarStatus _status = CalendarStatus.loading;
@@ -119,12 +125,27 @@ class CalendarProvider extends ChangeNotifier {
     load();
   }
 
+  /// Silently re-fetches the current window when the data is stale, keeping the
+  /// current events on screen (no loading spinner) while it updates. Called
+  /// when the calendar tab regains focus or the app resumes.
+  Future<void> refreshIfStale() async {
+    final last = _lastLoadedAt;
+    if (last != null && DateTime.now().difference(last) < _refreshTtl) return;
+    if (_status == CalendarStatus.loading) return;
+    await load(silent: true);
+  }
+
   /// Fetches the events for the currently visible window and updates state.
-  Future<void> load() async {
+  ///
+  /// When [silent] is true the loading state is not shown (the current events
+  /// stay on screen) and a failure is swallowed, keeping the existing data.
+  Future<void> load({bool silent = false}) async {
     final token = ++_loadToken;
-    _status = CalendarStatus.loading;
-    _errorMessage = null;
-    notifyListeners();
+    if (!silent) {
+      _status = CalendarStatus.loading;
+      _errorMessage = null;
+      notifyListeners();
+    }
 
     final (rangeStart, rangeEnd) = _visibleRange();
 
@@ -158,12 +179,17 @@ class CalendarProvider extends ChangeNotifier {
       if (token != _loadToken) return; // superseded by a newer load
       _events = collected;
       _status = CalendarStatus.loaded;
+      _lastLoadedAt = DateTime.now();
     } on ApiException catch (e) {
       if (token != _loadToken) return;
+      // A silent (focus/resume) refresh keeps the existing events on screen
+      // instead of blanking them out with an error.
+      if (silent) return;
       _errorMessage = e.message;
       _status = CalendarStatus.error;
     } catch (_) {
       if (token != _loadToken) return;
+      if (silent) return;
       _errorMessage = 'Something went wrong. Please try again.';
       _status = CalendarStatus.error;
     }

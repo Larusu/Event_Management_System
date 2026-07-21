@@ -18,6 +18,30 @@ class EventDashboardProvider extends ChangeNotifier {
   })  : _repository = repository ?? createEventRepository(),
         _now = now ?? DateTime.now;
 
+  /// How long loaded data is considered fresh; a focus/resume refresh within
+  /// this window is skipped. Aligned with the backend's 60s snapshot cache.
+  static const Duration _refreshTtl = Duration(seconds: 60);
+
+  DateTime? _lastLoadedAt;
+
+  /// Silently re-fetches all sections when the data is stale, keeping the
+  /// current content visible (no loading spinner) while it updates. Called when
+  /// the dashboard tab regains focus or the app resumes.
+  Future<void> refreshIfStale() async {
+    final last = _lastLoadedAt;
+    if (last != null && _now().difference(last) < _refreshTtl) return;
+    if (_featuredStatus == EventListStatus.loading ||
+        _registeredStatus == EventListStatus.loading ||
+        _nextRegisteredStatus == EventDetailStatus.loading) {
+      return;
+    }
+    await Future.wait([
+      loadNextRegistered(silent: true),
+      loadFeatured(silent: true),
+      loadRegistered(silent: true),
+    ]);
+  }
+
   // ── Featured events ──
   EventListStatus _featuredStatus = EventListStatus.idle;
   List<Event> _featuredEvents = [];
@@ -49,28 +73,37 @@ class EventDashboardProvider extends ChangeNotifier {
 
   // ── Load methods ──
 
-  Future<void> loadFeatured() async {
-    _featuredStatus = EventListStatus.loading;
-    _featuredErrorMessage = null;
-    _safeNotify();
+  Future<void> loadFeatured({bool silent = false}) async {
+    if (!silent) {
+      _featuredStatus = EventListStatus.loading;
+      _featuredErrorMessage = null;
+      _safeNotify();
+    }
 
     try {
       _featuredEvents = await _repository.getFeaturedEvents();
       _featuredStatus = EventListStatus.loaded;
+      _lastLoadedAt = _now();
     } on ApiException catch (e) {
+      // A silent (focus/resume) refresh keeps the existing data on screen
+      // instead of blanking it out with an error.
+      if (silent) return;
       _featuredErrorMessage = e.message;
       _featuredStatus = EventListStatus.error;
     } catch (_) {
+      if (silent) return;
       _featuredErrorMessage = 'Something went wrong. Please try again.';
       _featuredStatus = EventListStatus.error;
     }
     _safeNotify();
   }
 
-  Future<void> loadRegistered() async {
-    _registeredStatus = EventListStatus.loading;
-    _registeredErrorMessage = null;
-    _safeNotify();
+  Future<void> loadRegistered({bool silent = false}) async {
+    if (!silent) {
+      _registeredStatus = EventListStatus.loading;
+      _registeredErrorMessage = null;
+      _safeNotify();
+    }
 
     try {
       final registered = await _repository.getRegisteredEvents();
@@ -80,31 +113,38 @@ class EventDashboardProvider extends ChangeNotifier {
       _registeredEvents = registered.where(_isUpcoming).toList()
         ..sort(_bySoonestFirst);
       _registeredStatus = EventListStatus.loaded;
+      _lastLoadedAt = _now();
     } on ApiException catch (e) {
+      if (silent) return;
       _registeredErrorMessage = e.message;
       _registeredStatus = EventListStatus.error;
     } catch (_) {
+      if (silent) return;
       _registeredErrorMessage = 'Something went wrong. Please try again.';
       _registeredStatus = EventListStatus.error;
     }
     _safeNotify();
   }
 
-  Future<void> loadNextRegistered() async {
-    _nextRegisteredStatus = EventDetailStatus.loading;
-    _nextRegisteredErrorMessage = null;
-    _safeNotify();
+  Future<void> loadNextRegistered({bool silent = false}) async {
+    if (!silent) {
+      _nextRegisteredStatus = EventDetailStatus.loading;
+      _nextRegisteredErrorMessage = null;
+      _safeNotify();
+    }
 
     try {
       final next = await _repository.getNextRegisteredEvent();
       // Guard against the endpoint surfacing an event that has already ended.
-      _nextRegisteredEvent =
-          (next != null && _isUpcoming(next)) ? next : null;
+      _nextRegisteredEvent = (next != null && _isUpcoming(next)) ? next : null;
       _nextRegisteredStatus = EventDetailStatus.loaded;
+      _lastLoadedAt = _now();
     } on ApiException catch (e) {
+      if (silent) return;
       _nextRegisteredErrorMessage = e.message;
       _nextRegisteredStatus = EventDetailStatus.error;
     } catch (_) {
+      if (silent) return;
       _nextRegisteredErrorMessage = 'Something went wrong. Please try again.';
       _nextRegisteredStatus = EventDetailStatus.error;
     }

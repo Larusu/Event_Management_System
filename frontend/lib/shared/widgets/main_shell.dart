@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../../../core/constants/app_branches.dart';
 import '../../../../core/constants/roles.dart';
 import 'navbar.dart';
+import 'tab_focus.dart';
 
 /// Persistent shell hosting the bottom navigation. [navigationShell] is an
 /// IndexedStack under the hood, so each tab keeps its state when switching.
@@ -22,19 +24,48 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
-  // Fixed branch indices as declared in the StatefulShellRoute.
-  static const int _calendarBranch = 0;
-  static const int _createdEventsBranch = 1;
-  static const int _dashboardBranch = 2;
-  static const int _eventsBranch = 3;
-
+class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   // Ensures the owned-events list is warmed only once per shell lifetime.
   bool _warmedOwnedEvents = false;
+
+  // Last branch index published to the TabFocusNotifier, so we only notify on
+  // an actual tab change.
+  int? _lastPublishedBranch;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<TabFocusNotifier>().markResumed();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final navigationShell = widget.navigationShell;
+
+    // Publish the focused branch after the frame so the active tab can refresh
+    // its data when it becomes visible. Only fires on an actual tab change.
+    final currentBranchIndex = navigationShell.currentIndex;
+    if (_lastPublishedBranch != currentBranchIndex) {
+      _lastPublishedBranch = currentBranchIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.read<TabFocusNotifier>().setActive(currentBranchIndex);
+        }
+      });
+    }
     final role = context.watch<AuthProvider>().currentUser?.role;
     // Only organizers and up may create events (and therefore see the Created
     // Events tab and the create-event FAB); students and guests cannot.
@@ -56,11 +87,11 @@ class _MainShellState extends State<MainShell> {
     // Branch indices that have a navbar tab, in display order. Created Events
     // is only present for organizers and up.
     final visibleBranches = <int>[
-      _calendarBranch,
-      if (showCreatedEvents) _createdEventsBranch,
-      _dashboardBranch,
-      _eventsBranch,
-      4, // settings
+      AppBranches.calendar,
+      if (showCreatedEvents) AppBranches.createdEvents,
+      AppBranches.dashboard,
+      AppBranches.events,
+      AppBranches.settings,
     ];
 
     final currentBranch = navigationShell.currentIndex;
@@ -68,7 +99,7 @@ class _MainShellState extends State<MainShell> {
     if (selectedNavIndex < 0) {
       // Current branch has no visible tab (e.g. a role change hid it): fall
       // back to the dashboard tab.
-      selectedNavIndex = visibleBranches.indexOf(_dashboardBranch);
+      selectedNavIndex = visibleBranches.indexOf(AppBranches.dashboard);
     }
 
     return Scaffold(
@@ -84,12 +115,13 @@ class _MainShellState extends State<MainShell> {
           );
         },
       ),
-      floatingActionButton: currentBranch == _eventsBranch && canManageEvents
-          ? FloatingActionButton(
-              onPressed: () => createNewEvent(context),
-              child: const Icon(Icons.add),
-            )
-          : null,
+      floatingActionButton:
+          currentBranch == AppBranches.events && canManageEvents
+              ? FloatingActionButton(
+                  onPressed: () => createNewEvent(context),
+                  child: const Icon(Icons.add),
+                )
+              : null,
       body: navigationShell,
     );
   }
