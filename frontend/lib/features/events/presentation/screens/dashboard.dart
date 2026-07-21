@@ -68,51 +68,62 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return SafeArea(
       top: false,
-      child: CustomScrollView(
-        slivers: [
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: HeaderDelegate(
-              height: 70 + MediaQuery.of(context).padding.top,
-              child: Header(
-                header: 'EMS',
-                views: const [],
-                page: 'dashboard',
-                headerSubtitle: userName,
+      child: RefreshIndicator(
+        onRefresh: () async {
+          final provider = context.read<EventDashboardProvider>();
+          await Future.wait([
+            provider.loadNextRegistered(),
+            provider.loadFeatured(),
+            provider.loadRegistered(),
+          ]);
+        },
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: HeaderDelegate(
+                height: 70 + MediaQuery.of(context).padding.top,
+                child: Header(
+                  header: 'EMS',
+                  views: const [],
+                  page: 'dashboard',
+                  headerSubtitle: userName,
+                ),
               ),
             ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.only(top: 8),
-            sliver: SliverToBoxAdapter(
-              child: _buildNextRegisteredSection(context),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: Text(
-                "Featured Events",
-                style: Theme.of(context).textTheme.titleMedium,
+            SliverPadding(
+              padding: const EdgeInsets.only(top: 8),
+              sliver: SliverToBoxAdapter(
+                child: _buildNextRegisteredSection(context),
               ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: _buildFeaturedSection(context),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: Text(
-                "Upcoming Registered Events",
-                style: Theme.of(context).textTheme.titleMedium,
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: Text(
+                  "Featured Events",
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: _buildRegisteredSection(context),
-          ),
-        ],
+            SliverToBoxAdapter(
+              child: _buildFeaturedSection(context),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: Text(
+                  "Upcoming Registered Events",
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: _buildRegisteredSection(context),
+            ),
+          ],
+        ),
       ),
     );
   }
