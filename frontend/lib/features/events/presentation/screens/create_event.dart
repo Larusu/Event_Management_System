@@ -6,6 +6,7 @@ import "package:image_picker/image_picker.dart";
 import "package:provider/provider.dart";
 
 import "../../../../core/constants/roles.dart";
+import "../../../../core/utils/validators.dart";
 import "../../../auth/providers/auth_provider.dart";
 import "../../../../shared/widgets/app_dialog.dart";
 import "../../../../shared/widgets/modal.dart";
@@ -318,6 +319,14 @@ class _CreateEventModalState extends State<_CreateEventModal> {
     final emails = _splitCsv(_contactController.text);
     if (emails.isEmpty) {
       _showError('Please add at least one contact email.');
+      return;
+    }
+    final invalidEmail = emails.firstWhere(
+      (e) => Validators.email(e) != null,
+      orElse: () => '',
+    );
+    if (invalidEmail.isNotEmpty) {
+      _showError('"$invalidEmail" is not a valid email address.');
       return;
     }
     final slots = int.tryParse(_slotsController.text.trim()) ?? 0;
