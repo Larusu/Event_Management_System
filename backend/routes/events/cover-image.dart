@@ -120,7 +120,7 @@ Future<Response> onRequest(RequestContext context) async {
     );
   } on AuthException catch (e) {
     return ResponseHelper.error(e);
-  } catch (e, stack) {
+  } catch (_) {
     // Only genuine Cloudinary failures are thrown as AuthException with
     // EVT006 above. Anything reaching here is an unexpected server error,
     // so report EVT008 instead of blaming Cloudinary.

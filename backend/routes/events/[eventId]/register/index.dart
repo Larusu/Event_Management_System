@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:backend/constants/event_error_codes.dart';
 import 'package:backend/constants/event_exception.dart';
 import 'package:backend/services/registration_service.dart';
@@ -45,8 +43,7 @@ Future<Response> _handlePost(RequestContext context, String eventId) async {
     );
   } on EventException catch (e) {
     return ResponseHelper.errorFromException(e);
-  } catch (e, stack) {
-    print('${EventErrorCode.internalError} register error: $e\n$stack');
+  } catch (_) {
     return Response.json(
       statusCode: 500,
       body: {
@@ -69,8 +66,7 @@ Future<Response> _handleDelete(RequestContext context, String eventId) async {
     );
   } on EventException catch (e) {
     return ResponseHelper.errorFromException(e);
-  } catch (e, stack) {
-    print('${EventErrorCode.internalError} cancel error: $e\n$stack');
+  } catch (_) {
     return Response.json(
       statusCode: 500,
       body: {

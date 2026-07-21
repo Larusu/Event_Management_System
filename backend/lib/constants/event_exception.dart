@@ -1,4 +1,3 @@
-import 'package:backend/constants/event_error_codes.dart';
 import 'package:backend/utils/response_helper.dart';
 
 /// Exception thrown when event operations fail.

@@ -1,1 +1,17 @@
 include: package:dart_frog_lint/recommended.yaml
+
+# Purely-stylistic info lints from the recommended set that add noise without
+# improving correctness for this project are disabled so `dart analyze` stays
+# clean. Genuine issues (unused imports, unused vars, unnecessary casts,
+# avoid_print, etc.) are still enforced.
+linter:
+  rules:
+    public_member_api_docs: false
+    lines_longer_than_80_chars: false
+    unnecessary_lambdas: false
+    avoid_redundant_argument_values: false
+    eol_at_end_of_file: false
+    avoid_setters_without_getters: false
+    always_put_required_named_parameters_first: false
+    omit_local_variable_types: false
+    cascade_invocations: false

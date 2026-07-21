@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:backend/constants/event_error_codes.dart';
 import 'package:backend/constants/event_exception.dart';
-import 'package:backend/services/event_service.dart';
 import 'package:backend/services/firebase_event_service.dart';
 import 'package:backend/services/firestore_client.dart';
 import 'package:http/http.dart' as http;
