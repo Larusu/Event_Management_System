@@ -797,6 +797,56 @@ void main() {
         isFalse,
       );
     });
+
+    test('hasEndedAt uses campus-local (UTC+8) end time', () {
+      // Event ends 2026-07-22 23:59 campus-local == 15:59 UTC.
+      // 00:00 UTC on 2026-07-22 (08:00 PH) -> not yet ended.
+      expect(
+        RegistrationListService.hasEndedAt(
+          date: '2026-07-22',
+          endTime: '23:59',
+          nowUtc: DateTime.utc(2026, 7, 22),
+        ),
+        isFalse,
+      );
+      // Event ends 2026-07-21 18:00 campus-local == 10:00 UTC.
+      // 2026-07-21 23:05 UTC (2026-07-22 07:05 PH) -> already ended, even
+      // though the date is still "today" in UTC.
+      expect(
+        RegistrationListService.hasEndedAt(
+          date: '2026-07-21',
+          endTime: '18:00',
+          nowUtc: DateTime.utc(2026, 7, 21, 23, 5),
+        ),
+        isTrue,
+      );
+      // Exactly at the end instant counts as ended (not after now).
+      expect(
+        RegistrationListService.hasEndedAt(
+          date: '2026-07-22',
+          endTime: '12:00',
+          nowUtc: DateTime.utc(2026, 7, 22, 4),
+        ),
+        isTrue,
+      );
+      // Malformed date/time -> treated as NOT ended (kept).
+      expect(
+        RegistrationListService.hasEndedAt(
+          date: 'not-a-date',
+          endTime: '18:00',
+          nowUtc: DateTime.utc(2026, 7, 22),
+        ),
+        isFalse,
+      );
+      expect(
+        RegistrationListService.hasEndedAt(
+          date: '2026-07-22',
+          endTime: '99:99',
+          nowUtc: DateTime.utc(2026, 7, 22),
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('EventValidationService', () {
