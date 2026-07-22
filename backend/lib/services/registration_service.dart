@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:backend/constants/event_error_codes.dart';
 import 'package:backend/constants/event_exception.dart';
 import 'package:backend/services/firestore_client.dart';
-import 'package:backend/utils/response_helper.dart';
 import 'package:http/http.dart' as http;
 
 /// Sole writer for the `registrations` collection and `registered_count`

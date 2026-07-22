@@ -6,6 +6,7 @@ import 'package:campus_event_app/features/events/providers/created_events_provid
 import 'package:campus_event_app/features/events/providers/event_dashboard_provider.dart';
 import 'package:campus_event_app/features/events/providers/event_list_provider.dart';
 import 'package:campus_event_app/firebase_options.dart';
+import 'package:campus_event_app/shared/widgets/tab_focus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -60,6 +61,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider(create: (_) => EventListProvider()),
         ChangeNotifierProvider(create: (_) => EventDashboardProvider()),
         ChangeNotifierProvider(create: (_) => CreatedEventsProvider()),
+        ChangeNotifierProvider(create: (_) => TabFocusNotifier()),
       ],
       child: Builder(
         builder: (context) => MaterialApp.router(

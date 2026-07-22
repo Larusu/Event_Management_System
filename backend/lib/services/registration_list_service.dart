@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:backend/constants/event_error_codes.dart';
 import 'package:backend/constants/event_exception.dart';
-import 'package:backend/services/event_service.dart';
 import 'package:backend/services/firebase_event_service.dart';
 import 'package:backend/services/firestore_client.dart';
 import 'package:http/http.dart' as http;
@@ -70,16 +69,31 @@ class RegistrationListService {
     return RegisteredEventPage(events: page, nextCursor: nextCursor);
   }
 
-  /// Returns the soonest upcoming registered event for [uid], or null.
+  /// Returns the soonest registered event for [uid] that has not yet ended,
+  /// or null.
+  ///
+  /// The shared `date >= today` prefilter (in UTC) can still include a same-day
+  /// event whose end time has already passed — so this skips events that have
+  /// ended by campus-local wall clock and returns the first one still to come.
+  /// This keeps the top "Next Registered" card consistent with the upcoming
+  /// list (which the frontend also filters by end time).
   static Future<Map<String, dynamic>?> fetchNextRegistered({
     required String uid,
   }) async {
     final upcoming =
         await _loadRegisteredEvents(uid, RegisteredFilter.upcoming);
-    if (upcoming.isEmpty) {
-      return null;
+    final nowUtc = DateTime.now().toUtc();
+    for (final event in upcoming) {
+      if (hasEndedAt(
+        date: event.date,
+        endTime: event.endTime,
+        nowUtc: nowUtc,
+      )) {
+        continue;
+      }
+      return _nextCard(event);
     }
-    return _nextCard(upcoming.first);
+    return null;
   }
 
   /// Decodes the opaque pagination cursor for `/events/registered`.
@@ -151,6 +165,55 @@ class RegistrationListService {
       return false;
     }
     return date.compareTo(today) < 0;
+  }
+
+  /// Campus timezone offset from UTC. The app serves a single Philippine
+  /// campus, and event `date`/`end_time` are stored as naive campus-local
+  /// wall-clock values, so we anchor them to this offset when deciding whether
+  /// an event has ended. Mirrors `EventService._campusUtcOffset`.
+  static const Duration _campusUtcOffset = Duration(hours: 8);
+
+  /// Whether an event with [date] (`YYYY-MM-DD`) and [endTime] (`HH:mm`), both
+  /// campus-local wall clock, has already finished as of [nowUtc].
+  ///
+  /// A missing or malformed date/end time is treated as NOT ended (kept), so a
+  /// bad record is never silently hidden. Exposed for unit testing with a
+  /// fixed clock.
+  static bool hasEndedAt({
+    required String date,
+    required String endTime,
+    required DateTime nowUtc,
+  }) {
+    final endUtc = _eventEndInstant(date, endTime);
+    if (endUtc == null) return false;
+    return !endUtc.isAfter(nowUtc);
+  }
+
+  /// The UTC instant at which an event ends, or null when it can't be parsed.
+  static DateTime? _eventEndInstant(String date, String endTime) {
+    final parsed = DateTime.tryParse(date);
+    if (parsed == null) return null;
+    final parts = endTime.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
+      return null;
+    }
+    // Treat the wall-clock time as campus-local, then shift to a UTC instant.
+    final wallAsUtc = DateTime.utc(
+      parsed.year,
+      parsed.month,
+      parsed.day,
+      hour,
+      minute,
+    );
+    return wallAsUtc.subtract(_campusUtcOffset);
   }
 
   /// Eligibility shared by both list modes: approved, not deleted, dated.

@@ -24,10 +24,10 @@ http.Client createHardenedClient() {
 }
 
 class _RetryOnConnectionResetClient extends http.BaseClient {
-  _RetryOnConnectionResetClient(this._inner, {this.maxRetries = 1});
+  _RetryOnConnectionResetClient(this._inner);
 
   final http.Client _inner;
-  final int maxRetries;
+  static const int maxRetries = 1;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
@@ -37,7 +37,7 @@ class _RetryOnConnectionResetClient extends http.BaseClient {
 
     var attempt = 0;
     while (true) {
-      final toSend = canRetry ? _copy(request as http.Request) : request;
+      final toSend = request is http.Request ? _copy(request) : request;
       // Never reuse a keep-alive socket: a stale/desynced shared connection to
       // Google's front end is what produced the spurious edge HTML 400s (and
       // the "unsolicited response"/"connection reset" errors). A fresh

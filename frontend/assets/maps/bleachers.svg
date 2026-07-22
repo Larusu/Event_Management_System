@@ -33,11 +33,6 @@
   </g>
   <text x="812" y="378" text-anchor="middle" font-size="18" font-weight="700" fill="#3e4f57">BLEACHERS AREA</text>
 
-  <!-- machine room -->
-  <rect x="760" y="580" width="150" height="120" rx="4" fill="#ffffff" stroke="#b3c0c6" stroke-width="2"/>
-  <text x="835" y="634" text-anchor="middle" font-size="15" font-weight="600" fill="#55636b">MACHINE</text>
-  <text x="835" y="654" text-anchor="middle" font-size="15" font-weight="600" fill="#55636b">ROOM</text>
-
   <!-- stairs -->
   <g stroke="#8fa9b3" stroke-width="2">
     <rect x="700" y="740" width="200" height="160" rx="4" fill="#e7eef1"/>
@@ -57,5 +52,5 @@
     <line x1="675" y1="1180" x2="950" y2="1180"/>
     <line x1="675" y1="1240" x2="950" y2="1240"/>
   </g>
-  <text x="812" y="1116" text-anchor="middle" font-size="18" font-weight="700" fill="#3e4f57">BLEACHERS AREA</text>
+  <text x="812" y="1116" text-anchor="middle" font-size="18" font-weight="700" fill="#3e4f57">Cinema Lab</text>
 </svg>

@@ -1,7 +1,9 @@
 import "package:flutter/material.dart";
 import 'package:provider/provider.dart';
 
+import "../../../../core/constants/app_branches.dart";
 import "../../../../shared/widgets/header.dart";
+import "../../../../shared/widgets/tab_focus_refresher.dart";
 import "../../providers/calendar_provider.dart";
 import "../widgets/calendar_month_grid.dart";
 import "../widgets/calendar_time_grid.dart";
@@ -21,15 +23,21 @@ class _CalendarPageState extends State<CalendarPage> {
     // provider's focused date inside the Header, so `header` is unused here.
     return ChangeNotifierProvider(
       create: (_) => CalendarProvider()..load(),
-      child: const Column(
-        children: [
-          Header(
-            header: 'Calendar',
-            views: ['Month', 'Day', 'Week'],
-            page: 'calendar',
+      child: Builder(
+        builder: (context) => TabFocusRefresher(
+          branch: AppBranches.calendar,
+          onRefresh: () => context.read<CalendarProvider>().refreshIfStale(),
+          child: const Column(
+            children: [
+              Header(
+                header: 'Calendar',
+                views: ['Month', 'Day', 'Week'],
+                page: 'calendar',
+              ),
+              Expanded(child: _CalendarBody()),
+            ],
           ),
-          Expanded(child: _CalendarBody()),
-        ],
+        ),
       ),
     );
   }

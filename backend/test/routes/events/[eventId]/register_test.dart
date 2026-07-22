@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:backend/constants/event_error_codes.dart';
 import 'package:backend/constants/event_exception.dart';

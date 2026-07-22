@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/constants/app_branches.dart';
 import '../../../../shared/widgets/event_banners.dart';
 import '../../../../shared/widgets/event_cards.dart';
 import '../../../../shared/widgets/header.dart';
 import '../../../../shared/widgets/header_delegate.dart';
+import '../../../../shared/widgets/tab_focus_refresher.dart';
 import '../widgets/event_modal.dart';
 import '../../providers/event_dashboard_provider.dart';
 import '../../providers/event_detail_provider.dart';
@@ -66,53 +68,68 @@ class _DashboardPageState extends State<DashboardPage> {
     final userName =
         context.watch<AuthProvider>().currentUser?.name ?? 'Account';
 
-    return SafeArea(
-      top: false,
-      child: CustomScrollView(
-        slivers: [
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: HeaderDelegate(
-              height: 70 + MediaQuery.of(context).padding.top,
-              child: Header(
-                header: 'EMS',
-                views: const [],
-                page: 'dashboard',
-                headerSubtitle: userName,
+    return TabFocusRefresher(
+      branch: AppBranches.dashboard,
+      onRefresh: () => context.read<EventDashboardProvider>().refreshIfStale(),
+      child: SafeArea(
+        top: false,
+        child: RefreshIndicator(
+          onRefresh: () async {
+            final provider = context.read<EventDashboardProvider>();
+            await Future.wait([
+              provider.loadNextRegistered(),
+              provider.loadFeatured(),
+              provider.loadRegistered(),
+            ]);
+          },
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: HeaderDelegate(
+                  height: 70 + MediaQuery.of(context).padding.top,
+                  child: Header(
+                    header: 'EMS',
+                    views: const [],
+                    page: 'dashboard',
+                    headerSubtitle: userName,
+                  ),
+                ),
               ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.only(top: 8),
-            sliver: SliverToBoxAdapter(
-              child: _buildNextRegisteredSection(context),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: Text(
-                "Featured Events",
-                style: Theme.of(context).textTheme.titleMedium,
+              SliverPadding(
+                padding: const EdgeInsets.only(top: 8),
+                sliver: SliverToBoxAdapter(
+                  child: _buildNextRegisteredSection(context),
+                ),
               ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: _buildFeaturedSection(context),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: Text(
-                "Upcoming Registered Events",
-                style: Theme.of(context).textTheme.titleMedium,
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
+                sliver: SliverToBoxAdapter(
+                  child: Text(
+                    "Featured Events",
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
               ),
-            ),
+              SliverToBoxAdapter(
+                child: _buildFeaturedSection(context),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
+                sliver: SliverToBoxAdapter(
+                  child: Text(
+                    "Upcoming Registered Events",
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: _buildRegisteredSection(context),
+              ),
+            ],
           ),
-          SliverToBoxAdapter(
-            child: _buildRegisteredSection(context),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -284,21 +301,21 @@ class _DashboardPageState extends State<DashboardPage> {
           );
         }
 
-        return SizedBox(
-          height: 250,
-          child: ListView.builder(
-            itemCount: registered.length,
-            itemBuilder: (context, index) {
-              final event = registered[index];
-              return UpcomingEventBanner(
-                title: event.title,
-                day: event.displayDay,
-                date: event.displayDate,
-                startTime: event.displayStartTime,
-                endTime: event.displayEndTime,
-              );
-            },
-          ),
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 16),
+          itemCount: registered.length,
+          itemBuilder: (context, index) {
+            final event = registered[index];
+            return UpcomingEventBanner(
+              title: event.title,
+              day: event.displayDay,
+              date: event.displayDate,
+              startTime: event.displayStartTime,
+              endTime: event.displayEndTime,
+            );
+          },
         );
       },
     );

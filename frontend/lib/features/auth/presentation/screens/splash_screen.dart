@@ -121,11 +121,11 @@ class _SplashScreenState extends State<SplashScreen>
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.06),
+                            color: Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(28),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.25),
+                                color: Colors.black.withValues(alpha: 0.25),
                                 blurRadius: 24,
                                 offset: const Offset(0, 12),
                               ),
@@ -160,7 +160,7 @@ class _SplashScreenState extends State<SplashScreen>
                                   'Stay connected to your campus',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.white.withOpacity(0.65),
+                                    color: Colors.white.withValues(alpha: 0.65),
                                     fontFamily: 'Inter',
                                     letterSpacing: 0.1,
                                   ),
@@ -189,7 +189,7 @@ class _SplashScreenState extends State<SplashScreen>
                         child: CircularProgressIndicator(
                           strokeWidth: 2.2,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white.withOpacity(0.6),
+                            Colors.white.withValues(alpha: 0.6),
                           ),
                         ),
                       ),

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:backend/constants/event_error_codes.dart';
 import 'package:backend/constants/event_exception.dart';
-import 'package:backend/services/event_service.dart';
 import 'package:backend/services/registration_list_service.dart';
 import 'package:backend/utils/response_helper.dart';
 import 'package:dart_frog/dart_frog.dart';

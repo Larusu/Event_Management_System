@@ -333,7 +333,7 @@ class FirebaseEventService {
         .toLowerCase()
         .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
         .replaceAll(RegExp(r'\s+'), '-')
-        .replaceAll(RegExp(r'-+'), '-')
+        .replaceAll(RegExp('-+'), '-')
         .trim();
     final truncated =
         slug.length > 24 ? slug.substring(0, 24) : slug;

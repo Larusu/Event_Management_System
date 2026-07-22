@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:campus_event_app/core/constants/app_branches.dart';
 import 'package:campus_event_app/features/events/providers/event_dashboard_provider.dart';
 import 'package:campus_event_app/features/events/providers/event_list_provider.dart';
 import 'package:campus_event_app/features/events/presentation/widgets/event_modal.dart';
 import 'package:campus_event_app/shared/widgets/event_cards.dart';
 import 'package:campus_event_app/shared/widgets/header.dart';
+import 'package:campus_event_app/shared/widgets/tab_focus_refresher.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -96,30 +98,34 @@ class _EventsScreenState extends State<EventsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            Header(
-              header: 'Events \nList',
-              views: const [],
-              page: "events",
-              filters: context.watch<EventListProvider>().tags,
-              showSearch: true,
-              searchController: _searchController,
-              onSearchChanged: _onSearchChanged,
-              onFiltersChanged: _onFiltersChanged,
-            ),
-            Expanded(
-              child: _EventListBody(
-                scrollController: _scrollController,
+    return TabFocusRefresher(
+      branch: AppBranches.events,
+      onRefresh: () => context.read<EventListProvider>().refreshIfStale(),
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Header(
+                header: 'Events \nList',
+                views: const [],
+                page: "events",
+                filters: context.watch<EventListProvider>().tags,
+                showSearch: true,
                 searchController: _searchController,
-                featuredController: _featuredController,
+                onSearchChanged: _onSearchChanged,
+                onFiltersChanged: _onFiltersChanged,
               ),
-            ),
-          ],
+              Expanded(
+                child: _EventListBody(
+                  scrollController: _scrollController,
+                  searchController: _searchController,
+                  featuredController: _featuredController,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
