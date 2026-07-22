@@ -1,6 +1,6 @@
-# Campus Event App
+# Event Management System
 
-> Also known as the **School Event Planner**
+> Also known as the **Campus Event App**
 
 [![Version](https://img.shields.io/badge/version-v1.1.0-blue.svg)](CHANGELOG.md)
 [![Flutter](https://img.shields.io/badge/Flutter-stable-02569B.svg?logo=flutter)](https://flutter.dev)
